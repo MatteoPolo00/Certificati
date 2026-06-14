@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Monitor Certificati · Markup vs Fair Value</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
+<style>
+  :root{
+    --ink:#0E1419;
+    --panel:#161E26;
+    --panel-2:#1B252E;
+    --hair:#28343F;
+    --txt:#E8EDF1;
+    --muted:#8DA0AE;
+    --faint:#5C6F7C;
+    --pos:#4FD1A5;        /* sconto */
+    --neg:#F2766B;        /* premio  */
+    --brass:#C8A04E;      /* accento / brand */
+    --pos-soft:rgba(79,209,165,.16);
+    --neg-soft:rgba(242,118,107,.16);
+    --r:14px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:
+      radial-gradient(1200px 600px at 80% -10%, rgba(200,160,78,.06), transparent 60%),
+      var(--ink);
+    color:var(--txt);
+    font-family:"Inter",system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+  }
+  .wrap{max-width:1120px;margin:0 auto;padding:32px 24px 64px}
+
+  /* ---------- header ---------- */
+  .eyebrow{
+    font-family:"IBM Plex Mono",monospace;
+    font-size:11px;letter-spacing:.22em;text-transform:uppercase;
+    color:var(--brass);margin:0 0 10px;
+  }
+  h1{
+    font-family:"Space Grotesk",sans-serif;
+    font-weight:600;font-size:30px;line-height:1.1;margin:0;letter-spacing:-.01em;
+  }
+  h1 .thin{color:var(--muted);font-weight:400}
+  .topbar{
+    display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;
+    justify-content:space-between;margin-top:22px;
+  }
+  .selector label{
+    display:block;font-family:"IBM Plex Mono",monospace;font-size:10px;
+    letter-spacing:.18em;text-transform:uppercase;color:var(--faint);margin-bottom:7px;
+  }
+  select{
+    appearance:none;-webkit-appearance:none;
+    background:var(--panel);color:var(--txt);
+    border:1px solid var(--hair);border-radius:10px;
+    font-family:"IBM Plex Mono",monospace;font-size:15px;font-weight:500;
+    padding:12px 42px 12px 14px;min-width:280px;cursor:pointer;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M2 4l4 4 4-4' stroke='%238DA0AE' stroke-width='1.5' fill='none' stroke-linecap='round'/></svg>");
+    background-repeat:no-repeat;background-position:right 14px center;
+    transition:border-color .15s ease;
+  }
+  select:hover{border-color:var(--faint)}
+  select:focus-visible{outline:2px solid var(--brass);outline-offset:2px;border-color:var(--brass)}
+  .stamp{
+    font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--faint);
+    text-align:right;line-height:1.6;
+  }
+  .stamp b{color:var(--muted);font-weight:500}
+
+  .banner{
+    margin-top:18px;border:1px solid var(--hair);border-left:3px solid var(--brass);
+    background:var(--panel);border-radius:8px;padding:11px 14px;
+    font-size:12.5px;color:var(--muted);display:none;
+  }
+  .banner code{font-family:"IBM Plex Mono",monospace;color:var(--brass)}
+
+  /* ---------- hero + meta ---------- */
+  .grid-top{
+    display:grid;grid-template-columns:1.05fr 1fr;gap:18px;margin-top:24px;
+  }
+  .card{
+    background:var(--panel);border:1px solid var(--hair);border-radius:var(--r);
+  }
+  .hero{padding:26px 28px 30px;position:relative;overflow:hidden}
+  .hero .k{
+    font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.18em;
+    text-transform:uppercase;color:var(--faint);
+  }
+  .hero .val{
+    font-family:"Space Grotesk",sans-serif;font-weight:700;
+    font-size:64px;line-height:1;letter-spacing:-.02em;margin:14px 0 6px;
+    font-variant-numeric:tabular-nums;
+  }
+  .tag{
+    display:inline-flex;align-items:center;gap:8px;
+    font-family:"IBM Plex Mono",monospace;font-size:12px;font-weight:600;
+    letter-spacing:.1em;text-transform:uppercase;
+    padding:5px 12px;border-radius:999px;
+  }
+  .tag.pos{color:var(--pos);background:var(--pos-soft)}
+  .tag.neg{color:var(--neg);background:var(--neg-soft)}
+  .tag .dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+  .hero .sub{color:var(--muted);font-size:13px;margin-top:18px;max-width:34ch;line-height:1.5}
+
+  /* scala fair value */
+  .scale{margin-top:22px}
+  .scale .track{
+    position:relative;height:6px;border-radius:3px;
+    background:linear-gradient(90deg,var(--neg-soft),rgba(140,160,174,.10),var(--pos-soft));
+    border:1px solid var(--hair);
+  }
+  .scale .zero{
+    position:absolute;top:-4px;bottom:-4px;left:50%;width:1px;background:var(--faint);
+  }
+  .scale .marker{
+    position:absolute;top:50%;width:13px;height:13px;border-radius:50%;
+    transform:translate(-50%,-50%);border:2px solid var(--ink);
+    box-shadow:0 0 0 1px var(--hair);transition:left .35s cubic-bezier(.4,0,.2,1),background .2s;
+  }
+  .scale .ends{
+    display:flex;justify-content:space-between;margin-top:8px;
+    font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--faint);
+  }
+
+  /* meta */
+  .meta{padding:24px 26px}
+  .meta h2{
+    font-family:"Space Grotesk",sans-serif;font-weight:500;font-size:13px;
+    letter-spacing:.04em;color:var(--muted);margin:0 0 18px;text-transform:uppercase;
+  }
+  .rows{display:grid;gap:0}
+  .row{
+    display:flex;justify-content:space-between;align-items:baseline;gap:16px;
+    padding:11px 0;border-top:1px solid var(--hair);
+  }
+  .row:first-child{border-top:0;padding-top:0}
+  .row .lab{font-size:12.5px;color:var(--faint);letter-spacing:.02em}
+  .row .v{
+    font-family:"IBM Plex Mono",monospace;font-size:13.5px;color:var(--txt);
+    text-align:right;font-variant-numeric:tabular-nums;
+  }
+  .chips{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}
+  .chip{
+    font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--brass);
+    background:rgba(200,160,78,.10);border:1px solid rgba(200,160,78,.25);
+    padding:3px 9px;border-radius:6px;
+  }
+
+  /* ---------- charts ---------- */
+  .chart-card{margin-top:18px;padding:22px 22px 8px}
+  .chart-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:4px}
+  .chart-head .t{font-family:"Space Grotesk",sans-serif;font-weight:600;font-size:16px}
+  .chart-head .t .badge{
+    font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.16em;
+    color:var(--ink);background:var(--brass);padding:2px 7px;border-radius:5px;
+    margin-left:10px;vertical-align:middle;text-transform:uppercase;
+  }
+  .chart-head .h{font-size:12px;color:var(--faint);font-family:"IBM Plex Mono",monospace}
+  .plot{width:100%;height:380px}
+  .plot.sm{height:300px}
+
+  .foot{margin-top:28px;font-size:11.5px;color:var(--faint);text-align:center;line-height:1.7}
+
+  @media (max-width:760px){
+    .grid-top{grid-template-columns:1fr}
+    h1{font-size:24px}
+    .hero .val{font-size:52px}
+    .stamp{text-align:left}
+    .topbar{align-items:flex-start}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{transition:none !important}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <p class="eyebrow">Monitor Certificati · pricing model</p>
+  <h1>Markup sul <span class="thin">fair value</span></h1>
+
+  <div class="topbar">
+    <div class="selector">
+      <label for="isin">Seleziona ISIN</label>
+      <select id="isin" aria-label="Seleziona ISIN"></select>
+    </div>
+    <div class="stamp" id="stamp"></div>
+  </div>
+
+  <div class="banner" id="banner">
+    Dati dimostrativi. Genera <code>data.json</code> con <code>export_markup_json.m</code> e mettilo in questa cartella.
+  </div>
+
+  <div class="grid-top">
+    <div class="card hero">
+      <div class="k">Costo implicito corrente</div>
+      <div class="val" id="heroVal">—</div>
+      <span class="tag pos" id="heroTag"><span class="dot"></span><span id="heroTagTxt">—</span></span>
+      <div class="sub" id="heroSub"></div>
+
+      <div class="scale">
+        <div class="track">
+          <div class="zero"></div>
+          <div class="marker" id="marker" style="left:50%;background:var(--muted)"></div>
+        </div>
+        <div class="ends"><span>− premio</span><span>fair value</span><span>sconto +</span></div>
+      </div>
+    </div>
+
+    <div class="card meta">
+      <h2>Scheda strumento</h2>
+      <div class="rows" id="metaRows"></div>
+    </div>
+  </div>
+
+  <div class="card chart-card">
+    <div class="chart-head">
+      <div class="t">Markup nel tempo <span class="badge">primario</span></div>
+      <div class="h">linea zero = fair value del modello</div>
+    </div>
+    <div id="chartMarkup" class="plot"></div>
+  </div>
+
+  <div class="card chart-card">
+    <div class="chart-head">
+      <div class="t">Prezzo di mercato vs modello</div>
+      <div class="h">€ per certificato</div>
+    </div>
+    <div id="chartPrice" class="plot sm"></div>
+  </div>
+
+  <p class="foot">
+    Sconto = il certificato quota sotto il fair value stimato · Premio = sopra il fair value.<br>
+    Le metriche derivano dal backtesting Monte Carlo del modello.
+  </p>
+</div>
+
+<script>
+/* ---------------- dati demo (fallback se data.json manca) ---------------- */
+function makeDemo(isin, emit, str, sott, base, drift, amp){
+  const n=64, dates=[], mkt=[], mod=[], mk=[], mka=[], cp=[];
+  const start=new Date(2024,8,2);
+  let d=new Date(start), px=base;
+  for(let i=0;i<n;i++){
+    // salta weekend
+    while(d.getDay()===0||d.getDay()===6){ d.setDate(d.getDate()+1); }
+    const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0');
+    dates.push(`${y}-${m}-${day}`);
+    const t=i/n;
+    const markup = drift + amp*Math.sin(t*6.5+1) - amp*0.4*t + (Math.random()-0.5)*0.6; // %
+    const anni = Math.max(0.08, 1.6 - t*1.3);
+    let ann = ((1+markup/100)**(1/anni)-1)*100;
+    let prem = Math.abs(ann)<Math.abs(markup) ? ann : markup;
+    px = base*(1 + 0.04*Math.sin(t*4) + (Math.random()-0.5)*0.01);
+    mkt.push(+(px).toFixed(3));
+    mod.push(+(px*(1+markup/100)).toFixed(3));
+    mk.push(+markup.toFixed(3));
+    mka.push(+ann.toFixed(3));
+    cp.push(+prem.toFixed(3));
+    d.setDate(d.getDate()+4);
+  }
+  return {isin,emittente:emit,struttura:str,scadenza:'2026-06-19',sottostanti:sott,
+          aggiornamento:'demo',dates,prezzo_mercato:mkt,prezzo_modello:mod,
+          markup:mk,markup_ann:mka,cost_premium:cp};
+}
+const DEMO=[
+  makeDemo('IT0006768524','BNP Paribas','Cash Collect Worst of',['VUSA','STOXX50E','SSMI'],98.4,1.2,3.4),
+  makeDemo('XS2862885964','Vontobel','Phoenix Memory',['N225E','SX7E'],101.1,-0.8,2.6),
+  makeDemo('CH1265332721','Leonteq','Autocallable BRC',['VUSA','SD3E','FTMIB'],96.7,2.0,4.1)
+];
+
+/* ---------------- stile Plotly condiviso ---------------- */
+const CSS=getComputedStyle(document.documentElement);
+const C={
+  txt:CSS.getPropertyValue('--txt').trim(),
+  muted:CSS.getPropertyValue('--muted').trim(),
+  hair:CSS.getPropertyValue('--hair').trim(),
+  faint:CSS.getPropertyValue('--faint').trim(),
+  pos:CSS.getPropertyValue('--pos').trim(),
+  neg:CSS.getPropertyValue('--neg').trim(),
+  brass:CSS.getPropertyValue('--brass').trim(),
+};
+const FONT={family:'IBM Plex Mono, monospace',size:11,color:C.muted};
+const baseLayout=()=>({
+  paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)',
+  font:FONT, margin:{l:54,r:18,t:8,b:40},
+  xaxis:{gridcolor:'rgba(40,52,63,.55)',linecolor:C.hair,tickcolor:C.hair,
+         zeroline:false,tickfont:{size:10,color:C.faint}},
+  yaxis:{gridcolor:'rgba(40,52,63,.55)',linecolor:C.hair,tickcolor:C.hair,
+         zeroline:false,tickfont:{size:10,color:C.faint}},
+  hoverlabel:{bgcolor:'#0E1419',bordercolor:C.hair,
+              font:{family:'IBM Plex Mono, monospace',size:12,color:C.txt}},
+  hovermode:'x unified', showlegend:false
+});
+const CONFIG={responsive:true,displaylogo:false,
+  modeBarButtonsToRemove:['lasso2d','select2d','autoScale2d','toggleSpikelines']};
+
+/* ---------------- render markup (grafico primario, area divergente) ---------------- */
+function renderMarkup(r){
+  const x=r.dates;
+  const pos=r.markup.map(v=> v==null?null:(v>=0?v:0));
+  const neg=r.markup.map(v=> v==null?null:(v<0?v:0));
+  const traces=[
+    {x,y:pos,type:'scatter',mode:'none',fill:'tozeroy',
+     fillcolor:'rgba(79,209,165,.18)',hoverinfo:'skip',connectgaps:false},
+    {x,y:neg,type:'scatter',mode:'none',fill:'tozeroy',
+     fillcolor:'rgba(242,118,107,.18)',hoverinfo:'skip',connectgaps:false},
+    {x,y:r.markup,type:'scatter',mode:'lines',line:{color:C.txt,width:1.6},
+     connectgaps:false,name:'markup',
+     hovertemplate:'%{x|%d %b %Y}<br>markup <b>%{y:.2f}%</b><extra></extra>'}
+  ];
+  const L=baseLayout();
+  L.shapes=[{type:'line',xref:'paper',x0:0,x1:1,y0:0,y1:0,
+             line:{color:C.faint,width:1,dash:'dot'}}];
+  L.yaxis.ticksuffix='%';
+  Plotly.react('chartMarkup',traces,L,CONFIG);
+}
+
+/* ---------------- render prezzi ---------------- */
+function renderPrice(r){
+  const x=r.dates;
+  const traces=[
+    {x,y:r.prezzo_mercato,type:'scatter',mode:'lines',name:'Mercato',
+     line:{color:C.brass,width:1.8},connectgaps:false,
+     hovertemplate:'mercato <b>%{y:.2f}</b><extra></extra>'},
+    {x,y:r.prezzo_modello,type:'scatter',mode:'lines',name:'Modello',
+     line:{color:C.pos,width:1.6,dash:'solid'},connectgaps:false,
+     hovertemplate:'modello <b>%{y:.2f}</b><extra></extra>'}
+  ];
+  const L=baseLayout();
+  L.showlegend=true;
+  L.legend={orientation:'h',y:1.12,x:1,xanchor:'right',font:{size:11,color:C.muted}};
+  L.margin.t=20;
+  Plotly.react('chartPrice',traces,L,CONFIG);
+}
+
+/* ---------------- ultimo valore non nullo ---------------- */
+function lastNum(arr){
+  for(let i=arr.length-1;i>=0;i--){ if(arr[i]!=null && !Number.isNaN(arr[i])) return arr[i]; }
+  return null;
+}
+
+/* ---------------- aggiorna scheda + hero ---------------- */
+function fmtPct(v){ return (v>0?'+':'')+v.toFixed(2)+'%'; }
+function renderMeta(r){
+  const cp=lastNum(r.cost_premium);
+  const mk=lastNum(r.markup);
+  const mka=lastNum(r.markup_ann);
+  const pmkt=lastNum(r.prezzo_mercato);
+  const pmod=lastNum(r.prezzo_modello);
+
+  // hero
+  const isPos = cp!=null && cp>=0;
+  document.getElementById('heroVal').textContent = cp==null?'n/d':fmtPct(cp);
+  const tag=document.getElementById('heroTag');
+  tag.className='tag '+(isPos?'pos':'neg');
+  document.getElementById('heroTagTxt').textContent = cp==null?'—':(isPos?'a sconto':'a premio');
+  document.getElementById('heroSub').textContent = cp==null
+    ? 'Dato non disponibile per questo strumento.'
+    : (isPos
+        ? 'Il certificato quota sotto il fair value: spazio teorico di recupero.'
+        : 'Il certificato quota sopra il fair value: stai pagando un sovrapprezzo.');
+
+  // marker su scala −15..+15
+  const dom=15;
+  const clamp=Math.max(-dom,Math.min(dom, cp==null?0:cp));
+  const left=50 + (clamp/dom)*50;
+  const mk_el=document.getElementById('marker');
+  mk_el.style.left=left+'%';
+  mk_el.style.background = cp==null?C.muted:(isPos?C.pos:C.neg);
+
+  // righe scheda
+  const rows=[
+    ['ISIN', r.isin],
+    ['Emittente', r.emittente||'—'],
+    ['Struttura', r.struttura||'—'],
+    ['Scadenza', r.scadenza||'—'],
+    ['Sottostanti', '__chips__'],
+    ['Markup (oggi)', mk==null?'n/d':fmtPct(mk)],
+    ['Markup annuo', mka==null?'n/d':fmtPct(mka)],
+    ['Prezzo mercato', pmkt==null?'n/d':pmkt.toFixed(2)],
+    ['Prezzo modello', pmod==null?'n/d':pmod.toFixed(2)],
+  ];
+  const host=document.getElementById('metaRows');
+  host.innerHTML='';
+  rows.forEach(([lab,val])=>{
+    const row=document.createElement('div'); row.className='row';
+    const l=document.createElement('div'); l.className='lab'; l.textContent=lab;
+    const v=document.createElement('div'); v.className='v';
+    if(val==='__chips__'){
+      const c=document.createElement('div'); c.className='chips';
+      (r.sottostanti||[]).forEach(s=>{
+        const ch=document.createElement('span'); ch.className='chip'; ch.textContent=s; c.appendChild(ch);
+      });
+      v.appendChild(c);
+    } else { v.textContent=val; }
+    row.appendChild(l); row.appendChild(v); host.appendChild(row);
+  });
+}
+
+/* ---------------- orchestrazione ---------------- */
+let DATA=DEMO, demoMode=true;
+function selectIsin(isin){
+  const r=DATA.find(x=>x.isin===isin)||DATA[0];
+  renderMeta(r); renderMarkup(r); renderPrice(r);
+  const upd = (r.aggiornamento && r.aggiornamento!=='demo') ? r.aggiornamento : '—';
+  document.getElementById('stamp').innerHTML =
+    `aggiornato &nbsp;<b>${upd}</b><br>${DATA.length} strumenti in monitor`;
+}
+function init(){
+  document.getElementById('banner').style.display = demoMode?'block':'none';
+  const sel=document.getElementById('isin');
+  sel.innerHTML='';
+  DATA.forEach(r=>{
+    const o=document.createElement('option');
+    o.value=r.isin;
+    o.textContent = r.struttura ? `${r.isin} · ${r.struttura}` : r.isin;
+    sel.appendChild(o);
+  });
+  sel.addEventListener('change',e=>selectIsin(e.target.value));
+  selectIsin(DATA[0].isin);
+}
+
+fetch('data.json')
+  .then(res=>{ if(!res.ok) throw new Error('no file'); return res.json(); })
+  .then(json=>{
+    DATA = Array.isArray(json)?json:[json];
+    demoMode=false; init();
+  })
+  .catch(()=>{ DATA=DEMO; demoMode=true; init(); });
+</script>
+</body>
+</html>
