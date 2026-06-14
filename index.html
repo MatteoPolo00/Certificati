@@ -479,6 +479,10 @@ fetch('data.json')
   .then(res=>{if(!res.ok)throw new Error('no file');return res.json();})
   .then(json=>{DATA=Array.isArray(json)?json:[json];demoMode=false;init();})
   .catch(()=>{DATA=DEMO;demoMode=true;init();});
+
+  <script data-goatcounter="https://Certificati.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
+  
 </script>
 </body>
 </html>
