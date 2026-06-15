@@ -6,7 +6,6 @@
 //  sottostanti_template.js con l'elenco COMPLETO delle tue sigle.
 // =====================================================================
 window.SOTTOSTANTI = {
-
   "A2": "A2A",
   "AAL": "American Airlines",
   "AAPL": "Apple",
