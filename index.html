@@ -170,11 +170,9 @@
           <rect x="14" y="9" width="3" height="4" rx="1" fill="var(--pos)"/>
           <rect x="19" y="13" width="3" height="8" rx="1" fill="var(--neg)"/>
         </svg>
-        </span>
-      <div>
-  <div class="bt">Certificate Markup Monitor</div>
-  <div class="bs"></div>
-  </div>
+      </span>
+      <div><div class="bt">Certificate Markup Monitor</div><div class="bs">pricing model · Monte Carlo</div></div>
+    </div>
     <div class="ident">
       <div class="who"><span class="nm" id="pNome"></span><span class="rl" id="pRuolo"></span></div>
       <a class="ic li" id="pLinkedin" href="#" target="_blank" rel="noopener" aria-label="LinkedIn">
@@ -269,6 +267,15 @@
     <div class="subview" id="sv-rischio" hidden><div class="card placeholder">Vista <b>Rischio</b> — in arrivo.</div></div>
   </section>
 
+  <footer class="foot">
+    <div class="method"><b>Metodologia.</b> Il fair value di ciascun certificato è stimato con un modello di pricing Monte Carlo
+      (volatilità stocastica e salti). Il <b>markup</b> è lo scarto percentuale tra prezzo di mercato e fair value:
+      valori positivi indicano uno sconto, negativi un sovrapprezzo rispetto al modello.</div>
+    <div class="sign"><div id="fNome"></div><div>ultimo aggiornamento <b id="fUpd">—</b></div>
+      <div><a id="fLinkedin" href="#" target="_blank" rel="noopener">LinkedIn</a> · <a id="fGithub" href="#" target="_blank" rel="noopener">GitHub</a></div></div>
+  </footer>
+</div>
+
 <script src="sottostanti.js"></script>
 <script>
 /* =====================================================================
@@ -276,9 +283,10 @@
    ===================================================================== */
 const CONFIG = {
   nome:        "Matteo Polo",
-  linkedin:    "https://www.linkedin.com/in/matteo-polo/",
+  ruolo:       "Quantitative Finance",
+  linkedin:    "https://www.linkedin.com/in/INSERISCI-IL-TUO-PROFILO",
   github:      "https://github.com/MatteoPolo00",
-  goatcounter: "Certificati"
+  goatcounter: "MIOCODICE"
 };
 /* ===================================================================== */
 
