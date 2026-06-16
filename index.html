@@ -147,6 +147,17 @@
   .foot .sign{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--faint);text-align:right;line-height:1.7}
   .foot .sign a{color:var(--muted);text-decoration:none} .foot .sign a:hover{color:var(--brass)}
 
+  .caltable-wrap{overflow-x:auto;margin-top:4px}
+  .caltable{width:100%;border-collapse:collapse;font-size:12.5px}
+  .caltable th{text-align:left;font-family:"IBM Plex Mono",monospace;font-weight:600;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);padding:9px 12px;border-bottom:1px solid var(--hair);white-space:nowrap}
+  .caltable th.num{text-align:right}
+  .caltable td{padding:9px 12px;border-bottom:1px solid var(--hair-soft);white-space:nowrap;color:var(--txt);font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums}
+  .caltable td.num{text-align:right}
+  .caltable tr.past td{color:var(--faint)}
+  .caltable tr.next td{background:var(--brass-soft)}
+  .caltable tr:last-child td{border-bottom:0}
+  .caltable .nxt{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink);background:var(--brass);padding:1px 6px;border-radius:4px;margin-left:8px}
+
   @media (max-width:900px){
     .grid-top{grid-template-columns:1fr}.hero .val{font-size:52px}
     .ident{order:2}.who{text-align:left}
@@ -171,7 +182,7 @@
           <rect x="19" y="13" width="3" height="8" rx="1" fill="var(--neg)"/>
         </svg>
       </span>
-      <div><div class="bt">Certificate Markup Monitor</div><div class="bs">pricing model · SVCJ</div></div>
+      <div><div class="bt">Certificate Markup Monitor</div></div>
     </div>
     <div class="ident">
       <div class="who"><span class="nm" id="pNome"></span><span class="rl" id="pRuolo"></span></div>
@@ -238,6 +249,10 @@
         </div>
         <div class="card meta"><h2>Scheda strumento</h2><div id="metaRows"></div></div>
       </div>
+      <div class="card chart-card">
+        <div class="chart-head"><div class="t">Calendario cedole e autocall</div><div class="h">date di osservazione</div></div>
+        <div id="calWrap" class="caltable-wrap"></div>
+      </div>
       <div class="stats">
         <div class="card stat"><div class="l">Markup attuale</div><div class="n" id="kpiNow">—</div><div class="s">ultimo dato</div></div>
         <div class="card stat"><div class="l">Media periodo</div><div class="n" id="kpiMean">—</div><div class="s" id="kpiMeanSub">—</div></div>
@@ -266,14 +281,6 @@
     <div class="subview" id="sv-autocall" hidden><div class="card placeholder">Vista <b>Autocall</b> — in arrivo.</div></div>
     <div class="subview" id="sv-rischio" hidden><div class="card placeholder">Vista <b>Rischio</b> — in arrivo.</div></div>
   </section>
-
-  <footer class="foot">
-    <div class="method"><b>Metodologia.</b> Il fair value di ciascun certificato è stimato con un modello di pricing Monte Carlo
-      (SVCJ). Il <b>markup</b> è lo scarto percentuale tra prezzo di mercato e fair value:
-      valori positivi indicano uno sconto, negativi un sovrapprezzo rispetto al modello.</div>
-    <div class="sign"><div id="fNome"></div><div>ultimo aggiornamento <b id="fUpd">—</b></div>
-      <div><a id="fLinkedin" href="#" target="_blank" rel="noopener">LinkedIn</a> · <a id="fGithub" href="#" target="_blank" rel="noopener">GitHub</a></div></div>
-  </footer>
 </div>
 
 <script src="sottostanti.js"></script>
@@ -283,7 +290,7 @@
    ===================================================================== */
 const CONFIG = {
   nome:        "Matteo Polo",
-  ruolo:       "Università degli Studi di Trento",
+  ruolo:       "",
   linkedin:    "https://www.linkedin.com/in/matteo-polo/",
   github:      "https://github.com/MatteoPolo00",
   goatcounter: "MIOCODICE"
@@ -318,7 +325,11 @@ const DEMO=[
   makeDemo('XS2999000111','Marex','Cash Collect Worst of',['STOXX50E','N225E'],100.3,-0.3,3.0)
 ];
 DEMO.forEach((r,i)=>{const yr=2026+(i%4);r.scadenza=`${yr}-${String(3+i%9).padStart(2,'0')}-15`;
-  r.frequenza=['Mensile','Trimestrale','Annuale','Trimestrale','Mensile','No cedola'][i];});
+  r.frequenza=['Mensile','Trimestrale','Annuale','Trimestrale','Mensile','No cedola'][i];
+  const sc=new Date(r.scadenza),pd=[];for(let k=5;k>=0;k--){const dt=new Date(sc);dt.setMonth(dt.getMonth()-k*3);pd.push(dt.toISOString().slice(0,10));}
+  r.payments_date=pd;
+  r.soglia_cedola=(i===5)?null:pd.map(()=>0.70);
+  r.livelli_autocall=(i===3||i===5)?null:pd.map((_,k)=>k>=2?1.00:null);});
 
 /* ---------- Plotly ---------- */
 const CSS=getComputedStyle(document.documentElement);
@@ -428,7 +439,7 @@ function renderHero(r){const cp=lastNum(r.cost_premium),isPos=cp!=null&&cp>=0;
   document.getElementById('heroVal').textContent=cp==null?'n/d':fmtPct(cp);
   const tag=document.getElementById('heroTag');tag.className='tag '+(isPos?'pos':'neg');
   document.getElementById('heroTagTxt').textContent=cp==null?'—':(isPos?'a sconto':'a premio');
-  document.getElementById('heroSub').textContent=cp==null?'Dato non disponibile.':(isPos?'Il certificato quota sotto il fair value: spazio teorico di recupero.':'Il certificato quota sopra il fair value: presenza di un sovrapprezzo.');
+  document.getElementById('heroSub').textContent=cp==null?'Dato non disponibile.':(isPos?'Prezzo di mercato sotto il fair value di modello.':'Prezzo di mercato sopra il fair value di modello.');
   const dom=15,cl=Math.max(-dom,Math.min(dom,cp==null?0:cp));const mk=document.getElementById('marker');
   mk.style.left=(50+(cl/dom)*50)+'%';mk.style.background=cp==null?C.muted:(isPos?C.pos:C.neg);}
 function renderMeta(r){const pmkt=lastNum(r.prezzo_mercato),pmod=lastNum(r.prezzo_modello);
@@ -441,6 +452,28 @@ function renderMeta(r){const pmkt=lastNum(r.prezzo_mercato),pmod=lastNum(r.prezz
     if(val==='__chips__'){const c=document.createElement('div');c.className='chips';
       (r.sottostanti||[]).forEach(s=>{const ch=document.createElement('span');ch.className='chip';ch.textContent=nameOf(s);ch.title=s;c.appendChild(ch);});v.appendChild(c);}
     else{v.textContent=val;}row.appendChild(l);row.appendChild(v);host.appendChild(row);});}
+function asPerDate(field,n){if(field==null)return new Array(n).fill(null);
+  if(Array.isArray(field)){const a=field.slice(0,n);while(a.length<n)a.push(null);return a;}
+  return new Array(n).fill(field);}
+function fmtCalDate(s){const d=new Date(s);if(isNaN(d))return esc(String(s));
+  return d.toLocaleDateString('it-IT',{day:'2-digit',month:'short',year:'numeric'});}
+function fmtLevel(v){if(v==null||Number.isNaN(v))return '—';const x=Math.abs(v)<=3?v*100:v;return x.toFixed(0)+'%';}
+function renderCalendar(r){const host=document.getElementById('calWrap');
+  const pd=Array.isArray(r.payments_date)?r.payments_date:[];
+  if(!pd.length){host.innerHTML='<div class="empty">Nessuna data di pagamento disponibile.</div>';return;}
+  const n=pd.length,ced=asPerDate(r.cedola,n),sog=asPerDate(r.soglia_cedola,n),ac=asPerDate(r.livelli_autocall,n);
+  const hasCed=ced.some(v=>v!=null),hasSog=sog.some(v=>v!=null),hasAc=ac.some(v=>v!=null);
+  const today=new Date();today.setHours(0,0,0,0);
+  const nextIdx=pd.findIndex(d=>new Date(d)>=today);
+  const head=['Data',hasCed?'Cedola':null,hasSog?'Barriera cedola':null,hasAc?'Trigger autocall':null].filter(Boolean);
+  let html='<table class="caltable"><thead><tr>'+head.map((h,i)=>`<th${i>0?' class="num"':''}>${esc(h)}</th>`).join('')+'</tr></thead><tbody>';
+  for(let i=0;i<n;i++){const past=new Date(pd[i])<today;const cls=((i===nextIdx?'next':'')+(past?' past':'')).trim();
+    let cells='<td>'+fmtCalDate(pd[i])+(i===nextIdx?' <span class="nxt">prossima</span>':'')+'</td>';
+    if(hasCed)cells+='<td class="num">'+(ced[i]==null?'—':(+ced[i]).toFixed(2))+'</td>';
+    if(hasSog)cells+='<td class="num">'+fmtLevel(sog[i])+'</td>';
+    if(hasAc)cells+='<td class="num">'+(ac[i]==null?'—':fmtLevel(ac[i]))+'</td>';
+    html+=`<tr class="${cls}">${cells}</tr>`;}
+  html+='</tbody></table>';host.innerHTML=html;}
 function renderStats(w){const vals=w.cost_premium.filter(v=>v!=null&&!Number.isNaN(v));const now=lastNum(w.cost_premium);
   const elNow=document.getElementById('kpiNow');elNow.textContent=now==null?'n/d':fmtPct(now);elNow.className='n '+(now==null?'':(now>=0?'pos-t':'neg-t'));
   if(vals.length){const mean=vals.reduce((a,b)=>a+b,0)/vals.length;
@@ -452,9 +485,8 @@ function selectIsin(isin){current=DATA.find(x=>x.isin===isin)||current;if(!curre
   document.getElementById('mTitle').textContent=current.isin;
   document.getElementById('mSub').textContent=[current.emittente,current.struttura].filter(Boolean).join(' · ');
   const upd=(current.aggiornamento&&current.aggiornamento!=='demo')?current.aggiornamento:'—';
-  document.getElementById('fUpd').textContent=upd;
   document.getElementById('stamp').innerHTML=`aggiornato &nbsp;<b>${esc(upd)}</b>`;
-  renderHero(current);renderMeta(current);applyWindow();}
+  renderHero(current);renderMeta(current);renderCalendar(current);applyWindow();}
 
 function setSubview(t){subv=t;
   ['markup','rendimento','autocall','rischio'].forEach(k=>{const el=document.getElementById('sv-'+k);if(el)el.hidden=(k!==t);});
@@ -474,9 +506,8 @@ function showView(v){
 function renderProfile(){
   document.getElementById('pNome').textContent=CONFIG.nome;
   document.getElementById('pRuolo').textContent=CONFIG.ruolo;
-  document.getElementById('fNome').textContent=CONFIG.nome;
-  document.getElementById('pLinkedin').href=CONFIG.linkedin;document.getElementById('fLinkedin').href=CONFIG.linkedin;
-  document.getElementById('pGithub').href=CONFIG.github;document.getElementById('fGithub').href=CONFIG.github;}
+  document.getElementById('pLinkedin').href=CONFIG.linkedin;
+  document.getElementById('pGithub').href=CONFIG.github;}
 function loadGoatCounter(){const code=CONFIG.goatcounter;if(!code||code==='MIOCODICE')return;
   const s=document.createElement('script');s.async=true;s.src='//gc.zgo.at/count.js';
   s.setAttribute('data-goatcounter',`https://${code}.goatcounter.com/count`);document.body.appendChild(s);}
