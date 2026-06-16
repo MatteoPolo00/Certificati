@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   :root{
     --ink:#0C1116;--panel:#141C24;--panel-2:#192330;--hair:#26323D;--hair-soft:#1F2A34;
@@ -135,10 +136,15 @@
   .tabs button:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
 
   .chart-card{padding:22px 22px 8px}
-  .chart-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:4px}
+  .chart-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:4px}
   .chart-head .t{font-family:"Space Grotesk",sans-serif;font-weight:600;font-size:16px}
   .chart-head .t .badge{font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.16em;color:var(--ink);background:var(--brass);padding:2px 7px;border-radius:5px;margin-left:10px;vertical-align:middle;text-transform:uppercase}
   .chart-head .h{font-size:12px;color:var(--faint);font-family:"IBM Plex Mono",monospace}
+  .hd-right{display:flex;align-items:center;gap:11px}
+  .xlsbtn{appearance:none;border:1px solid var(--hair);background:var(--panel-2);border-radius:7px;padding:0;width:28px;height:28px;display:grid;place-items:center;cursor:pointer;transition:border-color .15s,transform .15s}
+  .xlsbtn:hover{border-color:var(--faint);transform:translateY(-1px)}
+  .xlsbtn:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+  .xlsbtn svg{display:block}
   .plot{width:100%;height:380px} .plot.sm{height:300px}
 
   .foot{margin-top:30px;border-top:1px solid var(--hair-soft);padding-top:22px;display:flex;justify-content:space-between;align-items:flex-end;gap:18px;flex-wrap:wrap}
@@ -267,11 +273,11 @@
         </div>
       </div>
       <div class="card chart-card">
-        <div class="chart-head"><div class="t">Markup nel tempo <span class="badge">primario</span></div><div class="h">linea zero = fair value</div></div>
+        <div class="chart-head"><div class="t">Markup nel tempo <span class="badge">primario</span></div><div class="hd-right"><span class="h">linea zero = fair value</span><button id="xlsMarkup" class="xlsbtn" title="Scarica dati in Excel" aria-label="Scarica dati in Excel"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3" fill="#1D6F42"/><path d="M8.8 7.6l6.4 8.8M15.2 7.6l-6.4 8.8" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg></button></div></div>
         <div id="chartMarkup" class="plot"></div>
       </div>
       <div class="card chart-card">
-        <div class="chart-head"><div class="t">Prezzo di mercato vs modello</div><div class="h">€ per certificato</div></div>
+        <div class="chart-head"><div class="t">Prezzo di mercato vs modello</div><div class="hd-right"><span class="h">€ per certificato</span><button id="xlsPrice" class="xlsbtn" title="Scarica dati in Excel" aria-label="Scarica dati in Excel"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3" fill="#1D6F42"/><path d="M8.8 7.6l6.4 8.8M15.2 7.6l-6.4 8.8" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg></button></div></div>
         <div id="chartPrice" class="plot sm"></div>
       </div>
     </div>
@@ -474,6 +480,24 @@ function renderCalendar(r){const host=document.getElementById('calWrap');
     if(hasAc)cells+='<td class="num">'+(ac[i]==null?'—':fmtLevel(ac[i]))+'</td>';
     html+=`<tr class="${cls}">${cells}</tr>`;}
   html+='</tbody></table>';host.innerHTML=html;}
+function numOrNull(v){return (v==null||Number.isNaN(v))?null:+v;}
+function buildSheet(which){const w=sliceByWindow(current,win);
+  if(which==='price'){const head=['Data','Prezzo mercato','Prezzo modello'];
+    const rows=w.dates.map((d,i)=>[d,numOrNull(w.prezzo_mercato[i]),numOrNull(w.prezzo_modello[i])]);
+    return {head,rows,name:'Prezzo'};}
+  const head=['Data','Markup %','Markup ann. %','Cost premium %'];
+  const rows=w.dates.map((d,i)=>[d,numOrNull(w.markup[i]),numOrNull(w.markup_ann&&w.markup_ann[i]),numOrNull(w.cost_premium[i])]);
+  return {head,rows,name:'Markup'};}
+function exportChart(which){if(!current)return;
+  const {head,rows,name}=buildSheet(which);
+  const isin=(current.isin||'dati').replace(/[^\w.-]/g,'_');const fname=isin+'_'+which;
+  if(typeof XLSX!=='undefined'){
+    const ws=XLSX.utils.aoa_to_sheet([head,...rows]);const wb=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb,ws,name);XLSX.writeFile(wb,fname+'.xlsx');
+  }else{
+    const lines=[head.join(';'),...rows.map(r=>r.map(c=>c==null?'':String(c).replace('.',',')).join(';'))];
+    const blob=new Blob(['\ufeff'+lines.join('\n')],{type:'text/csv;charset=utf-8'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname+'.csv';a.click();URL.revokeObjectURL(a.href);}}
 function renderStats(w){const vals=w.cost_premium.filter(v=>v!=null&&!Number.isNaN(v));const now=lastNum(w.cost_premium);
   const elNow=document.getElementById('kpiNow');elNow.textContent=now==null?'n/d':fmtPct(now);elNow.className='n '+(now==null?'':(now>=0?'pos-t':'neg-t'));
   if(vals.length){const mean=vals.reduce((a,b)=>a+b,0)/vals.length;
@@ -546,6 +570,8 @@ function init(){
   document.getElementById('mReset').addEventListener('click',()=>{fState.q=fState.e=fState.s=fState.u=fState.f=fState.da=fState.a='';onFilter();});
 
   document.getElementById('backBtn').addEventListener('click',()=>showView('monitor'));
+  document.getElementById('xlsMarkup').addEventListener('click',()=>exportChart('markup'));
+  document.getElementById('xlsPrice').addEventListener('click',()=>exportChart('price'));
   document.querySelectorAll('#subtabs button').forEach(b=>b.addEventListener('click',()=>setSubview(b.dataset.t)));
   document.querySelectorAll('#tabs button').forEach(b=>b.addEventListener('click',()=>{
     win=b.dataset.w;document.querySelectorAll('#tabs button').forEach(x=>x.setAttribute('aria-pressed',x===b?'true':'false'));applyWindow();}));
