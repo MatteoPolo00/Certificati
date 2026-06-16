@@ -253,7 +253,7 @@
     <div class="subview" id="sv-markup">
       <div class="grid-top">
         <div class="card hero">
-          <div class="k">Costo implicito corrente</div>
+          <div class="k">Costo implicito</div>
           <div class="val" id="heroVal">—</div>
           <span class="tag pos" id="heroTag"><span class="dot"></span><span id="heroTagTxt">—</span></span>
           <div class="sub" id="heroSub"></div>
@@ -280,7 +280,7 @@
         </div>
       </div>
       <div class="card chart-card">
-        <div class="chart-head"><div class="t">Markup nel tempo <span class="badge">primario</span></div><div class="hd-right"><span class="h">linea zero = fair value</span><button id="xlsMarkup" class="xlsbtn" title="Scarica dati in Excel" aria-label="Scarica dati in Excel"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3" fill="#1D6F42"/><path d="M8.8 7.6l6.4 8.8M15.2 7.6l-6.4 8.8" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg></button></div></div>
+        <div class="chart-head"><div class="t">Costo implicito nel tempo <span class="badge">primario</span></div><div class="hd-right"><span class="h">min(markup, markup ann.) · linea zero = fair value</span><button id="xlsMarkup" class="xlsbtn" title="Scarica dati in Excel" aria-label="Scarica dati in Excel"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3" fill="#1D6F42"/><path d="M8.8 7.6l6.4 8.8M15.2 7.6l-6.4 8.8" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg></button></div></div>
         <div id="chartMarkup" class="plot"></div>
       </div>
       <div class="card chart-card">
@@ -358,11 +358,11 @@ function baseLayout(){return{paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,
   hovermode:'x unified',showlegend:false};}
 const PCFG={responsive:true,displayModeBar:false};
 function renderMarkup(r){const x=r.dates;
-  const pos=r.markup.map(v=>v==null?null:(v>=0?v:0)),neg=r.markup.map(v=>v==null?null:(v<0?v:0));
+  const pos=(r.cost_premium||[]).map(v=>v==null?null:(v>=0?v:0)),neg=(r.cost_premium||[]).map(v=>v==null?null:(v<0?v:0));
   const traces=[{x,y:pos,type:'scatter',mode:'none',fill:'tozeroy',fillcolor:'rgba(79,209,165,.13)',line:{shape:'spline',smoothing:0.6,width:0},hoverinfo:'skip',connectgaps:false},
     {x,y:neg,type:'scatter',mode:'none',fill:'tozeroy',fillcolor:'rgba(242,118,107,.13)',line:{shape:'spline',smoothing:0.6,width:0},hoverinfo:'skip',connectgaps:false},
-    {x,y:r.markup,type:'scatter',mode:'lines',line:{color:C.txt,width:1.8,shape:'spline',smoothing:0.6},connectgaps:false,
-     hovertemplate:'%{x|%d %b %Y}<br>markup <b>%{y:.2f}%</b><extra></extra>'}];
+    {x,y:r.cost_premium,type:'scatter',mode:'lines',line:{color:C.txt,width:1.8,shape:'spline',smoothing:0.6},connectgaps:false,
+     hovertemplate:'%{x|%d %b %Y}<br>costo implicito <b>%{y:.2f}%</b><extra></extra>'}];
   const L=baseLayout();L.shapes=[{type:'line',xref:'paper',x0:0,x1:1,y0:0,y1:0,line:{color:C.faint,width:1,dash:'dot'}}];L.yaxis.ticksuffix='%';
   Plotly.react('chartMarkup',traces,L,PCFG);}
 function renderPrice(r){const x=r.dates;
@@ -421,7 +421,7 @@ const COLS=[
   {key:'cedola',label:'Cedola',cls:'num',get:r=>fmtCedola(r.cedola),sort:r=>cedolaNum(r.cedola),num:true},
   {key:'frequenza',label:'Frequenza',cls:'',get:r=>esc(freqOf(r)),sort:r=>freqOf(r)||'',num:false},
   {key:'prezzo',label:'Prezzo',cls:'num',get:r=>{const v=lastNum(r.prezzo_mercato);return v==null?'—':v.toFixed(2);},sort:r=>lastNum(r.prezzo_mercato),num:true},
-  {key:'markup',label:'Markup',cls:'num',html:true,get:r=>{const v=lastNum(r.cost_premium);return v==null?'<span class="mkna">—</span>':`<span class="${v>=0?'mkpos':'mkneg'}">${fmtPct(v)}</span>`;},sort:r=>lastNum(r.cost_premium),num:true},
+  {key:'markup',label:'Costo implicito',cls:'num',html:true,get:r=>{const v=lastNum(r.cost_premium);return v==null?'<span class="mkna">—</span>':`<span class="${v>=0?'mkpos':'mkneg'}">${fmtPct(v)}</span>`;},sort:r=>lastNum(r.cost_premium),num:true},
   {key:'aggiorn',label:'Aggiorn.',cls:'',get:r=>esc(shortUpd(r.aggiornamento)),sort:r=>r.aggiornamento||'',num:false}
 ];
 function renderMonitor(){
@@ -504,7 +504,7 @@ function exportChart(which){if(!current)return;
     const lines=[head.join(';'),...rows.map(r=>r.map(c=>c==null?'':String(c).replace('.',',')).join(';'))];
     const blob=new Blob(['\ufeff'+lines.join('\n')],{type:'text/csv;charset=utf-8'});
     const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname+'.csv';a.click();URL.revokeObjectURL(a.href);}}
-function renderStats(w){const vals=w.cost_premium.filter(v=>v!=null&&!Number.isNaN(v));const now=lastNum(w.cost_premium);
+function renderStats(w){const vals=(w.cost_premium||[]).filter(v=>v!=null&&!Number.isNaN(v));const now=lastNum(w.cost_premium);
   const elNow=document.getElementById('kpiNow');elNow.textContent=now==null?'n/d':fmtPct(now);elNow.className='n '+(now==null?'':(now>=0?'pos-t':'neg-t'));
   if(vals.length){const mean=vals.reduce((a,b)=>a+b,0)/vals.length;
     const elM=document.getElementById('kpiMean');elM.textContent=fmtPct(mean);elM.className='n '+(mean>=0?'pos-t':'neg-t');
