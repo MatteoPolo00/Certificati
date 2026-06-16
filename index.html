@@ -67,6 +67,35 @@
     background-repeat:no-repeat;background-position:right 10px center}
   .reset{background:transparent;border:1px solid var(--hair);color:var(--muted);border-radius:9px;padding:9px 13px;cursor:pointer;font-family:"IBM Plex Mono",monospace;font-size:12px;transition:color .15s,border-color .15s}
   .reset:hover{color:var(--txt);border-color:var(--faint)}
+  /* searchable dropdown */
+  .srch-wrap{position:relative;min-width:160px}
+  .srch-inp{width:100%;background:var(--panel-2);border:1px solid var(--hair);border-radius:9px;color:var(--txt);font-family:"IBM Plex Mono",monospace;font-size:12.5px;padding:9px 32px 9px 11px;outline:none;transition:border-color .15s}
+  .srch-inp:focus{border-color:var(--brass)}
+  .srch-wrap::after{content:'';position:absolute;right:11px;top:50%;transform:translateY(-50%);width:10px;height:6px;pointer-events:none;
+    background:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%235B6E7B' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>") no-repeat center}
+  .srch-drop{display:none;position:absolute;top:calc(100% + 4px);left:0;min-width:100%;max-height:220px;overflow-y:auto;background:var(--panel);border:1px solid var(--hair);border-radius:10px;z-index:100;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+  .srch-drop.open{display:block}
+  .srch-opt{padding:9px 13px;font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--muted);cursor:pointer;white-space:nowrap;transition:background .1s,color .1s}
+  .srch-opt:hover,.srch-opt.active{background:var(--panel-2);color:var(--txt)}
+  .srch-opt.selected{color:var(--brass)}
+  /* dialogo colonne */
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(12,17,22,.75);z-index:200;align-items:center;justify-content:center}
+  .modal-overlay.open{display:flex}
+  .modal{background:var(--panel);border:1px solid var(--hair);border-radius:16px;padding:28px;min-width:320px;max-width:440px;width:90%}
+  .modal h3{font-family:"Space Grotesk",sans-serif;font-weight:600;font-size:16px;margin:0 0 6px}
+  .modal .msub{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--faint);margin-bottom:20px}
+  .col-list{display:flex;flex-direction:column;gap:8px;margin-bottom:22px}
+  .col-item{display:flex;align-items:center;gap:10px;cursor:pointer;padding:8px 10px;border-radius:8px;transition:background .12s}
+  .col-item:hover{background:var(--panel-2)}
+  .col-item input[type=checkbox]{width:15px;height:15px;accent-color:var(--brass);cursor:pointer;flex-shrink:0}
+  .col-item span{font-family:"IBM Plex Mono",monospace;font-size:12.5px;color:var(--txt)}
+  .modal-btns{display:flex;justify-content:flex-end;gap:10px}
+  .modal-btns button{appearance:none;border-radius:9px;padding:9px 18px;font-family:"IBM Plex Mono",monospace;font-size:12px;cursor:pointer;transition:background .15s,color .15s}
+  .btn-cancel{background:transparent;border:1px solid var(--hair);color:var(--muted)}
+  .btn-cancel:hover{color:var(--txt);border-color:var(--faint)}
+  .btn-confirm{background:var(--brass);border:1px solid var(--brass);color:var(--ink);font-weight:600}
+  .btn-confirm:hover{opacity:.88}
+
   .mcount{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--faint);margin:0 2px 10px}
   .tablewrap{overflow-x:auto;border:1px solid var(--hair);border-radius:12px}
   table.mtable{width:100%;border-collapse:collapse;font-size:12.5px}
@@ -220,15 +249,41 @@
           <input id="mq" type="search" placeholder="ISIN, emittente, struttura…" style="padding-left:32px">
         </div>
       </div>
-      <div class="fld"><label>Emittente</label><select id="mEmit"></select></div>
-      <div class="fld"><label>Struttura</label><select id="mStruct"></select></div>
-      <div class="fld"><label>Sottostante</label><select id="mSott"></select></div>
-      <div class="fld"><label>Frequenza</label><select id="mFreq"></select></div>
+      <div class="fld"><label>Emittente</label>
+        <div class="srch-wrap" id="swEmit">
+          <input class="srch-inp" type="text" placeholder="Tutti gli emittenti" autocomplete="off" id="siEmit">
+          <div class="srch-drop" id="sdEmit"></div>
+        </div>
+      </div>
+      <div class="fld"><label>Struttura</label>
+        <div class="srch-wrap" id="swStruct">
+          <input class="srch-inp" type="text" placeholder="Tutte le strutture" autocomplete="off" id="siStruct">
+          <div class="srch-drop" id="sdStruct"></div>
+        </div>
+      </div>
+      <div class="fld"><label>Sottostante</label>
+        <div class="srch-wrap" id="swSott">
+          <input class="srch-inp" type="text" placeholder="Tutti i sottostanti" autocomplete="off" id="siSott">
+          <div class="srch-drop" id="sdSott"></div>
+        </div>
+      </div>
+      <div class="fld"><label>Frequenza</label>
+        <div class="srch-wrap" id="swFreq">
+          <input class="srch-inp" type="text" placeholder="Tutte le frequenze" autocomplete="off" id="siFreq">
+          <div class="srch-drop" id="sdFreq"></div>
+        </div>
+      </div>
       <div class="fld"><label>Scadenza da</label><input id="mDa" type="date"></div>
       <div class="fld"><label>Scadenza a</label><input id="mA" type="date"></div>
       <button class="reset" id="mReset">azzera</button>
     </div>
     <div class="mcount" id="mcount">—</div>
+    <div style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:8px">
+      <button id="xlsMonitor" style="display:flex;align-items:center;gap:7px;appearance:none;background:transparent;border:1px solid var(--hair);border-radius:8px;color:var(--muted);cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:11px;padding:6px 11px;transition:color .15s,border-color .15s">
+        <span>Download .xlsx</span>
+        <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3" fill="#1D6F42"/><path d="M8.8 7.6l6.4 8.8M15.2 7.6l-6.4 8.8" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </button>
+    </div>
     <div class="tablewrap"><table class="mtable" id="mtable"></table></div>
   </section>
 
@@ -294,9 +349,23 @@
     <div class="subview" id="sv-autocall" hidden><div class="card placeholder">Vista <b>Autocall</b> — in arrivo.</div></div>
     <div class="subview" id="sv-rischio" hidden><div class="card placeholder">Vista <b>Rischio</b> — in arrivo.</div></div>
   </section>
+<!-- dialogo selezione colonne -->
+<div class="modal-overlay" id="colModal">
+  <div class="modal">
+    <h3>Scegli le colonne</h3>
+    <div class="msub">Seleziona le colonne da includere nel file Excel</div>
+    <div class="col-list" id="colList"></div>
+    <div class="modal-btns">
+      <button class="btn-cancel" id="colCancel">Annulla</button>
+      <button class="btn-confirm" id="colConfirm">
+        Scarica .xlsx &nbsp;
+        <svg width="13" height="13" viewBox="0 0 24 24" style="vertical-align:middle" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3" fill="var(--ink)"/><path d="M8.8 7.6l6.4 8.8M15.2 7.6l-6.4 8.8" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+  </div>
 </div>
 
-<script src="sottostanti.js"></script>
+</div><!-- fine .wrap -->
 <script>
 /* =====================================================================
    >>> CONFIGURAZIONE — MODIFICA QUI <<<
@@ -486,6 +555,63 @@ function renderCalendar(r){const host=document.getElementById('calWrap');
       +'<td class="num">'+fmtLevel(ac[i])+'</td>'
       +'</tr>';}
   html+='</tbody></table>';host.innerHTML=html;}
+/* ---- searchable dropdown ---- */
+const srchState={s:'',u:''};
+function makeSearchable(wrId,inpId,dropId,allValues,labelFn,onSelect){
+  const inp=document.getElementById(inpId),drop=document.getElementById(dropId);
+  let selected='';
+  const label0=inp.placeholder;
+  const allOpts=[{val:'',lab:label0}].concat(allValues.map(v=>({val:v,lab:labelFn?labelFn(v):v})));
+  function render(q){const fl=q?allOpts.filter(o=>o.lab.toLowerCase().includes(q.toLowerCase())):allOpts;
+    drop.innerHTML=fl.map(o=>`<div class="srch-opt${o.val===selected?' selected':''}" data-val="${esc(o.val)}">${esc(o.lab)}</div>`).join('');
+    drop.querySelectorAll('.srch-opt').forEach(el=>el.addEventListener('mousedown',e=>{e.preventDefault();
+      selected=el.dataset.val;inp.value=selected?el.textContent:'';drop.classList.remove('open');onSelect(selected);}));}
+  inp.addEventListener('focus',()=>{render(inp.value===''+label0?'':inp.value);drop.classList.add('open');});
+  inp.addEventListener('input',()=>{render(inp.value);drop.classList.add('open');});
+  inp.addEventListener('blur',()=>{setTimeout(()=>drop.classList.remove('open'),150);
+    if(!selected)inp.value='';});
+  return {reset:()=>{selected='';inp.value='';},setValue:(v,lab)=>{selected=v;inp.value=lab||v;}};}
+let srchEmit=null,srchStruct=null,srchSott=null,srchFreq=null;
+
+/* ---- colonne export ---- */
+const EXPORT_COLS=[
+  {key:'isin',label:'ISIN',get:r=>r.isin||'',def:true},
+  {key:'emittente',label:'Emittente',get:r=>r.emittente||'',def:true},
+  {key:'struttura',label:'Struttura',get:r=>r.struttura||'',def:true},
+  {key:'sottostanti',label:'Sottostanti',get:r=>(r.sottostanti||[]).join(', '),def:true},
+  {key:'scadenza',label:'Scadenza',get:r=>r.scadenza||'',def:true},
+  {key:'cedola',label:'Cedola',get:r=>cedolaNum(r.cedola)||'',def:true},
+  {key:'frequenza',label:'Frequenza',get:r=>freqOf(r),def:true},
+  {key:'prezzo',label:'Prezzo mercato',get:r=>lastNum(r.prezzo_mercato),def:true},
+  {key:'markup',label:'Costo implicito %',get:r=>{const v=lastNum(r.cost_premium);return v==null?'':+v.toFixed(4);},def:true},
+  {key:'markup_raw',label:'Markup % (non ann.)',get:r=>{const v=lastNum(r.markup);return v==null?'':+v.toFixed(4);},def:false},
+  {key:'markup_ann',label:'Markup ann. %',get:r=>{const v=lastNum(r.markup_ann);return v==null?'':+v.toFixed(4);},def:false},
+  {key:'aggiorn',label:'Aggiornamento',get:r=>shortUpd(r.aggiornamento),def:true},
+];
+function openColModal(){
+  const list=document.getElementById('colList');
+  list.innerHTML=EXPORT_COLS.map(c=>`<label class="col-item"><input type="checkbox" data-key="${c.key}"${c.def?' checked':''}><span>${esc(c.label)}</span></label>`).join('');
+  document.getElementById('colModal').classList.add('open');}
+function closeColModal(){document.getElementById('colModal').classList.remove('open');}
+function exportMonitor(){
+  const checked=[...document.querySelectorAll('#colList input[type=checkbox]:checked')].map(el=>el.dataset.key);
+  const cols=EXPORT_COLS.filter(c=>checked.includes(c.key));
+  const rows=DATA.filter(matches);
+  const col=COLS.find(c=>c.key===sortState.key)||COLS[0];
+  rows.sort((a,b)=>{let va=col.sort(a),vb=col.sort(b);
+    if(col.num){const na=(va==null||Number.isNaN(va)),nb=(vb==null||Number.isNaN(vb));
+      if(na&&nb)return 0;if(na)return 1;if(nb)return -1;return sortState.dir==='asc'?va-vb:vb-va;}
+    va=(va||'').toString();vb=(vb||'').toString();const c=va.localeCompare(vb);return sortState.dir==='asc'?c:-c;});
+  const data=[cols.map(c=>c.label),...rows.map(r=>cols.map(c=>c.get(r)))];
+  closeColModal();
+  if(typeof XLSX!=='undefined'){
+    const ws=XLSX.utils.aoa_to_sheet(data);const wb=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb,ws,'Monitor');XLSX.writeFile(wb,'monitor_certificati.xlsx');
+  }else{
+    const lines=data.map(r=>r.map(c=>String(c==null?'':c).replace('.',',')).join(';'));
+    const blob=new Blob(['\ufeff'+lines.join('\n')],{type:'text/csv;charset=utf-8'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='monitor_certificati.csv';a.click();URL.revokeObjectURL(a.href);}
+}
 function numOrNull(v){return (v==null||Number.isNaN(v))?null:+v;}
 function buildSheet(which){const w=sliceByWindow(current,win);
   if(which==='price'){const head=['Data','Prezzo mercato','Prezzo modello'];
@@ -546,10 +672,6 @@ function fillSelect(id,label,values,labelFn){const sel=document.getElementById(i
   values.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=labelFn?labelFn(v):v;sel.appendChild(o);});}
 function syncControls(){
   document.getElementById('mq').value=fState.q;
-  document.getElementById('mEmit').value=fState.e;
-  document.getElementById('mStruct').value=fState.s;
-  document.getElementById('mSott').value=fState.u;
-  document.getElementById('mFreq').value=fState.f;
   document.getElementById('mDa').value=fState.da;
   document.getElementById('mA').value=fState.a;}
 
@@ -557,20 +679,29 @@ function syncControls(){
 function init(){
   renderProfile();
   document.getElementById('banner').style.display=demoMode?'block':'none';
-  fillSelect('mEmit','Tutti gli emittenti',uniq(DATA.map(r=>r.emittente).filter(Boolean)));
-  fillSelect('mStruct','Tutte le strutture',uniq(DATA.map(r=>r.struttura).filter(Boolean)));
-  fillSelect('mSott','Tutti i sottostanti',[...new Set(DATA.flatMap(r=>r.sottostanti||[]))].sort((a,b)=>nameOf(a).localeCompare(nameOf(b))),nameOf);
-  fillSelect('mFreq','Tutte le frequenze',uniq(DATA.map(r=>freqOf(r)).filter(Boolean)));
+  const emittenti=uniq(DATA.map(r=>r.emittente).filter(Boolean));
+  const strutture=uniq(DATA.map(r=>r.struttura).filter(Boolean));
+  const sottostanti=[...new Set(DATA.flatMap(r=>r.sottostanti||[]))].sort((a,b)=>nameOf(a).localeCompare(nameOf(b)));
+  const frequenze=uniq(DATA.map(r=>freqOf(r)).filter(Boolean));
+  srchEmit=makeSearchable('swEmit','siEmit','sdEmit',emittenti,null,v=>{fState.e=v;onFilter();});
+  srchStruct=makeSearchable('swStruct','siStruct','sdStruct',strutture,null,v=>{fState.s=v;onFilter();});
+  srchSott=makeSearchable('swSott','siSott','sdSott',sottostanti,nameOf,v=>{fState.u=v;onFilter();});
+  srchFreq=makeSearchable('swFreq','siFreq','sdFreq',frequenze,null,v=>{fState.f=v;onFilter();});
 
   const onFilter=()=>{renderMonitor();syncControls();};
   document.getElementById('mq').addEventListener('input',e=>{fState.q=e.target.value;onFilter();});
-  document.getElementById('mEmit').addEventListener('change',e=>{fState.e=e.target.value;onFilter();});
-  document.getElementById('mStruct').addEventListener('change',e=>{fState.s=e.target.value;onFilter();});
-  document.getElementById('mSott').addEventListener('change',e=>{fState.u=e.target.value;onFilter();});
-  document.getElementById('mFreq').addEventListener('change',e=>{fState.f=e.target.value;onFilter();});
   document.getElementById('mDa').addEventListener('change',e=>{fState.da=e.target.value;onFilter();});
   document.getElementById('mA').addEventListener('change',e=>{fState.a=e.target.value;onFilter();});
-  document.getElementById('mReset').addEventListener('click',()=>{fState.q=fState.e=fState.s=fState.u=fState.f=fState.da=fState.a='';onFilter();});
+  document.getElementById('mReset').addEventListener('click',()=>{
+    fState.q=fState.e=fState.s=fState.u=fState.f=fState.da=fState.a='';
+    if(srchEmit)srchEmit.reset();if(srchStruct)srchStruct.reset();
+    if(srchSott)srchSott.reset();if(srchFreq)srchFreq.reset();onFilter();});
+  document.getElementById('xlsMonitor').addEventListener('click',openColModal);
+  document.getElementById('xlsMonitor').addEventListener('mouseover',e=>{e.currentTarget.style.color='var(--txt)';e.currentTarget.style.borderColor='var(--faint)';});
+  document.getElementById('xlsMonitor').addEventListener('mouseout',e=>{e.currentTarget.style.color='var(--muted)';e.currentTarget.style.borderColor='var(--hair)';});
+  document.getElementById('colCancel').addEventListener('click',closeColModal);
+  document.getElementById('colConfirm').addEventListener('click',exportMonitor);
+  document.getElementById('colModal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeColModal();});
 
   document.getElementById('backBtn').addEventListener('click',()=>showView('monitor'));
   document.getElementById('xlsMarkup').addEventListener('click',()=>exportChart('markup'));
