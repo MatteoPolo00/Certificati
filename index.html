@@ -468,17 +468,16 @@ function renderCalendar(r){const host=document.getElementById('calWrap');
   const pd=Array.isArray(r.payments_date)?r.payments_date:[];
   if(!pd.length){host.innerHTML='<div class="empty">Nessuna data di pagamento disponibile.</div>';return;}
   const n=pd.length,ced=asPerDate(r.cedola,n),sog=asPerDate(r.soglia_cedola,n),ac=asPerDate(r.livelli_autocall,n);
-  const hasCed=ced.some(v=>v!=null),hasSog=sog.some(v=>v!=null),hasAc=ac.some(v=>v!=null);
   const today=new Date();today.setHours(0,0,0,0);
   const nextIdx=pd.findIndex(d=>new Date(d)>=today);
-  const head=['Data',hasCed?'Cedola':null,hasSog?'Barriera cedola':null,hasAc?'Trigger autocall':null].filter(Boolean);
-  let html='<table class="caltable"><thead><tr>'+head.map((h,i)=>`<th${i>0?' class="num"':''}>${esc(h)}</th>`).join('')+'</tr></thead><tbody>';
+  let html='<table class="caltable"><thead><tr><th>Data</th><th class="num">Cedola</th><th class="num">Livello cedola</th><th class="num">Livello autocall</th></tr></thead><tbody>';
   for(let i=0;i<n;i++){const past=new Date(pd[i])<today;const cls=((i===nextIdx?'next':'')+(past?' past':'')).trim();
-    let cells='<td>'+fmtCalDate(pd[i])+(i===nextIdx?' <span class="nxt">prossima</span>':'')+'</td>';
-    if(hasCed)cells+='<td class="num">'+(ced[i]==null?'—':(+ced[i]).toFixed(2))+'</td>';
-    if(hasSog)cells+='<td class="num">'+fmtLevel(sog[i])+'</td>';
-    if(hasAc)cells+='<td class="num">'+(ac[i]==null?'—':fmtLevel(ac[i]))+'</td>';
-    html+=`<tr class="${cls}">${cells}</tr>`;}
+    html+=`<tr class="${cls}">`
+      +'<td>'+fmtCalDate(pd[i])+(i===nextIdx?' <span class="nxt">prossima</span>':'')+'</td>'
+      +'<td class="num">'+(ced[i]==null?'—':(+ced[i]).toFixed(2))+'</td>'
+      +'<td class="num">'+fmtLevel(sog[i])+'</td>'
+      +'<td class="num">'+fmtLevel(ac[i])+'</td>'
+      +'</tr>';}
   html+='</tbody></table>';host.innerHTML=html;}
 function numOrNull(v){return (v==null||Number.isNaN(v))?null:+v;}
 function buildSheet(which){const w=sliceByWindow(current,win);
