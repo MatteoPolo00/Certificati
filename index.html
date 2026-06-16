@@ -96,6 +96,11 @@
   .btn-confirm{background:var(--brass);border:1px solid var(--brass);color:var(--ink);font-weight:600}
   .btn-confirm:hover{opacity:.88}
 
+  .pgbtn{appearance:none;border:1px solid var(--hair);background:transparent;color:var(--muted);border-radius:6px;padding:3px 8px;font-family:"IBM Plex Mono",monospace;font-size:10.5px;cursor:pointer;transition:color .12s,border-color .12s,background .12s}
+  .pgbtn:hover{color:var(--txt);border-color:var(--faint)}
+  .pgbtn.cur{background:var(--panel-2);color:var(--txt);border-color:var(--faint)}
+  .pgbtn:disabled{opacity:.3;cursor:default}
+  #pgSize button{font-size:10.5px;padding:4px 10px}
   .mcount{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--faint);margin:0 2px 10px}
   .tablewrap{overflow-x:auto;border:1px solid var(--hair);border-radius:12px}
   table.mtable{width:100%;border-collapse:collapse;font-size:12.5px}
@@ -277,14 +282,22 @@
       <div class="fld"><label>Scadenza a</label><input id="mA" type="date"></div>
       <button class="reset" id="mReset">azzera</button>
     </div>
-    <div class="mcount" id="mcount">—</div>
-    <div style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:8px">
+    <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
       <button id="xlsMonitor" style="display:flex;align-items:center;gap:7px;appearance:none;background:transparent;border:1px solid var(--hair);border-radius:8px;color:var(--muted);cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:11px;padding:6px 11px;transition:color .15s,border-color .15s">
         <span>Download .xlsx</span>
         <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3" fill="#1D6F42"/><path d="M8.8 7.6l6.4 8.8M15.2 7.6l-6.4 8.8" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg>
       </button>
     </div>
     <div class="tablewrap"><table class="mtable" id="mtable"></table></div>
+    <div style="display:flex;align-items:center;gap:8px;margin-top:10px">
+      <span class="mcount" id="mcount" style="margin:0">—</span>
+      <div id="pgNav" style="display:none;align-items:center;gap:3px"></div>
+      <div class="tabs" id="pgSize" role="group" style="padding:2px;gap:1px">
+        <button data-n="25" aria-pressed="false">25</button>
+        <button data-n="50" aria-pressed="true">50</button>
+        <button data-n="100" aria-pressed="false">100</button>
+      </div>
+    </div>
   </section>
 
   <!-- ================= PRODOTTO (pagina singola) ================= -->
@@ -493,6 +506,8 @@ const COLS=[
   {key:'markup',label:'Costo implicito',cls:'num',html:true,get:r=>{const v=lastNum(r.cost_premium);return v==null?'<span class="mkna">—</span>':`<span class="${v>=0?'mkpos':'mkneg'}">${fmtPct(v)}</span>`;},sort:r=>lastNum(r.cost_premium),num:true},
   {key:'aggiorn',label:'Aggiorn.',cls:'',get:r=>esc(shortUpd(r.aggiornamento)),sort:r=>r.aggiornamento||'',num:false}
 ];
+let pageSize=50,currentPage=1;
+
 function renderMonitor(){
   const rows=DATA.filter(matches);
   const col=COLS.find(c=>c.key===sortState.key)||COLS[0];
@@ -500,20 +515,43 @@ function renderMonitor(){
     if(col.num){const na=(va==null||Number.isNaN(va)),nb=(vb==null||Number.isNaN(vb));
       if(na&&nb)return 0;if(na)return 1;if(nb)return -1;return sortState.dir==='asc'?va-vb:vb-va;}
     va=(va||'').toString();vb=(vb||'').toString();const c=va.localeCompare(vb);return sortState.dir==='asc'?c:-c;});
+  const total=rows.length,pages=Math.max(1,Math.ceil(total/pageSize));
+  currentPage=Math.min(currentPage,pages);
+  const slice=rows.slice((currentPage-1)*pageSize,currentPage*pageSize);
   const arrow=k=>sortState.key===k?(sortState.dir==='asc'?' ▲':' ▼'):'';
   const thead='<thead><tr>'+COLS.map(c=>`<th class="${c.cls}" data-key="${c.key}">${c.label}${arrow(c.key)}</th>`).join('')+'</tr></thead>';
   let tbody;
-  if(!rows.length){tbody=`<tbody><tr><td colspan="${COLS.length}"><div class="empty">Nessuno strumento corrisponde ai filtri.</div></td></tr></tbody>`;}
-  else{tbody='<tbody>'+rows.map(r=>'<tr data-isin="'+esc(r.isin)+'">'+COLS.map(c=>{const tip=c.tip?` title="${esc(c.tip(r))}"`:'';return `<td class="${c.cls}"${tip}>${c.get(r)}</td>`;}).join('')+'</tr>').join('')+'</tbody>';}
+  if(!slice.length){tbody=`<tbody><tr><td colspan="${COLS.length}"><div class="empty">Nessuno strumento corrisponde ai filtri.</div></td></tr></tbody>`;}
+  else{tbody='<tbody>'+slice.map(r=>'<tr data-isin="'+esc(r.isin)+'">'+COLS.map(c=>{const tip=c.tip?` title="${esc(c.tip(r))}"`:'';return `<td class="${c.cls}"${tip}>${c.get(r)}</td>`;}).join('')+'</tr>').join('')+'</tbody>';}
   const t=document.getElementById('mtable');t.innerHTML=thead+tbody;
   t.querySelectorAll('th').forEach(th=>th.addEventListener('click',()=>sortBy(th.dataset.key)));
   t.querySelectorAll('tbody tr[data-isin]').forEach(tr=>tr.addEventListener('click',()=>openProduct(tr.dataset.isin)));
-  document.getElementById('mcount').textContent=`${rows.length} strument${rows.length===1?'o':'i'}`;
+  const from=(currentPage-1)*pageSize+1,to=Math.min(currentPage*pageSize,total);
+  document.getElementById('mcount').textContent=total?`${from}–${to} di ${total} strument${total===1?'o':'i'}`:`0 strumenti`;
+  renderPagination(pages);
+}
+
+function renderPagination(pages){
+  const nav=document.getElementById('pgNav');
+  if(pages<=1){nav.style.display='none';return;}
+  nav.style.display='flex';
+  const btns=[];
+  btns.push(`<button class="pgbtn" id="pgPrev" ${currentPage===1?'disabled':''}>‹</button>`);
+  const range=new Set([1,pages,currentPage,currentPage-1,currentPage+1].filter(p=>p>=1&&p<=pages));
+  let last=0;[...range].sort((a,b)=>a-b).forEach(p=>{
+    if(last&&p-last>1)btns.push(`<span style="color:var(--faint);font-family:'IBM Plex Mono',monospace;font-size:11px;padding:0 4px">…</span>`);
+    btns.push(`<button class="pgbtn${p===currentPage?' cur':''}" data-p="${p}">${p}</button>`);last=p;});
+  btns.push(`<button class="pgbtn" id="pgNext" ${currentPage===pages?'disabled':''}>›</button>`);
+  nav.innerHTML=btns.join('');
+  nav.querySelectorAll('[data-p]').forEach(b=>b.addEventListener('click',()=>{currentPage=+b.dataset.p;renderMonitor();}));
+  const prev=nav.querySelector('#pgPrev'),next=nav.querySelector('#pgNext');
+  if(prev)prev.addEventListener('click',()=>{if(currentPage>1){currentPage--;renderMonitor();}});
+  if(next)next.addEventListener('click',()=>{if(currentPage<pages){currentPage++;renderMonitor();}});
 }
 function sortBy(key){
   if(sortState.key===key)sortState.dir=sortState.dir==='asc'?'desc':'asc';
   else{sortState.key=key;sortState.dir=(key==='markup'||key==='prezzo'||key==='cedola')?'desc':'asc';}
-  renderMonitor();
+  currentPage=1;renderMonitor();
 }
 
 /* ---------- PRODOTTO ---------- */
@@ -688,7 +726,7 @@ function init(){
   srchSott=makeSearchable('swSott','siSott','sdSott',sottostanti,nameOf,v=>{fState.u=v;onFilter();});
   srchFreq=makeSearchable('swFreq','siFreq','sdFreq',frequenze,null,v=>{fState.f=v;onFilter();});
 
-  const onFilter=()=>{renderMonitor();syncControls();};
+  const onFilter=()=>{currentPage=1;renderMonitor();syncControls();};
   document.getElementById('mq').addEventListener('input',e=>{fState.q=e.target.value;onFilter();});
   document.getElementById('mDa').addEventListener('change',e=>{fState.da=e.target.value;onFilter();});
   document.getElementById('mA').addEventListener('change',e=>{fState.a=e.target.value;onFilter();});
@@ -703,6 +741,10 @@ function init(){
   document.getElementById('colConfirm').addEventListener('click',exportMonitor);
   document.getElementById('colModal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeColModal();});
 
+  document.querySelectorAll('#pgSize button').forEach(b=>b.addEventListener('click',()=>{
+    pageSize=+b.dataset.n;currentPage=1;
+    document.querySelectorAll('#pgSize button').forEach(x=>x.setAttribute('aria-pressed',x===b?'true':'false'));
+    renderMonitor();}));
   document.getElementById('backBtn').addEventListener('click',()=>showView('monitor'));
   document.getElementById('xlsMarkup').addEventListener('click',()=>exportChart('markup'));
   document.getElementById('xlsPrice').addEventListener('click',()=>exportChart('price'));
