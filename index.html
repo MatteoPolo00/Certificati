@@ -73,7 +73,7 @@
   .srch-inp:focus{border-color:var(--brass)}
   .srch-wrap::after{content:'';position:absolute;right:11px;top:50%;transform:translateY(-50%);width:10px;height:6px;pointer-events:none;
     background:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%235B6E7B' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>") no-repeat center}
-  .srch-drop{display:none;position:absolute;max-height:220px;overflow-y:auto;background:var(--panel);border:1px solid var(--hair);border-radius:10px;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,.5);min-width:160px}
+  .srch-drop{display:none;position:absolute;max-height:220px;overflow-y:auto;background:var(--panel);border:1px solid var(--hair);border-radius:10px;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,.5);min-width:220px}
   .srch-drop.open{display:block}
   .srch-opt{padding:9px 13px;font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--muted);cursor:pointer;white-space:nowrap;transition:background .1s,color .1s}
   .srch-opt:hover,.srch-opt.active{background:var(--panel-2);color:var(--txt)}
@@ -483,7 +483,8 @@ const sortState={key:'scadenza',dir:'asc'};
 
 function matches(r){
   const q=fState.q.trim().toLowerCase();
-  if(q){const hay=[(r.isin||''),(r.emittente||''),(r.struttura||''),...(r.sottostanti||[])].join(' ').toLowerCase();if(!hay.includes(q))return false;}
+  if(q){const hay=[(r.isin||''),(r.emittente||''),(r.struttura||''),
+    ...(r.sottostanti||[]),...(r.sottostanti||[]).map(nameOf)].join(' ').toLowerCase();if(!hay.includes(q))return false;}
   if(fState.e&&r.emittente!==fState.e)return false;
   if(fState.s&&r.struttura!==fState.s)return false;
   if(fState.u&&!(r.sottostanti||[]).includes(fState.u))return false;
@@ -605,11 +606,14 @@ function makeSearchable(wrId,inpId,dropId,allValues,labelFn,onSelect){
   function positionDrop(){const r=inp.getBoundingClientRect();
     drop.style.top=(r.bottom+window.scrollY+4)+'px';
     drop.style.left=(r.left+window.scrollX)+'px';
-    drop.style.width=r.width+'px';}
+    drop.style.width=Math.max(r.width,280)+'px';}
   function render(q){const fl=q?allOpts.filter(o=>o.lab.toLowerCase().includes(q.toLowerCase())):allOpts;
     drop.innerHTML=fl.map(o=>`<div class="srch-opt${o.val===selected?' selected':''}" data-val="${esc(o.val)}">${esc(o.lab)}</div>`).join('');
     drop.querySelectorAll('.srch-opt').forEach(el=>el.addEventListener('mousedown',e=>{e.preventDefault();
-      selected=el.dataset.val;inp.value=selected?el.textContent:'';drop.classList.remove('open');onSelect(selected);}));}
+      selected=el.dataset.val;
+      const opt=allOpts.find(o=>o.val===selected);
+      inp.value=selected?(opt?opt.lab:selected):'';
+      drop.classList.remove('open');onSelect(selected);}));}
   inp.addEventListener('focus',()=>{positionDrop();render(inp.value===''+label0?'':inp.value);drop.classList.add('open');});
   inp.addEventListener('input',()=>{positionDrop();render(inp.value);drop.classList.add('open');});
   inp.addEventListener('blur',()=>{setTimeout(()=>drop.classList.remove('open'),150);
