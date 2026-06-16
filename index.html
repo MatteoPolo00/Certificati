@@ -73,7 +73,7 @@
   .srch-inp:focus{border-color:var(--brass)}
   .srch-wrap::after{content:'';position:absolute;right:11px;top:50%;transform:translateY(-50%);width:10px;height:6px;pointer-events:none;
     background:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%235B6E7B' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>") no-repeat center}
-  .srch-drop{display:none;position:absolute;top:calc(100% + 4px);left:0;min-width:100%;max-height:220px;overflow-y:auto;background:var(--panel);border:1px solid var(--hair);border-radius:10px;z-index:100;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+  .srch-drop{display:none;position:absolute;max-height:220px;overflow-y:auto;background:var(--panel);border:1px solid var(--hair);border-radius:10px;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,.5);min-width:160px}
   .srch-drop.open{display:block}
   .srch-opt{padding:9px 13px;font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--muted);cursor:pointer;white-space:nowrap;transition:background .1s,color .1s}
   .srch-opt:hover,.srch-opt.active{background:var(--panel-2);color:var(--txt)}
@@ -104,7 +104,7 @@
   .mcount{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--faint);margin:0 2px 10px}
   .tablewrap{overflow-x:auto;border:1px solid var(--hair);border-radius:12px}
   table.mtable{width:100%;border-collapse:collapse;font-size:12.5px}
-  .mtable th{position:sticky;top:0;background:var(--panel);text-align:left;font-family:"IBM Plex Mono",monospace;font-weight:600;font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);padding:11px 13px;border-bottom:1px solid var(--hair);cursor:pointer;white-space:nowrap;user-select:none;transition:color .12s}
+  .mtable th{position:sticky;top:0;z-index:10;background:var(--panel);text-align:left;font-family:"IBM Plex Mono",monospace;font-weight:600;font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);padding:11px 13px;border-bottom:1px solid var(--hair);cursor:pointer;white-space:nowrap;user-select:none;transition:color .12s}
   .mtable th:hover{color:var(--muted)}
   .mtable th.num{text-align:right}
   .mtable td{padding:10px 13px;border-bottom:1px solid var(--hair-soft);white-space:nowrap;color:var(--txt)}
@@ -597,17 +597,25 @@ function renderCalendar(r){const host=document.getElementById('calWrap');
 const srchState={s:'',u:''};
 function makeSearchable(wrId,inpId,dropId,allValues,labelFn,onSelect){
   const inp=document.getElementById(inpId),drop=document.getElementById(dropId);
+  // Sposta il dropdown direttamente nel body per uscire da qualsiasi overflow/stacking
+  document.body.appendChild(drop);
   let selected='';
   const label0=inp.placeholder;
   const allOpts=[{val:'',lab:label0}].concat(allValues.map(v=>({val:v,lab:labelFn?labelFn(v):v})));
+  function positionDrop(){const r=inp.getBoundingClientRect();
+    drop.style.top=(r.bottom+window.scrollY+4)+'px';
+    drop.style.left=(r.left+window.scrollX)+'px';
+    drop.style.width=r.width+'px';}
   function render(q){const fl=q?allOpts.filter(o=>o.lab.toLowerCase().includes(q.toLowerCase())):allOpts;
     drop.innerHTML=fl.map(o=>`<div class="srch-opt${o.val===selected?' selected':''}" data-val="${esc(o.val)}">${esc(o.lab)}</div>`).join('');
     drop.querySelectorAll('.srch-opt').forEach(el=>el.addEventListener('mousedown',e=>{e.preventDefault();
       selected=el.dataset.val;inp.value=selected?el.textContent:'';drop.classList.remove('open');onSelect(selected);}));}
-  inp.addEventListener('focus',()=>{render(inp.value===''+label0?'':inp.value);drop.classList.add('open');});
-  inp.addEventListener('input',()=>{render(inp.value);drop.classList.add('open');});
+  inp.addEventListener('focus',()=>{positionDrop();render(inp.value===''+label0?'':inp.value);drop.classList.add('open');});
+  inp.addEventListener('input',()=>{positionDrop();render(inp.value);drop.classList.add('open');});
   inp.addEventListener('blur',()=>{setTimeout(()=>drop.classList.remove('open'),150);
     if(!selected)inp.value='';});
+  window.addEventListener('scroll',()=>{if(drop.classList.contains('open'))positionDrop();},{passive:true});
+  window.addEventListener('resize',()=>{if(drop.classList.contains('open'))positionDrop();},{passive:true});
   return {reset:()=>{selected='';inp.value='';},setValue:(v,lab)=>{selected=v;inp.value=lab||v;}};}
 let srchEmit=null,srchStruct=null,srchSott=null,srchFreq=null;
 
