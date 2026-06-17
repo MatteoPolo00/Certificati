@@ -393,7 +393,47 @@
     </div>
 
     <!-- sotto-viste future (segnaposto) -->
-    <div class="subview" id="sv-rendimento" hidden><div class="card placeholder">Vista <b>Rendimento</b> — in arrivo.</div></div>
+    <div class="subview" id="sv-rendimento" hidden>
+      <div class="subtabs" id="rendtabs" role="group" style="margin-bottom:14px">
+        <button data-rt="mean" aria-pressed="true">Rendimento</button>
+        <button data-rt="vol" aria-pressed="false">Volatilità</button>
+        <button data-rt="scatter" aria-pressed="false">Rischio / Rendimento</button>
+      </div>
+      <div id="rv-mean">
+        <div class="card chart-card">
+          <div class="chart-head">
+            <div class="t">Rendimento annualizzato rolling <span class="badge">252 gg</span></div>
+            <div class="hd-right"><span class="h">media mobile · % ann.</span></div>
+          </div>
+          <div id="chartRollMean" class="plot"></div>
+        </div>
+      </div>
+      <div id="rv-vol" hidden>
+        <div class="card chart-card">
+          <div class="chart-head">
+            <div class="t">Volatilità annualizzata rolling <span class="badge">252 gg</span></div>
+            <div class="hd-right"><span class="h">std mobile · % ann.</span></div>
+          </div>
+          <div id="chartRollVol" class="plot"></div>
+        </div>
+      </div>
+      <div id="rv-scatter" hidden>
+        <div class="card chart-card">
+          <div class="chart-head">
+            <div class="t">Rischio / Rendimento</div>
+            <div class="hd-right">
+              <span class="h">traiettoria rolling · dorato = certificato</span>
+              <div class="tabs" id="scatterWin" role="group" style="padding:2px;gap:1px;margin-left:10px">
+                <button data-sw="all" aria-pressed="true">Tutto</button>
+                <button data-sw="1y" aria-pressed="false">1A</button>
+                <button data-sw="6m" aria-pressed="false">6M</button>
+              </div>
+            </div>
+          </div>
+          <div id="chartScatter" class="plot"></div>
+        </div>
+      </div>
+    </div>
     <div class="subview" id="sv-autocall" hidden><div class="card placeholder">Vista <b>Autocall</b> — in arrivo.</div></div>
     <div class="subview" id="sv-rischio" hidden><div class="card placeholder">Vista <b>Rischio</b> — in arrivo.</div></div>
   </section>
@@ -486,26 +526,67 @@ const CSS=getComputedStyle(document.documentElement);
 const C={txt:CSS.getPropertyValue('--txt').trim(),muted:CSS.getPropertyValue('--muted').trim(),
   hair:CSS.getPropertyValue('--hair').trim(),faint:CSS.getPropertyValue('--faint').trim(),
   pos:CSS.getPropertyValue('--pos').trim(),neg:CSS.getPropertyValue('--neg').trim(),brass:CSS.getPropertyValue('--brass').trim()};
-const FONT={family:'IBM Plex Mono, monospace',size:11,color:C.muted};
-function baseLayout(){return{paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:FONT,margin:{l:48,r:14,t:10,b:34},
-  xaxis:{showgrid:false,zeroline:false,showline:false,ticks:'',tickfont:{size:10,color:C.faint},nticks:6,
-    showspikes:true,spikemode:'across',spikethickness:1,spikedash:'dot',spikecolor:'rgba(91,110,123,.55)'},
-  yaxis:{showgrid:true,gridcolor:'rgba(38,50,61,.20)',zeroline:false,showline:false,ticks:'',tickfont:{size:10,color:C.faint},nticks:5},
-  hoverlabel:{bgcolor:'rgba(12,17,22,.95)',bordercolor:C.hair,font:{family:'IBM Plex Mono, monospace',size:12,color:C.txt}},
-  hovermode:'x unified',showlegend:false};}
-const PCFG={responsive:true,displayModeBar:false};
+const FONT={family:'Inter, system-ui, sans-serif',size:11.5,color:C.muted};
+function baseLayout(){return{
+  paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',
+  font:FONT,
+  margin:{l:52,r:20,t:16,b:40},
+  xaxis:{showgrid:false,zeroline:false,showline:false,ticks:'outside',ticklen:4,tickcolor:'transparent',
+    tickfont:{size:11,color:C.faint,family:'Inter, system-ui, sans-serif'},nticks:7,
+    showspikes:true,spikemode:'across',spikethickness:1,spikedash:'solid',
+    spikecolor:'rgba(201,162,78,.35)'},
+  yaxis:{showgrid:true,gridcolor:'rgba(255,255,255,.04)',gridwidth:1,zeroline:false,
+    showline:false,ticks:'',tickfont:{size:11,color:C.faint,family:'Inter, system-ui, sans-serif'},
+    nticks:6,tickformat:'.2f'},
+  hoverlabel:{bgcolor:'rgba(18,24,32,.97)',bordercolor:'rgba(201,162,78,.5)',
+    font:{family:'Inter, system-ui, sans-serif',size:12.5,color:'#EAEFF3'},
+    align:'left',namelength:-1},
+  hovermode:'x unified',showlegend:false,
+  shapes:[],
+  transition:{duration:200,easing:'cubic-in-out'}
+};}
+const PCFG={responsive:true,displayModeBar:false,scrollZoom:false};
+
 function renderMarkup(r){const x=r.dates;
-  const pos=(r.cost_premium||[]).map(v=>v==null?null:(v>=0?v:0)),neg=(r.cost_premium||[]).map(v=>v==null?null:(v<0?v:0));
-  const traces=[{x,y:pos,type:'scatter',mode:'none',fill:'tozeroy',fillcolor:'rgba(79,209,165,.13)',line:{shape:'spline',smoothing:0.6,width:0},hoverinfo:'skip',connectgaps:false},
-    {x,y:neg,type:'scatter',mode:'none',fill:'tozeroy',fillcolor:'rgba(242,118,107,.13)',line:{shape:'spline',smoothing:0.6,width:0},hoverinfo:'skip',connectgaps:false},
-    {x,y:r.cost_premium,type:'scatter',mode:'lines',line:{color:C.txt,width:1.8,shape:'spline',smoothing:0.6},connectgaps:false,
-     hovertemplate:'%{x|%d %b %Y}<br>costo implicito <b>%{y:.2f}%</b><extra></extra>'}];
-  const L=baseLayout();L.shapes=[{type:'line',xref:'paper',x0:0,x1:1,y0:0,y1:0,line:{color:C.faint,width:1,dash:'dot'}}];L.yaxis.ticksuffix='%';
+  const vals=r.cost_premium||[];
+  const pos=vals.map(v=>v==null?null:(v>=0?v:0));
+  const neg=vals.map(v=>v==null?null:(v<0?v:0));
+  const traces=[
+    {x,y:pos,type:'scatter',mode:'none',fill:'tozeroy',
+     fillcolor:'rgba(79,209,165,.08)',
+     line:{shape:'spline',smoothing:0.5,width:0},hoverinfo:'skip',connectgaps:false},
+    {x,y:neg,type:'scatter',mode:'none',fill:'tozeroy',
+     fillcolor:'rgba(242,118,107,.08)',
+     line:{shape:'spline',smoothing:0.5,width:0},hoverinfo:'skip',connectgaps:false},
+    {x,y:vals,type:'scatter',mode:'lines',
+     line:{color:'rgba(201,162,78,.9)',width:2,shape:'spline',smoothing:0.5},
+     connectgaps:false,
+     hovertemplate:'<b>%{x|%d %b %Y}</b><br>Costo implicito&nbsp;&nbsp;<b>%{y:+.2f}%</b><extra></extra>'}
+  ];
+  const L=baseLayout();
+  L.shapes=[{type:'line',xref:'paper',x0:0,x1:1,y0:0,y1:0,
+    line:{color:'rgba(144,162,176,.25)',width:1,dash:'dot'}}];
+  L.yaxis.ticksuffix='%';
+  L.yaxis.tickformat='+.2f';
   Plotly.react('chartMarkup',traces,L,PCFG);}
+
 function renderPrice(r){const x=r.dates;
-  const traces=[{x,y:r.prezzo_mercato,type:'scatter',mode:'lines',name:'Mercato',line:{color:C.brass,width:2,shape:'spline',smoothing:0.6},connectgaps:false,hovertemplate:'mercato <b>%{y:.2f}</b><extra></extra>'},
-    {x,y:r.prezzo_modello,type:'scatter',mode:'lines',name:'Modello',line:{color:C.pos,width:1.8,shape:'spline',smoothing:0.6},connectgaps:false,hovertemplate:'modello <b>%{y:.2f}</b><extra></extra>'}];
-  const L=baseLayout();L.showlegend=true;L.legend={orientation:'h',y:1.12,x:1,xanchor:'right',font:{size:11,color:C.muted}};L.margin.t=20;
+  const traces=[
+    {x,y:r.prezzo_mercato,type:'scatter',mode:'lines',name:'Mercato',
+     line:{color:'rgba(201,162,78,.9)',width:2,shape:'spline',smoothing:0.5},
+     connectgaps:false,
+     hovertemplate:'Mercato&nbsp;&nbsp;<b>%{y:.2f}</b><extra></extra>'},
+    {x,y:r.prezzo_modello,type:'scatter',mode:'lines',name:'Modello',
+     line:{color:'rgba(79,209,165,.75)',width:1.5,shape:'spline',smoothing:0.5,dash:'dot'},
+     connectgaps:false,
+     hovertemplate:'Modello&nbsp;&nbsp;<b>%{y:.2f}</b><extra></extra>'}
+  ];
+  const L=baseLayout();
+  L.showlegend=true;
+  L.legend={orientation:'h',y:1.06,x:1,xanchor:'right',
+    font:{size:11.5,color:C.muted,family:'Inter, system-ui, sans-serif'},
+    bgcolor:'rgba(0,0,0,0)',borderwidth:0};
+  L.margin.t=28;
   Plotly.react('chartPrice',traces,L,PCFG);}
 
 /* ---------- util ---------- */
@@ -741,6 +822,103 @@ function renderStats(w){const vals=(w.cost_premium||[]).filter(v=>v!=null&&!Numb
     const elM=document.getElementById('kpiMean');elM.textContent=fmtPct(mean);elM.className='n '+(mean>=0?'pos-t':'neg-t');
     document.getElementById('kpiMeanSub').textContent=mean>=0?'in media a sconto':'in media a premio';
   }else{document.getElementById('kpiMean').textContent='n/d';document.getElementById('kpiMeanSub').textContent='—';}}
+let rendTab='mean',scatterWin='all';
+function setRendTab(t){rendTab=t;
+  ['mean','vol','scatter'].forEach(k=>{const el=document.getElementById('rv-'+k);if(el)el.hidden=(k!==t);});
+  document.querySelectorAll('#rendtabs button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.rt===t?'true':'false'));
+  if(!current)return;
+  if(t==='mean'){try{Plotly.Plots.resize('chartRollMean');}catch(e){}}
+  if(t==='vol'){try{Plotly.Plots.resize('chartRollVol');}catch(e){}}
+  if(t==='scatter'){renderScatterCometa(current,scatterWin);setTimeout(()=>{try{Plotly.Plots.resize('chartScatter');}catch(e){}},80);}}
+
+function renderRendimento(r){
+  const labels=r.rendimento_labels||[];
+  const dates=r.rendimento_dates||[];
+  const means=r.rendimento_mean||[];
+  const vols=r.rendimento_vol||[];
+  const palette=['rgba(201,162,78,.85)','rgba(79,209,165,.85)','rgba(242,118,107,.85)',
+    'rgba(90,176,232,.85)','rgba(180,130,220,.85)','rgba(255,180,80,.85)',
+    'rgba(100,200,180,.85)','rgba(220,100,100,.85)'];
+  const isCert=l=>l==='Certificato'||l.toLowerCase().includes('cert');
+
+  if(document.getElementById('chartRollMean')){
+    const traces=labels.map((lb,i)=>{const isc=isCert(lb);
+      return{x:dates,y:means[i],type:'scatter',mode:'lines',name:nameOf(lb)||lb,
+        line:{color:isc?'rgba(201,162,78,1)':palette[(i+1)%palette.length],
+          width:isc?2.5:1.4,shape:'spline',smoothing:0.4},
+        hovertemplate:`<b>${esc(lb)}</b>&nbsp;&nbsp;%{y:+.1%}<extra></extra>`};});
+    const Lm=baseLayout();Lm.yaxis.tickformat='+.0%';Lm.yaxis.ticksuffix='';
+    Lm.shapes=[{type:'line',xref:'paper',x0:0,x1:1,y0:0,y1:0,line:{color:'rgba(144,162,176,.2)',width:1,dash:'dot'}}];
+    Lm.showlegend=true;Lm.legend={orientation:'h',y:-0.2,x:0,font:{size:11,color:C.muted,family:'Inter, system-ui, sans-serif'},bgcolor:'rgba(0,0,0,0)',borderwidth:0};
+    Plotly.react('chartRollMean',traces,Lm,PCFG);}
+
+  if(document.getElementById('chartRollVol')){
+    const traces=labels.map((lb,i)=>{const isc=isCert(lb);
+      return{x:dates,y:vols[i],type:'scatter',mode:'lines',name:nameOf(lb)||lb,
+        line:{color:isc?'rgba(201,162,78,1)':palette[(i+1)%palette.length],
+          width:isc?2.5:1.4,shape:'spline',smoothing:0.4},
+        hovertemplate:`<b>${esc(lb)}</b>&nbsp;&nbsp;%{y:.1%}<extra></extra>`};});
+    const Lv=baseLayout();Lv.yaxis.tickformat='.0%';Lv.yaxis.ticksuffix='';
+    Lv.showlegend=true;Lv.legend={orientation:'h',y:-0.2,x:0,font:{size:11,color:C.muted,family:'Inter, system-ui, sans-serif'},bgcolor:'rgba(0,0,0,0)',borderwidth:0};
+    Plotly.react('chartRollVol',traces,Lv,PCFG);}}
+
+function renderScatterCometa(r,win){
+  const labels=r.rendimento_labels||[];
+  const means=r.rendimento_mean||[];
+  const vols=r.rendimento_vol||[];
+  if(!labels.length||!document.getElementById('chartScatter'))return;
+  const isCert=l=>l==='Certificato'||l.toLowerCase().includes('cert');
+  const palette=['rgba(79,209,165,.9)','rgba(242,118,107,.9)','rgba(90,176,232,.9)',
+    'rgba(180,130,220,.9)','rgba(255,180,80,.9)','rgba(100,200,180,.9)'];
+
+  // Finestra temporale
+  let startIdx=0;
+  if(win!=='all'&&means[0]){
+    const n=means[0].length;
+    const pts=win==='1y'?252:126;
+    startIdx=Math.max(0,n-pts);}
+
+  const traces=[];
+  labels.forEach((lb,i)=>{
+    const m=means[i];const v=vols[i];if(!m||!v)return;
+    const ms=m.slice(startIdx),vs=v.slice(startIdx);
+    const isc=isCert(lb);
+    const col=isc?'rgba(201,162,78,1)':palette[i%palette.length];
+    const colFade=isc?'rgba(201,162,78,.12)':'rgba(144,162,176,.08)';
+    const n=ms.length;
+
+    // Scia: opacità crescente verso la fine
+    if(n>4){
+      const steps=Math.min(n,40);const step=Math.floor(n/steps);
+      for(let s=0;s<steps-1;s++){
+        const a=Math.floor(s*step),b=Math.floor((s+1)*step);
+        const alpha=0.06+0.55*(s/steps);
+        const c=col.replace(/[\d.]+\)$/,`${alpha.toFixed(2)})`);
+        traces.push({x:vs.slice(a,b+1),y:ms.slice(a,b+1),
+          mode:'lines',type:'scatter',showlegend:false,hoverinfo:'skip',
+          line:{color:c,width:isc?3:1.5}});}}
+
+    // Punto finale (testa cometa)
+    traces.push({x:[vs[n-1]],y:[ms[n-1]],mode:'markers+text',type:'scatter',
+      name:nameOf(lb)||lb,text:[nameOf(lb)||lb],
+      textposition:ms[n-1]>0?'top center':'bottom center',
+      textfont:{size:11,color:isc?'rgba(201,162,78,1)':C.muted,family:'Inter, system-ui, sans-serif'},
+      marker:{size:isc?12:8,color:col,line:{color:'rgba(20,28,36,.6)',width:1.5}},
+      hovertemplate:`<b>${esc(lb)}</b><br>Vol: %{x:.1%}<br>Rend: %{y:+.1%}<extra></extra>`});
+
+    // Punto iniziale (coda)
+    traces.push({x:[vs[0]],y:[ms[0]],mode:'markers',type:'scatter',
+      showlegend:false,hoverinfo:'skip',
+      marker:{size:isc?5:3,color:colFade}});});
+
+  const Ls=baseLayout();
+  Ls.xaxis.title={text:'Volatilità annualizzata',font:{size:11,color:C.faint,family:'Inter, system-ui, sans-serif'}};
+  Ls.yaxis.title={text:'Rendimento annualizzato',font:{size:11,color:C.faint,family:'Inter, system-ui, sans-serif'}};
+  Ls.yaxis.tickformat='+.0%';Ls.xaxis.tickformat='.0%';
+  Ls.shapes=[{type:'line',xref:'paper',x0:0,x1:1,y0:0,y1:0,line:{color:'rgba(144,162,176,.15)',width:1,dash:'dot'}}];
+  Ls.margin={l:64,r:20,t:16,b:52};Ls.showlegend=false;
+  Plotly.react('chartScatter',traces,Ls,PCFG);}
+
 function applyWindow(){if(!current)return;const w=sliceByWindow(current,win);renderStats(w);renderMarkup(w);renderPrice(w);}
 function selectIsin(isin){current=DATA.find(x=>x.isin===isin)||current;if(!current)return;
   document.getElementById('mTitle').textContent=current.isin;
@@ -752,7 +930,13 @@ function selectIsin(isin){current=DATA.find(x=>x.isin===isin)||current;if(!curre
 function setSubview(t){subv=t;
   ['markup','rendimento','autocall','rischio'].forEach(k=>{const el=document.getElementById('sv-'+k);if(el)el.hidden=(k!==t);});
   document.querySelectorAll('#subtabs button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.t===t?'true':'false'));
-  if(t==='markup'){try{Plotly.Plots.resize('chartMarkup');Plotly.Plots.resize('chartPrice');}catch(e){}}}
+  if(t==='markup'){try{Plotly.Plots.resize('chartMarkup');Plotly.Plots.resize('chartPrice');}catch(e){}}
+  if(t==='rendimento'&&current){
+    setTimeout(()=>{
+      renderRendimento(current);
+      setRendTab(rendTab);
+      ['chartRollMean','chartRollVol','chartScatter'].forEach(id=>{try{Plotly.Plots.resize(id);}catch(e){}});
+    },60);}}
 function openProduct(isin,fromHash){selectIsin(isin);setSubview('markup');showView('product');
   if(!fromHash){const h='#/'+encodeURIComponent(isin);if(location.hash!==h)location.hash=h;}}
 
@@ -824,6 +1008,11 @@ function init(){
     pageSize=+b.dataset.n;currentPage=1;
     document.querySelectorAll('#pgSize button').forEach(x=>x.setAttribute('aria-pressed',x===b?'true':'false'));
     renderMonitor();}));
+  document.querySelectorAll('#rendtabs button').forEach(b=>b.addEventListener('click',()=>setRendTab(b.dataset.rt)));
+  document.querySelectorAll('#scatterWin button').forEach(b=>b.addEventListener('click',()=>{
+    scatterWin=b.dataset.sw;
+    document.querySelectorAll('#scatterWin button').forEach(x=>x.setAttribute('aria-pressed',x===b?'true':'false'));
+    if(current)renderScatterCometa(current,scatterWin);}));
   document.getElementById('backBtn').addEventListener('click',()=>{
     if(location.hash){location.hash='';}else{showView('monitor');}});
   document.getElementById('xlsMarkup').addEventListener('click',()=>exportChart('markup'));
