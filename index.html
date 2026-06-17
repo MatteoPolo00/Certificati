@@ -831,6 +831,19 @@ function setRendTab(t){rendTab=t;
   if(t==='vol'){try{Plotly.Plots.resize('chartRollVol');}catch(e){}}
   if(t==='scatter'){renderScatterCometa(current,scatterWin);setTimeout(()=>{try{Plotly.Plots.resize('chartScatter');}catch(e){}},80);}}
 
+let rendCache={};
+function loadRendimento(r){
+  const isin=r.isin;
+  if(rendCache[isin]){renderRendimento(rendCache[isin]);setRendTab(rendTab);return;}
+  const isin_safe=isin.replace(/[^A-Za-z0-9]/g,'_');
+  const host=document.getElementById('rv-mean');
+  if(host)host.innerHTML='<div class="empty" style="padding:32px">Caricamento dati rendimento…</div>';
+  fetch('rendimento/'+isin_safe+'.json')
+    .then(res=>{if(!res.ok)throw new Error('no file');return res.json();})
+    .then(data=>{rendCache[isin]=data;renderRendimento(data);setRendTab(rendTab);
+      setTimeout(()=>['chartRollMean','chartRollVol','chartScatter'].forEach(id=>{try{Plotly.Plots.resize(id);}catch(e){}}),80);})
+    .catch(()=>{if(host)host.innerHTML='<div class="card placeholder">Dati rendimento non disponibili per questo certificato.</div>';});
+}
 function renderRendimento(r){
   const labels=r.rendimento_labels||[];
   const dates=r.rendimento_dates||[];
@@ -931,12 +944,7 @@ function setSubview(t){subv=t;
   ['markup','rendimento','autocall','rischio'].forEach(k=>{const el=document.getElementById('sv-'+k);if(el)el.hidden=(k!==t);});
   document.querySelectorAll('#subtabs button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.t===t?'true':'false'));
   if(t==='markup'){try{Plotly.Plots.resize('chartMarkup');Plotly.Plots.resize('chartPrice');}catch(e){}}
-  if(t==='rendimento'&&current){
-    setTimeout(()=>{
-      renderRendimento(current);
-      setRendTab(rendTab);
-      ['chartRollMean','chartRollVol','chartScatter'].forEach(id=>{try{Plotly.Plots.resize(id);}catch(e){}});
-    },60);}}
+  if(t==='rendimento'&&current){loadRendimento(current);}}
 function openProduct(isin,fromHash){selectIsin(isin);setSubview('markup');showView('product');
   if(!fromHash){const h='#/'+encodeURIComponent(isin);if(location.hash!==h)location.hash=h;}}
 
