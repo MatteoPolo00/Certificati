@@ -494,19 +494,45 @@ function baseLayout(){return{paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,
   hoverlabel:{bgcolor:'rgba(12,17,22,.95)',bordercolor:C.hair,font:{family:'IBM Plex Mono, monospace',size:12,color:C.txt}},
   hovermode:'x unified',showlegend:false};}
 const PCFG={responsive:true,displayModeBar:false};
-function renderMarkup(r){const x=r.dates;
-  const pos=(r.cost_premium||[]).map(v=>v==null?null:(v>=0?v:0)),neg=(r.cost_premium||[]).map(v=>v==null?null:(v<0?v:0));
-  const traces=[{x,y:pos,type:'scatter',mode:'none',fill:'tozeroy',fillcolor:'rgba(79,209,165,.13)',line:{shape:'spline',smoothing:0.6,width:0},hoverinfo:'skip',connectgaps:false},
-    {x,y:neg,type:'scatter',mode:'none',fill:'tozeroy',fillcolor:'rgba(242,118,107,.13)',line:{shape:'spline',smoothing:0.6,width:0},hoverinfo:'skip',connectgaps:false},
-    {x,y:r.cost_premium,type:'scatter',mode:'lines',line:{color:C.txt,width:1.8,shape:'spline',smoothing:0.6},connectgaps:false,
-     hovertemplate:'%{x|%d %b %Y}<br>costo implicito <b>%{y:.2f}%</b><extra></extra>'}];
-  const L=baseLayout();L.shapes=[{type:'line',xref:'paper',x0:0,x1:1,y0:0,y1:0,line:{color:C.faint,width:1,dash:'dot'}}];L.yaxis.ticksuffix='%';
-  Plotly.react('chartMarkup',traces,L,PCFG);}
-function renderPrice(r){const x=r.dates;
-  const traces=[{x,y:r.prezzo_mercato,type:'scatter',mode:'lines',name:'Mercato',line:{color:C.brass,width:2,shape:'spline',smoothing:0.6},connectgaps:false,hovertemplate:'mercato <b>%{y:.2f}</b><extra></extra>'},
-    {x,y:r.prezzo_modello,type:'scatter',mode:'lines',name:'Modello',line:{color:C.pos,width:1.8,shape:'spline',smoothing:0.6},connectgaps:false,hovertemplate:'modello <b>%{y:.2f}</b><extra></extra>'}];
-  const L=baseLayout();L.showlegend=true;L.legend={orientation:'h',y:1.12,x:1,xanchor:'right',font:{size:11,color:C.muted}};L.margin.t=20;
-  Plotly.react('chartPrice',traces,L,PCFG);}
+function renderMarkup(r) {
+  const x = r.dates;
+  const cpValues = r.cost_premium || [];
+
+  // 1. Trova il valore massimo e minimo assoluto nel set di dati corrente per la scala dinamica
+  const validVals = cpValues.filter(v => v != null && !Number.isNaN(v));
+  let maxVal = validVals.length ? Math.max(...validVals) : 0;
+  let minVal = validVals.length ? Math.min(...validVals) : 0;
+
+  // Controlla se i dati sforano il range ±10%
+  const outOfBounds = maxVal > 10 || minVal < -10;
+
+  const pos = cpValues.map(v => v == null ? null : (v >= 0 ? v : 0));
+  const neg = cpValues.map(v => v == null ? null : (v < 0 ? v : 0));
+  
+  // Tracciati del grafico (Verde trasparente per sconto, Rosso trasparente per premio)
+  const traces = [
+    {x, y: pos, type: 'scatter', mode: 'none', fill: 'tozeroy', fillcolor: 'rgba(0, 230, 118, 0.08)', hoverinfo: 'skip', connectgaps: false},
+    {x, y: neg, type: 'scatter', mode: 'none', fill: 'tozeroy', fillcolor: 'rgba(255, 82, 82, 0.08)', hoverinfo: 'skip', connectgaps: false},
+    {x, y: cpValues, type: 'scatter', mode: 'lines', line: {color: '#00B0FF', width: 1.8}, connectgaps: false, // Linea azzurro ciano per il costo
+     hovertemplate: '%{x|%d %b %Y}<br>costo implicito <b>%{y:.2f}%</b><extra></extra>'}
+  ];
+  
+  const L = baseLayout();
+  L.shapes = [{type: 'line', xref: 'paper', x0: 0, x1: 1, y0: 0, y1: 0, line: {color: C.faint, width: 1, dash: 'dot'}}];
+  L.yaxis.ticksuffix = '%';
+
+  // 2. Logica richiesta: Asse fisso a ±10% o scala automatica se i dati escono dal range
+  if (!outOfBounds) {
+    L.yaxis.range = [-10, 10];
+    L.yaxis.autorange = false;
+  } else {
+    // Se sfora, aggiunge un piccolo margine (10%) sopra e sotto per non far toccare i bordi del grafico
+    L.yaxis.range = [minVal * 1.1, maxVal * 1.1];
+    L.yaxis.autorange = false;
+  }
+
+  Plotly.react('chartMarkup', traces, L, PCFG);
+}
 
 /* ---------- util ---------- */
 function lastNum(a){if(!a)return null;for(let i=a.length-1;i>=0;i--){if(a[i]!=null&&!Number.isNaN(a[i]))return a[i];}return null;}
