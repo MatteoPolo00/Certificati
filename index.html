@@ -486,67 +486,26 @@ const CSS=getComputedStyle(document.documentElement);
 const C={txt:CSS.getPropertyValue('--txt').trim(),muted:CSS.getPropertyValue('--muted').trim(),
   hair:CSS.getPropertyValue('--hair').trim(),faint:CSS.getPropertyValue('--faint').trim(),
   pos:CSS.getPropertyValue('--pos').trim(),neg:CSS.getPropertyValue('--neg').trim(),brass:CSS.getPropertyValue('--brass').trim()};
-const FONT={family:'Inter, system-ui, sans-serif',size:11.5,color:C.muted};
-function baseLayout(){return{
-  paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',
-  font:FONT,
-  margin:{l:52,r:20,t:16,b:40},
-  xaxis:{showgrid:false,zeroline:false,showline:false,ticks:'outside',ticklen:4,tickcolor:'transparent',
-    tickfont:{size:11,color:C.faint,family:'Inter, system-ui, sans-serif'},nticks:7,
-    showspikes:true,spikemode:'across',spikethickness:1,spikedash:'solid',
-    spikecolor:'rgba(201,162,78,.35)'},
-  yaxis:{showgrid:true,gridcolor:'rgba(255,255,255,.04)',gridwidth:1,zeroline:false,
-    showline:false,ticks:'',tickfont:{size:11,color:C.faint,family:'Inter, system-ui, sans-serif'},
-    nticks:6,tickformat:'.2f'},
-  hoverlabel:{bgcolor:'rgba(18,24,32,.97)',bordercolor:'rgba(201,162,78,.5)',
-    font:{family:'Inter, system-ui, sans-serif',size:12.5,color:'#EAEFF3'},
-    align:'left',namelength:-1},
-  hovermode:'x unified',showlegend:false,
-  shapes:[],
-  transition:{duration:200,easing:'cubic-in-out'}
-};}
-const PCFG={responsive:true,displayModeBar:false,scrollZoom:false};
-
+const FONT={family:'IBM Plex Mono, monospace',size:11,color:C.muted};
+function baseLayout(){return{paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:FONT,margin:{l:48,r:14,t:10,b:34},
+  xaxis:{showgrid:false,zeroline:false,showline:false,ticks:'',tickfont:{size:10,color:C.faint},nticks:6,
+    showspikes:true,spikemode:'across',spikethickness:1,spikedash:'dot',spikecolor:'rgba(91,110,123,.55)'},
+  yaxis:{showgrid:true,gridcolor:'rgba(38,50,61,.20)',zeroline:false,showline:false,ticks:'',tickfont:{size:10,color:C.faint},nticks:5},
+  hoverlabel:{bgcolor:'rgba(12,17,22,.95)',bordercolor:C.hair,font:{family:'IBM Plex Mono, monospace',size:12,color:C.txt}},
+  hovermode:'x unified',showlegend:false};}
+const PCFG={responsive:true,displayModeBar:false};
 function renderMarkup(r){const x=r.dates;
-  const vals=r.cost_premium||[];
-  const pos=vals.map(v=>v==null?null:(v>=0?v:0));
-  const neg=vals.map(v=>v==null?null:(v<0?v:0));
-  const traces=[
-    {x,y:pos,type:'scatter',mode:'none',fill:'tozeroy',
-     fillcolor:'rgba(79,209,165,.08)',
-     line:{shape:'spline',smoothing:0.5,width:0},hoverinfo:'skip',connectgaps:false},
-    {x,y:neg,type:'scatter',mode:'none',fill:'tozeroy',
-     fillcolor:'rgba(242,118,107,.08)',
-     line:{shape:'spline',smoothing:0.5,width:0},hoverinfo:'skip',connectgaps:false},
-    {x,y:vals,type:'scatter',mode:'lines',
-     line:{color:'rgba(201,162,78,.9)',width:2,shape:'spline',smoothing:0.5},
-     connectgaps:false,
-     hovertemplate:'<b>%{x|%d %b %Y}</b><br>Costo implicito&nbsp;&nbsp;<b>%{y:+.2f}%</b><extra></extra>'}
-  ];
-  const L=baseLayout();
-  L.shapes=[{type:'line',xref:'paper',x0:0,x1:1,y0:0,y1:0,
-    line:{color:'rgba(144,162,176,.25)',width:1,dash:'dot'}}];
-  L.yaxis.ticksuffix='%';
-  L.yaxis.tickformat='+.2f';
+  const pos=(r.cost_premium||[]).map(v=>v==null?null:(v>=0?v:0)),neg=(r.cost_premium||[]).map(v=>v==null?null:(v<0?v:0));
+  const traces=[{x,y:pos,type:'scatter',mode:'none',fill:'tozeroy',fillcolor:'rgba(79,209,165,.13)',line:{shape:'spline',smoothing:0.6,width:0},hoverinfo:'skip',connectgaps:false},
+    {x,y:neg,type:'scatter',mode:'none',fill:'tozeroy',fillcolor:'rgba(242,118,107,.13)',line:{shape:'spline',smoothing:0.6,width:0},hoverinfo:'skip',connectgaps:false},
+    {x,y:r.cost_premium,type:'scatter',mode:'lines',line:{color:C.txt,width:1.8,shape:'spline',smoothing:0.6},connectgaps:false,
+     hovertemplate:'%{x|%d %b %Y}<br>costo implicito <b>%{y:.2f}%</b><extra></extra>'}];
+  const L=baseLayout();L.shapes=[{type:'line',xref:'paper',x0:0,x1:1,y0:0,y1:0,line:{color:C.faint,width:1,dash:'dot'}}];L.yaxis.ticksuffix='%';
   Plotly.react('chartMarkup',traces,L,PCFG);}
-
 function renderPrice(r){const x=r.dates;
-  const traces=[
-    {x,y:r.prezzo_mercato,type:'scatter',mode:'lines',name:'Mercato',
-     line:{color:'rgba(201,162,78,.9)',width:2,shape:'spline',smoothing:0.5},
-     connectgaps:false,
-     hovertemplate:'Mercato&nbsp;&nbsp;<b>%{y:.2f}</b><extra></extra>'},
-    {x,y:r.prezzo_modello,type:'scatter',mode:'lines',name:'Modello',
-     line:{color:'rgba(79,209,165,.75)',width:1.5,shape:'spline',smoothing:0.5,dash:'dot'},
-     connectgaps:false,
-     hovertemplate:'Modello&nbsp;&nbsp;<b>%{y:.2f}</b><extra></extra>'}
-  ];
-  const L=baseLayout();
-  L.showlegend=true;
-  L.legend={orientation:'h',y:1.06,x:1,xanchor:'right',
-    font:{size:11.5,color:C.muted,family:'Inter, system-ui, sans-serif'},
-    bgcolor:'rgba(0,0,0,0)',borderwidth:0};
-  L.margin.t=28;
+  const traces=[{x,y:r.prezzo_mercato,type:'scatter',mode:'lines',name:'Mercato',line:{color:C.brass,width:2,shape:'spline',smoothing:0.6},connectgaps:false,hovertemplate:'mercato <b>%{y:.2f}</b><extra></extra>'},
+    {x,y:r.prezzo_modello,type:'scatter',mode:'lines',name:'Modello',line:{color:C.pos,width:1.8,shape:'spline',smoothing:0.6},connectgaps:false,hovertemplate:'modello <b>%{y:.2f}</b><extra></extra>'}];
+  const L=baseLayout();L.showlegend=true;L.legend={orientation:'h',y:1.12,x:1,xanchor:'right',font:{size:11,color:C.muted}};L.margin.t=20;
   Plotly.react('chartPrice',traces,L,PCFG);}
 
 /* ---------- util ---------- */
