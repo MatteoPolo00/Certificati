@@ -888,7 +888,8 @@ function renderRendimento(r){
   if(document.getElementById('chartRollMean')){
     const traces=labels.map((lb,i)=>mkTrace(lb,i,dates,means[i],{}));
     const Lm=baseLayout();Lm.yaxis.tickformat='+.0%';Lm.yaxis.ticksuffix='';
-    Lm.yaxis.autorange=true;Lm.uirevision='mean';
+    Lm.yaxis.autorange=true;
+    const vd=dates.filter(Boolean);if(vd.length){Lm.xaxis.range=[vd[0],vd[vd.length-1]];Lm.xaxis.autorange=false;}
     Lm.shapes=[{type:'line',xref:'paper',x0:0,x1:1,y0:0,y1:0,line:{color:'rgba(144,162,176,.15)',width:1,dash:'dot'}}];
     Lm.showlegend=true;Lm.legend=mkLegend();Lm.margin.b=70;
     Plotly.react('chartRollMean',traces,Lm,PCFG);}
@@ -897,7 +898,8 @@ function renderRendimento(r){
     const traces=labels.map((lb,i)=>mkTrace(lb,i,dates,vols[i],
       {hovertemplate:`<b>${labelOf(lb)}</b>&nbsp;&nbsp;%{y:.1%}<extra></extra>`}));
     const Lv=baseLayout();Lv.yaxis.tickformat='.0%';Lv.yaxis.ticksuffix='';
-    Lv.yaxis.autorange=true;Lv.uirevision='vol';
+    Lv.yaxis.autorange=true;
+    const vd2=dates.filter(Boolean);if(vd2.length){Lv.xaxis.range=[vd2[0],vd2[vd2.length-1]];Lv.xaxis.autorange=false;}
     Lv.showlegend=true;Lv.legend=mkLegend();Lv.margin.b=70;
     Plotly.react('chartRollVol',traces,Lv,PCFG);}}
 
