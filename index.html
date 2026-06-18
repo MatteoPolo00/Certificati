@@ -909,33 +909,21 @@ function loadRendimento(r){
   // 1. Carica lista sigle del certificato
   fetch('rendimento/'+isin_safe+'.json')
     .then(res=>{if(!res.ok)throw new Error('no file');return res.json();})
-    .then(meta=>{
-      const tickers=meta.tickers||[];
-      const isBm=meta.is_benchmark||tickers.map(()=>false);
-      const dates=meta.dates||[];
-      // 2. Carica ogni ticker in parallelo
-      const promises=tickers.map(sig=>
-        fetch('tickers/'+sig+'.json')
-          .then(res=>res.ok?res.json():null)
-          .catch(()=>null));
-      return Promise.all(promises).then(tickData=>{
-        // Assembla struttura compatibile con renderRendimento
-        const labels=[],means=[],vols=[],is_benchmark=[];
-        tickData.forEach((td,i)=>{
-          if(!td)return;
-          labels.push(td.sigla||tickers[i]);
-          means.push(td.mean_roll||[]);
-          vols.push(td.vol_roll||[]);
-          is_benchmark.push(!!td.is_benchmark);});
-        const assembled={isin,rendimento_dates:dates,
-          rendimento_labels:labels,rendimento_mean:means,
-          rendimento_vol:vols,is_benchmark,
-          scatter_mean:tickData.filter(Boolean).map(td=>td.mean_tot||0),
-          scatter_vol:tickData.filter(Boolean).map(td=>td.vol_tot||0),
-          scatter_labels:labels};
-        rendCache[isin]=assembled;
-        renderRendimento(assembled);setRendTab(rendTab);
-        setTimeout(()=>['chartRollMean','chartRollVol','chartScatter'].forEach(id=>{try{Plotly.Plots.resize(id);}catch(e){}}),80);});})
+    .then(data=>{
+      // Mappa nuova struttura → compatibile con renderRendimento
+      const assembled={
+        isin,
+        rendimento_dates:  data.dates||[],
+        rendimento_labels: data.labels||[],
+        rendimento_mean:   data.mean_roll||[],
+        rendimento_vol:    data.vol_roll||[],
+        is_benchmark:      data.is_benchmark||[],
+        scatter_mean:      data.mean_tot||[],
+        scatter_vol:       data.vol_tot||[],
+        scatter_labels:    data.labels||[]};
+      rendCache[isin]=assembled;
+      renderRendimento(assembled);setRendTab(rendTab);
+      setTimeout(()=>['chartRollMean','chartRollVol','chartScatter'].forEach(id=>{try{Plotly.Plots.resize(id);}catch(e){}}),80);})
     .catch(()=>{if(host)host.innerHTML='<div class="card placeholder">Dati rendimento non disponibili per questo certificato.</div>';});
 }
 
