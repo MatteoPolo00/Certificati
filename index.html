@@ -32,6 +32,8 @@
   .wrap{max-width:1240px;margin:0 auto;padding:26px 24px 70px}
   .rise{opacity:0;transform:translateY(14px);animation:rise .5s cubic-bezier(.2,.7,.2,1) forwards;animation-delay:var(--d,0s)}
   @keyframes rise{to{opacity:1;transform:none}}
+  @keyframes fadein{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .plot-fadein{animation:fadein .65s cubic-bezier(.2,.7,.2,1) both}
 
   /* header */
   .top{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap}
@@ -403,18 +405,24 @@
         <div class="card chart-card">
           <div class="chart-head">
             <div class="t">Rendimento annualizzato rolling <span class="badge">252 gg</span></div>
-            <div class="hd-right"><span class="h">media mobile · % ann.</span></div>
+            <div class="hd-right">
+              <span class="h">media mobile · % ann.</span>
+              <button id="toggleEqMean" onclick="toggleEquipesato()" style="margin-left:10px;appearance:none;background:var(--panel-2);border:1px solid var(--hair);border-radius:7px;color:var(--muted);cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:10.5px;padding:4px 10px;transition:color .15s,border-color .15s">Paniere equipesato ✓</button>
+            </div>
           </div>
-          <div id="chartRollMean" class="plot"></div>
+          <div id="chartRollMean" class="plot plot-fadein"></div>
         </div>
       </div>
       <div id="rv-vol" hidden>
         <div class="card chart-card">
           <div class="chart-head">
             <div class="t">Volatilità annualizzata rolling <span class="badge">252 gg</span></div>
-            <div class="hd-right"><span class="h">std mobile · % ann.</span></div>
+            <div class="hd-right">
+              <span class="h">std mobile · % ann.</span>
+              <button id="toggleEqVol" onclick="toggleEquipesato()" style="margin-left:10px;appearance:none;background:var(--panel-2);border:1px solid var(--hair);border-radius:7px;color:var(--muted);cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:10.5px;padding:4px 10px;transition:color .15s,border-color .15s">Paniere equipesato ✓</button>
+            </div>
           </div>
-          <div id="chartRollVol" class="plot"></div>
+          <div id="chartRollVol" class="plot plot-fadein"></div>
         </div>
       </div>
       <div id="rv-scatter" hidden>
@@ -430,7 +438,7 @@
               </div>
             </div>
           </div>
-          <div id="chartScatter" class="plot"></div>
+          <div id="chartScatter" class="plot plot-fadein"></div>
         </div>
       </div>
     </div>
@@ -847,7 +855,6 @@ function renderRendimento(r){
   const dates=r.rendimento_dates||[];
   const means=r.rendimento_mean||[];
   const vols=r.rendimento_vol||[];
-  const isBm=r.is_benchmark||labels.map(()=>false);
   const isCert=l=>l==='Certificato'||l.toLowerCase().includes('cert');
   const isEq=l=>l==='Assett_equipesati';
 
@@ -864,31 +871,54 @@ function renderRendimento(r){
   function mkLegend(){return{orientation:'h',y:-0.22,x:0,
     font:{size:11,color:C.muted,family:'Inter, system-ui, sans-serif'},
     bgcolor:'rgba(0,0,0,0)',borderwidth:0,
-    itemsizing:'constant',itemwidth:20,
-    traceorder:'normal'};}
+    itemsizing:'constant',itemwidth:16,
+    traceorder:'reversed'};}
 
   function mkTrace(lb,i,x,y,extra){
     const isc=isCert(lb),isbm=lb==='Indice',iseq=isEq(lb);
     const col=colorOf(lb,i);
-    const vis=(isbm&&!showBenchmark)?'legendonly':true;
-    return{x,y,type:'scatter',mode:'lines',name:labelOf(lb),visible:vis,
-      line:{color:col,width:isc?2.5:isbm?1.5:iseq?1.8:1.4,
+    const hideEq=iseq&&!showEquipesato;
+    const vis=(isbm&&!showBenchmark)||hideEq?'legendonly':true;
+    const t={x,y,type:'scatter',mode:'lines+markers',name:labelOf(lb),visible:vis,
+
+      line:{color:col,width:isc?2.2:isbm?1.4:iseq?1.6:1.3,
         dash:isbm?'dot':iseq?'dash':'solid',shape:'spline',smoothing:0.4},
-      hovertemplate:`<b>${labelOf(lb)}</b>&nbsp;&nbsp;%{y:+.1%}<extra></extra>`,...extra};}
+      marker:{symbol:'circle',size:isc?6:4,color:col,
+        line:{color:'rgba(0,0,0,0)',width:0},maxdisplayed:0},
+      hovertemplate:`<b>${labelOf(lb)}</b>\u00a0\u00a0%{y:+.1%}<extra></extra>`,...extra};
+    return t;}
+
+  const vd=dates.filter(Boolean);
+  const xRange=vd.length?[vd[0],vd[vd.length-1]]:null;
 
   if(document.getElementById('chartRollMean')){
     const traces=labels.map((lb,i)=>mkTrace(lb,i,dates,means[i],{}));
     const Lm=baseLayout();Lm.yaxis.tickformat='+.0%';Lm.yaxis.ticksuffix='';
+    Lm.yaxis.autorange=true;
+    if(xRange){Lm.xaxis.range=xRange;Lm.xaxis.autorange=false;}
     Lm.shapes=[{type:'line',xref:'paper',x0:0,x1:1,y0:0,y1:0,line:{color:'rgba(144,162,176,.15)',width:1,dash:'dot'}}];
     Lm.showlegend=true;Lm.legend=mkLegend();Lm.margin.b=70;
-    Plotly.react('chartRollMean',traces,Lm,PCFG);}
+    Plotly.react('chartRollMean',traces,Lm,PCFG);fadeIn('chartRollMean');}
 
   if(document.getElementById('chartRollVol')){
     const traces=labels.map((lb,i)=>mkTrace(lb,i,dates,vols[i],
-      {hovertemplate:`<b>${labelOf(lb)}</b>&nbsp;&nbsp;%{y:.1%}<extra></extra>`}));
+      {hovertemplate:`<b>${labelOf(lb)}</b>\u00a0\u00a0%{y:.1%}<extra></extra>`}));
     const Lv=baseLayout();Lv.yaxis.tickformat='.0%';Lv.yaxis.ticksuffix='';
+    Lv.yaxis.autorange=true;
+    if(xRange){Lv.xaxis.range=xRange;Lv.xaxis.autorange=false;}
     Lv.showlegend=true;Lv.legend=mkLegend();Lv.margin.b=70;
-    Plotly.react('chartRollVol',traces,Lv,PCFG);}}
+    Plotly.react('chartRollVol',traces,Lv,PCFG);fadeIn('chartRollVol');}}
+
+function fadeIn(id){const el=document.getElementById(id);if(!el)return;
+  el.classList.remove('plot-fadein');void el.offsetWidth;el.classList.add('plot-fadein');}
+
+let showEquipesato=true;
+function toggleEquipesato(){
+  showEquipesato=!showEquipesato;
+  const lbl=showEquipesato?'Paniere equipesato ✓':'Paniere equipesato';
+  ['toggleEqMean','toggleEqVol'].forEach(id=>{const b=document.getElementById(id);
+    if(b){b.textContent=lbl;b.style.color=showEquipesato?'var(--brass)':'var(--faint)';}});
+  if(current)renderRendimento(current);}
 
 let rendTab='mean',scatterWin='all';
 function setRendTab(t){rendTab=t;
@@ -909,33 +939,21 @@ function loadRendimento(r){
   // 1. Carica lista sigle del certificato
   fetch('rendimento/'+isin_safe+'.json')
     .then(res=>{if(!res.ok)throw new Error('no file');return res.json();})
-    .then(meta=>{
-      const tickers=meta.tickers||[];
-      const isBm=meta.is_benchmark||tickers.map(()=>false);
-      const dates=meta.dates||[];
-      // 2. Carica ogni ticker in parallelo
-      const promises=tickers.map(sig=>
-        fetch('tickers/'+sig+'.json')
-          .then(res=>res.ok?res.json():null)
-          .catch(()=>null));
-      return Promise.all(promises).then(tickData=>{
-        // Assembla struttura compatibile con renderRendimento
-        const labels=[],means=[],vols=[],is_benchmark=[];
-        tickData.forEach((td,i)=>{
-          if(!td)return;
-          labels.push(td.sigla||tickers[i]);
-          means.push(td.mean_roll||[]);
-          vols.push(td.vol_roll||[]);
-          is_benchmark.push(!!td.is_benchmark);});
-        const assembled={isin,rendimento_dates:dates,
-          rendimento_labels:labels,rendimento_mean:means,
-          rendimento_vol:vols,is_benchmark,
-          scatter_mean:tickData.filter(Boolean).map(td=>td.mean_tot||0),
-          scatter_vol:tickData.filter(Boolean).map(td=>td.vol_tot||0),
-          scatter_labels:labels};
-        rendCache[isin]=assembled;
-        renderRendimento(assembled);setRendTab(rendTab);
-        setTimeout(()=>['chartRollMean','chartRollVol','chartScatter'].forEach(id=>{try{Plotly.Plots.resize(id);}catch(e){}}),80);});})
+    .then(data=>{
+      // Mappa nuova struttura → compatibile con renderRendimento
+      const assembled={
+        isin,
+        rendimento_dates:  data.dates||[],
+        rendimento_labels: data.labels||[],
+        rendimento_mean:   data.mean_roll||[],
+        rendimento_vol:    data.vol_roll||[],
+        is_benchmark:      data.is_benchmark||[],
+        scatter_mean:      data.mean_tot||[],
+        scatter_vol:       data.vol_tot||[],
+        scatter_labels:    data.labels||[]};
+      rendCache[isin]=assembled;
+      renderRendimento(assembled);setRendTab(rendTab);
+      setTimeout(()=>['chartRollMean','chartRollVol','chartScatter'].forEach(id=>{try{Plotly.Plots.resize(id);}catch(e){}}),80);})
     .catch(()=>{if(host)host.innerHTML='<div class="card placeholder">Dati rendimento non disponibili per questo certificato.</div>';});
 }
 
