@@ -403,7 +403,10 @@
         <div class="card chart-card">
           <div class="chart-head">
             <div class="t">Rendimento annualizzato rolling <span class="badge">252 gg</span></div>
-            <div class="hd-right"><span class="h">media mobile · % ann.</span></div>
+            <div class="hd-right">
+              <span class="h">media mobile · % ann.</span>
+              <button id="toggleEqMean" onclick="toggleEquipesato()" style="margin-left:10px;appearance:none;background:var(--panel-2);border:1px solid var(--hair);border-radius:7px;color:var(--muted);cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:10.5px;padding:4px 10px;transition:color .15s,border-color .15s">Paniere equipesato ✓</button>
+            </div>
           </div>
           <div id="chartRollMean" class="plot"></div>
         </div>
@@ -412,7 +415,10 @@
         <div class="card chart-card">
           <div class="chart-head">
             <div class="t">Volatilità annualizzata rolling <span class="badge">252 gg</span></div>
-            <div class="hd-right"><span class="h">std mobile · % ann.</span></div>
+            <div class="hd-right">
+              <span class="h">std mobile · % ann.</span>
+              <button id="toggleEqVol" onclick="toggleEquipesato()" style="margin-left:10px;appearance:none;background:var(--panel-2);border:1px solid var(--hair);border-radius:7px;color:var(--muted);cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:10.5px;padding:4px 10px;transition:color .15s,border-color .15s">Paniere equipesato ✓</button>
+            </div>
           </div>
           <div id="chartRollVol" class="plot"></div>
         </div>
@@ -864,21 +870,25 @@ function renderRendimento(r){
   function mkLegend(){return{orientation:'h',y:-0.22,x:0,
     font:{size:11,color:C.muted,family:'Inter, system-ui, sans-serif'},
     bgcolor:'rgba(0,0,0,0)',borderwidth:0,
-    itemsizing:'constant',itemwidth:20,
-    traceorder:'normal'};}
+    itemsizing:'constant',itemwidth:16,
+    traceorder:'reversed'};}
 
   function mkTrace(lb,i,x,y,extra){
     const isc=isCert(lb),isbm=lb==='Indice',iseq=isEq(lb);
     const col=colorOf(lb,i);
-    const vis=(isbm&&!showBenchmark)?'legendonly':true;
-    return{x,y,type:'scatter',mode:'lines',name:labelOf(lb),visible:vis,
-      line:{color:col,width:isc?2.5:isbm?1.5:iseq?1.8:1.4,
+    const hideEq=iseq&&!showEquipesato;
+    const vis=(isbm&&!showBenchmark)||hideEq?'legendonly':true;
+    return{x,y,type:'scatter',mode:'lines+markers',name:labelOf(lb),visible:vis,
+      line:{color:col,width:isc?2.2:isbm?1.4:iseq?1.6:1.3,
         dash:isbm?'dot':iseq?'dash':'solid',shape:'spline',smoothing:0.4},
+      marker:{symbol:'circle',size:isc?6:4,color:col,
+        line:{color:'rgba(0,0,0,0)',width:0},maxdisplayed:0},
       hovertemplate:`<b>${labelOf(lb)}</b>&nbsp;&nbsp;%{y:+.1%}<extra></extra>`,...extra};}
 
   if(document.getElementById('chartRollMean')){
     const traces=labels.map((lb,i)=>mkTrace(lb,i,dates,means[i],{}));
     const Lm=baseLayout();Lm.yaxis.tickformat='+.0%';Lm.yaxis.ticksuffix='';
+    Lm.yaxis.autorange=true;Lm.uirevision='mean';
     Lm.shapes=[{type:'line',xref:'paper',x0:0,x1:1,y0:0,y1:0,line:{color:'rgba(144,162,176,.15)',width:1,dash:'dot'}}];
     Lm.showlegend=true;Lm.legend=mkLegend();Lm.margin.b=70;
     Plotly.react('chartRollMean',traces,Lm,PCFG);}
@@ -887,8 +897,17 @@ function renderRendimento(r){
     const traces=labels.map((lb,i)=>mkTrace(lb,i,dates,vols[i],
       {hovertemplate:`<b>${labelOf(lb)}</b>&nbsp;&nbsp;%{y:.1%}<extra></extra>`}));
     const Lv=baseLayout();Lv.yaxis.tickformat='.0%';Lv.yaxis.ticksuffix='';
+    Lv.yaxis.autorange=true;Lv.uirevision='vol';
     Lv.showlegend=true;Lv.legend=mkLegend();Lv.margin.b=70;
     Plotly.react('chartRollVol',traces,Lv,PCFG);}}
+
+let showEquipesato=true;
+function toggleEquipesato(){
+  showEquipesato=!showEquipesato;
+  const lbl=showEquipesato?'Paniere equipesato ✓':'Paniere equipesato';
+  ['toggleEqMean','toggleEqVol'].forEach(id=>{const b=document.getElementById(id);
+    if(b){b.textContent=lbl;b.style.color=showEquipesato?'var(--brass)':'var(--faint)';}});
+  if(current)renderRendimento(current);}
 
 let rendTab='mean',scatterWin='all';
 function setRendTab(t){rendTab=t;
