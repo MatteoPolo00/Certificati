@@ -31,7 +31,8 @@
        color:var(--txt);font-family:"Inter",system-ui,sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh}
   .wrap{max-width:1240px;margin:0 auto;padding:26px 24px 70px}
   .rise{opacity:0;transform:translateY(14px);animation:rise .5s cubic-bezier(.2,.7,.2,1) forwards;animation-delay:var(--d,0s)}
-  @keyframes rise{to{opacity:1;transform:none}}
+  @keyframes fadein{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .plot-fadein{animation:fadein .65s cubic-bezier(.2,.7,.2,1) both}
 
   /* header */
   .top{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap}
@@ -408,7 +409,7 @@
               <button id="toggleEqMean" onclick="toggleEquipesato()" style="margin-left:10px;appearance:none;background:var(--panel-2);border:1px solid var(--hair);border-radius:7px;color:var(--muted);cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:10.5px;padding:4px 10px;transition:color .15s,border-color .15s">Paniere equipesato ✓</button>
             </div>
           </div>
-          <div id="chartRollMean" class="plot"></div>
+          <div id="chartRollMean" class="plot plot-fadein"></div>
         </div>
       </div>
       <div id="rv-vol" hidden>
@@ -420,7 +421,7 @@
               <button id="toggleEqVol" onclick="toggleEquipesato()" style="margin-left:10px;appearance:none;background:var(--panel-2);border:1px solid var(--hair);border-radius:7px;color:var(--muted);cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:10.5px;padding:4px 10px;transition:color .15s,border-color .15s">Paniere equipesato ✓</button>
             </div>
           </div>
-          <div id="chartRollVol" class="plot"></div>
+          <div id="chartRollVol" class="plot plot-fadein"></div>
         </div>
       </div>
       <div id="rv-scatter" hidden>
@@ -436,7 +437,7 @@
               </div>
             </div>
           </div>
-          <div id="chartScatter" class="plot"></div>
+          <div id="chartScatter" class="plot plot-fadein"></div>
         </div>
       </div>
     </div>
@@ -848,48 +849,6 @@ function labelOf(lb){
   return tickerName(lb)||lb;}
 
 let showBenchmark=true;
-/* --- animazione "cometa" per grafici rolling --- */
-let _animFrames={};
-function cancelAnim(id){if(_animFrames[id]){cancelAnimationFrame(_animFrames[id]);delete _animFrames[id];}}
-
-function animateChart(divId,tracesAll,layout,nTotal,durationMs){
-  cancelAnim(divId);
-  const steps=Math.min(nTotal,120);  // max 120 frame
-  const pointsPerFrame=Math.max(1,Math.floor(nTotal/steps));
-  const msPerFrame=durationMs/steps;
-  let frame=1;
-  let lastTime=null;
-
-  // Disegna subito con tutti i dati (scala fissa) ma linee vuote
-  const tracesEmpty=tracesAll.map(t=>({...t,x:[],y:[]}));
-  Plotly.react(divId,tracesEmpty,layout,PCFG);
-
-  function step(ts){
-    if(lastTime&&(ts-lastTime)<msPerFrame){_animFrames[divId]=requestAnimationFrame(step);return;}
-    lastTime=ts;
-    const n=Math.min(frame*pointsPerFrame,nTotal);
-    // Tracce principali: slice fino a n
-    const trSlice=tracesAll.map((t,ti)=>{
-      const isBall=ti===tracesAll.length-1; // ultimo trace = pallino
-      if(isBall)return t; // gestito separatamente
-      return{...t,x:t._xFull.slice(0,n),y:t._yFull.slice(0,n)};});
-    // Pallino luminoso sull'ultima traccia visibile
-    const mainIdx=tracesAll.findIndex(t=>t._isCert);
-    if(mainIdx>=0){
-      const mx=tracesAll[mainIdx]._xFull;
-      const my=tracesAll[mainIdx]._yFull;
-      const cx=mx[n-1],cy=my[n-1];
-      trSlice.push({x:[cx],y:[cy],type:'scatter',mode:'markers',showlegend:false,hoverinfo:'skip',
-        marker:{size:10,color:'rgba(201,162,78,1)',
-          line:{color:'rgba(255,220,120,.6)',width:6},symbol:'circle'}});}
-    Plotly.react(divId,trSlice,layout,PCFG);
-    frame++;
-    if(n<nTotal){_animFrames[divId]=requestAnimationFrame(step);}
-    else{
-      // Finale: rimuovi pallino, mostra completo
-      Plotly.react(divId,tracesAll,layout,PCFG);}}
-  _animFrames[divId]=requestAnimationFrame(step);}
-
 function renderRendimento(r){
   const labels=r.rendimento_labels||[];
   const dates=r.rendimento_dates||[];
@@ -920,7 +879,7 @@ function renderRendimento(r){
     const hideEq=iseq&&!showEquipesato;
     const vis=(isbm&&!showBenchmark)||hideEq?'legendonly':true;
     const t={x,y,type:'scatter',mode:'lines+markers',name:labelOf(lb),visible:vis,
-      _xFull:x,_yFull:y,_isCert:isc,
+
       line:{color:col,width:isc?2.2:isbm?1.4:iseq?1.6:1.3,
         dash:isbm?'dot':iseq?'dash':'solid',shape:'spline',smoothing:0.4},
       marker:{symbol:'circle',size:isc?6:4,color:col,
@@ -938,7 +897,7 @@ function renderRendimento(r){
     if(xRange){Lm.xaxis.range=xRange;Lm.xaxis.autorange=false;}
     Lm.shapes=[{type:'line',xref:'paper',x0:0,x1:1,y0:0,y1:0,line:{color:'rgba(144,162,176,.15)',width:1,dash:'dot'}}];
     Lm.showlegend=true;Lm.legend=mkLegend();Lm.margin.b=70;
-    animateChart('chartRollMean',traces,Lm,dates.length,1800);}
+    Plotly.react('chartRollMean',traces,Lm,PCFG);fadeIn('chartRollMean');}
 
   if(document.getElementById('chartRollVol')){
     const traces=labels.map((lb,i)=>mkTrace(lb,i,dates,vols[i],
@@ -947,7 +906,10 @@ function renderRendimento(r){
     Lv.yaxis.autorange=true;
     if(xRange){Lv.xaxis.range=xRange;Lv.xaxis.autorange=false;}
     Lv.showlegend=true;Lv.legend=mkLegend();Lv.margin.b=70;
-    animateChart('chartRollVol',traces,Lv,dates.length,1800);}}
+    Plotly.react('chartRollVol',traces,Lv,PCFG);fadeIn('chartRollVol');}}
+
+function fadeIn(id){const el=document.getElementById(id);if(!el)return;
+  el.classList.remove('plot-fadein');void el.offsetWidth;el.classList.add('plot-fadein');}
 
 let showEquipesato=true;
 function toggleEquipesato(){
