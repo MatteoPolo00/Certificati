@@ -31,6 +31,7 @@
        color:var(--txt);font-family:"Inter",system-ui,sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh}
   .wrap{max-width:1240px;margin:0 auto;padding:26px 24px 70px}
   .rise{opacity:0;transform:translateY(14px);animation:rise .5s cubic-bezier(.2,.7,.2,1) forwards;animation-delay:var(--d,0s)}
+  @keyframes rise{to{opacity:1;transform:none}}
   @keyframes fadein{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
   .plot-fadein{animation:fadein .65s cubic-bezier(.2,.7,.2,1) both}
 
