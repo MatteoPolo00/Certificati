@@ -491,6 +491,18 @@ const CONFIG = {
 const SOTTOSTANTI = window.SOTTOSTANTI || {};
 const nameOf = t => SOTTOSTANTI[t] || t;
 
+/* Database ticker indipendente: caricato da tickers.json */
+let TICKERS = {};
+fetch('tickers.json')
+  .then(r=>r.ok?r.json():Promise.reject())
+  .then(d=>{TICKERS=d;})
+  .catch(()=>{});
+function tickerName(sig){
+  const clean=sig.startsWith('Ass_')?sig.slice(4):sig;
+  const key=sig.replace(/[^A-Za-z0-9_]/g,'_');
+  if(TICKERS[key]&&TICKERS[key].nome&&TICKERS[key].nome!==clean)return TICKERS[key].nome;
+  return nameOf(clean)||clean;}
+
 /* ---------- demo ---------- */
 function makeDemo(isin,emit,str,sott,base,drift,amp){
   const n=72,dates=[],mkt=[],mod=[],mk=[],mka=[],cp=[];let d=new Date(2024,7,1),px=base;
@@ -822,6 +834,62 @@ function renderStats(w){const vals=(w.cost_premium||[]).filter(v=>v!=null&&!Numb
     const elM=document.getElementById('kpiMean');elM.textContent=fmtPct(mean);elM.className='n '+(mean>=0?'pos-t':'neg-t');
     document.getElementById('kpiMeanSub').textContent=mean>=0?'in media a sconto':'in media a premio';
   }else{document.getElementById('kpiMean').textContent='n/d';document.getElementById('kpiMeanSub').textContent='—';}}
+function labelOf(lb){
+  if(lb==='Certificato')return 'Certificato';
+  if(lb==='Indice')return 'Benchmark (S&P 500)';
+  if(lb==='Assett_equipesati')return 'Paniere equipesato';
+  if(lb.startsWith('Ass_'))return tickerName(lb);
+  return tickerName(lb)||lb;}
+
+let showBenchmark=true;
+function renderRendimento(r){
+  const labels=r.rendimento_labels||[];
+  const dates=r.rendimento_dates||[];
+  const means=r.rendimento_mean||[];
+  const vols=r.rendimento_vol||[];
+  const isBm=r.is_benchmark||labels.map(()=>false);
+  const isCert=l=>l==='Certificato'||l.toLowerCase().includes('cert');
+  const isEq=l=>l==='Assett_equipesati';
+
+  const palette=['rgba(79,209,165,.85)','rgba(242,118,107,.85)',
+    'rgba(90,176,232,.85)','rgba(180,130,220,.85)','rgba(255,180,80,.85)',
+    'rgba(100,200,180,.85)','rgba(220,100,100,.85)','rgba(160,200,100,.85)'];
+
+  function colorOf(lb,i){
+    if(isCert(lb))return 'rgba(201,162,78,1)';
+    if(lb==='Indice')return 'rgba(144,162,176,.7)';
+    if(isEq(lb))return 'rgba(255,255,255,.5)';
+    return palette[i%palette.length];}
+
+  function mkLegend(){return{orientation:'h',y:-0.22,x:0,
+    font:{size:11,color:C.muted,family:'Inter, system-ui, sans-serif'},
+    bgcolor:'rgba(0,0,0,0)',borderwidth:0,
+    itemsizing:'constant',itemwidth:20,
+    traceorder:'normal'};}
+
+  function mkTrace(lb,i,x,y,extra){
+    const isc=isCert(lb),isbm=lb==='Indice',iseq=isEq(lb);
+    const col=colorOf(lb,i);
+    const vis=(isbm&&!showBenchmark)?'legendonly':true;
+    return{x,y,type:'scatter',mode:'lines',name:labelOf(lb),visible:vis,
+      line:{color:col,width:isc?2.5:isbm?1.5:iseq?1.8:1.4,
+        dash:isbm?'dot':iseq?'dash':'solid',shape:'spline',smoothing:0.4},
+      hovertemplate:`<b>${labelOf(lb)}</b>&nbsp;&nbsp;%{y:+.1%}<extra></extra>`,...extra};}
+
+  if(document.getElementById('chartRollMean')){
+    const traces=labels.map((lb,i)=>mkTrace(lb,i,dates,means[i],{}));
+    const Lm=baseLayout();Lm.yaxis.tickformat='+.0%';Lm.yaxis.ticksuffix='';
+    Lm.shapes=[{type:'line',xref:'paper',x0:0,x1:1,y0:0,y1:0,line:{color:'rgba(144,162,176,.15)',width:1,dash:'dot'}}];
+    Lm.showlegend=true;Lm.legend=mkLegend();Lm.margin.b=70;
+    Plotly.react('chartRollMean',traces,Lm,PCFG);}
+
+  if(document.getElementById('chartRollVol')){
+    const traces=labels.map((lb,i)=>mkTrace(lb,i,dates,vols[i],
+      {hovertemplate:`<b>${labelOf(lb)}</b>&nbsp;&nbsp;%{y:.1%}<extra></extra>`}));
+    const Lv=baseLayout();Lv.yaxis.tickformat='.0%';Lv.yaxis.ticksuffix='';
+    Lv.showlegend=true;Lv.legend=mkLegend();Lv.margin.b=70;
+    Plotly.react('chartRollVol',traces,Lv,PCFG);}}
+
 let rendTab='mean',scatterWin='all';
 function setRendTab(t){rendTab=t;
   ['mean','vol','scatter'].forEach(k=>{const el=document.getElementById('rv-'+k);if(el)el.hidden=(k!==t);});
@@ -838,42 +906,38 @@ function loadRendimento(r){
   const isin_safe=isin.replace(/[^A-Za-z0-9]/g,'_');
   const host=document.getElementById('rv-mean');
   if(host)host.innerHTML='<div class="empty" style="padding:32px">Caricamento dati rendimento…</div>';
+  // 1. Carica lista sigle del certificato
   fetch('rendimento/'+isin_safe+'.json')
     .then(res=>{if(!res.ok)throw new Error('no file');return res.json();})
-    .then(data=>{rendCache[isin]=data;renderRendimento(data);setRendTab(rendTab);
-      setTimeout(()=>['chartRollMean','chartRollVol','chartScatter'].forEach(id=>{try{Plotly.Plots.resize(id);}catch(e){}}),80);})
+    .then(meta=>{
+      const tickers=meta.tickers||[];
+      const isBm=meta.is_benchmark||tickers.map(()=>false);
+      const dates=meta.dates||[];
+      // 2. Carica ogni ticker in parallelo
+      const promises=tickers.map(sig=>
+        fetch('tickers/'+sig+'.json')
+          .then(res=>res.ok?res.json():null)
+          .catch(()=>null));
+      return Promise.all(promises).then(tickData=>{
+        // Assembla struttura compatibile con renderRendimento
+        const labels=[],means=[],vols=[],is_benchmark=[];
+        tickData.forEach((td,i)=>{
+          if(!td)return;
+          labels.push(td.sigla||tickers[i]);
+          means.push(td.mean_roll||[]);
+          vols.push(td.vol_roll||[]);
+          is_benchmark.push(!!td.is_benchmark);});
+        const assembled={isin,rendimento_dates:dates,
+          rendimento_labels:labels,rendimento_mean:means,
+          rendimento_vol:vols,is_benchmark,
+          scatter_mean:tickData.filter(Boolean).map(td=>td.mean_tot||0),
+          scatter_vol:tickData.filter(Boolean).map(td=>td.vol_tot||0),
+          scatter_labels:labels};
+        rendCache[isin]=assembled;
+        renderRendimento(assembled);setRendTab(rendTab);
+        setTimeout(()=>['chartRollMean','chartRollVol','chartScatter'].forEach(id=>{try{Plotly.Plots.resize(id);}catch(e){}}),80);});})
     .catch(()=>{if(host)host.innerHTML='<div class="card placeholder">Dati rendimento non disponibili per questo certificato.</div>';});
 }
-function renderRendimento(r){
-  const labels=r.rendimento_labels||[];
-  const dates=r.rendimento_dates||[];
-  const means=r.rendimento_mean||[];
-  const vols=r.rendimento_vol||[];
-  const palette=['rgba(201,162,78,.85)','rgba(79,209,165,.85)','rgba(242,118,107,.85)',
-    'rgba(90,176,232,.85)','rgba(180,130,220,.85)','rgba(255,180,80,.85)',
-    'rgba(100,200,180,.85)','rgba(220,100,100,.85)'];
-  const isCert=l=>l==='Certificato'||l.toLowerCase().includes('cert');
-
-  if(document.getElementById('chartRollMean')){
-    const traces=labels.map((lb,i)=>{const isc=isCert(lb);
-      return{x:dates,y:means[i],type:'scatter',mode:'lines',name:nameOf(lb)||lb,
-        line:{color:isc?'rgba(201,162,78,1)':palette[(i+1)%palette.length],
-          width:isc?2.5:1.4,shape:'spline',smoothing:0.4},
-        hovertemplate:`<b>${esc(lb)}</b>&nbsp;&nbsp;%{y:+.1%}<extra></extra>`};});
-    const Lm=baseLayout();Lm.yaxis.tickformat='+.0%';Lm.yaxis.ticksuffix='';
-    Lm.shapes=[{type:'line',xref:'paper',x0:0,x1:1,y0:0,y1:0,line:{color:'rgba(144,162,176,.2)',width:1,dash:'dot'}}];
-    Lm.showlegend=true;Lm.legend={orientation:'h',y:-0.2,x:0,font:{size:11,color:C.muted,family:'Inter, system-ui, sans-serif'},bgcolor:'rgba(0,0,0,0)',borderwidth:0};
-    Plotly.react('chartRollMean',traces,Lm,PCFG);}
-
-  if(document.getElementById('chartRollVol')){
-    const traces=labels.map((lb,i)=>{const isc=isCert(lb);
-      return{x:dates,y:vols[i],type:'scatter',mode:'lines',name:nameOf(lb)||lb,
-        line:{color:isc?'rgba(201,162,78,1)':palette[(i+1)%palette.length],
-          width:isc?2.5:1.4,shape:'spline',smoothing:0.4},
-        hovertemplate:`<b>${esc(lb)}</b>&nbsp;&nbsp;%{y:.1%}<extra></extra>`};});
-    const Lv=baseLayout();Lv.yaxis.tickformat='.0%';Lv.yaxis.ticksuffix='';
-    Lv.showlegend=true;Lv.legend={orientation:'h',y:-0.2,x:0,font:{size:11,color:C.muted,family:'Inter, system-ui, sans-serif'},bgcolor:'rgba(0,0,0,0)',borderwidth:0};
-    Plotly.react('chartRollVol',traces,Lv,PCFG);}}
 
 function renderScatterCometa(r,win){
   const labels=r.rendimento_labels||[];
@@ -883,47 +947,31 @@ function renderScatterCometa(r,win){
   const isCert=l=>l==='Certificato'||l.toLowerCase().includes('cert');
   const palette=['rgba(79,209,165,.9)','rgba(242,118,107,.9)','rgba(90,176,232,.9)',
     'rgba(180,130,220,.9)','rgba(255,180,80,.9)','rgba(100,200,180,.9)'];
-
-  // Finestra temporale
+  function colorOf(lb,i){
+    if(isCert(lb))return 'rgba(201,162,78,1)';
+    if(lb==='Indice')return 'rgba(144,162,176,.8)';
+    if(lb==='Assett_equipesati')return 'rgba(255,255,255,.6)';
+    return palette[i%palette.length];}
   let startIdx=0;
-  if(win!=='all'&&means[0]){
-    const n=means[0].length;
-    const pts=win==='1y'?252:126;
-    startIdx=Math.max(0,n-pts);}
-
+  if(win!=='all'&&means[0]){const n=means[0].length;startIdx=Math.max(0,n-(win==='1y'?252:126));}
   const traces=[];
   labels.forEach((lb,i)=>{
     const m=means[i];const v=vols[i];if(!m||!v)return;
     const ms=m.slice(startIdx),vs=v.slice(startIdx);
-    const isc=isCert(lb);
-    const col=isc?'rgba(201,162,78,1)':palette[i%palette.length];
-    const colFade=isc?'rgba(201,162,78,.12)':'rgba(144,162,176,.08)';
-    const n=ms.length;
-
-    // Scia: opacità crescente verso la fine
-    if(n>4){
-      const steps=Math.min(n,40);const step=Math.floor(n/steps);
-      for(let s=0;s<steps-1;s++){
-        const a=Math.floor(s*step),b=Math.floor((s+1)*step);
-        const alpha=0.06+0.55*(s/steps);
-        const c=col.replace(/[\d.]+\)$/,`${alpha.toFixed(2)})`);
-        traces.push({x:vs.slice(a,b+1),y:ms.slice(a,b+1),
-          mode:'lines',type:'scatter',showlegend:false,hoverinfo:'skip',
-          line:{color:c,width:isc?3:1.5}});}}
-
-    // Punto finale (testa cometa)
+    const isc=isCert(lb);const col=colorOf(lb,i);const n=ms.length;
+    if(n>4){const steps=Math.min(n,40);const step=Math.floor(n/steps);
+      for(let s=0;s<steps-1;s++){const a=Math.floor(s*step),b=Math.floor((s+1)*step);
+        const alpha=0.05+0.5*(s/steps);const c=col.replace(/[\d.]+\)$/,`${alpha.toFixed(2)})`);
+        traces.push({x:vs.slice(a,b+1),y:ms.slice(a,b+1),mode:'lines',type:'scatter',
+          showlegend:false,hoverinfo:'skip',line:{color:c,width:isc?3:1.5}});}}
     traces.push({x:[vs[n-1]],y:[ms[n-1]],mode:'markers+text',type:'scatter',
-      name:nameOf(lb)||lb,text:[nameOf(lb)||lb],
+      name:labelOf(lb),text:[labelOf(lb)],
       textposition:ms[n-1]>0?'top center':'bottom center',
-      textfont:{size:11,color:isc?'rgba(201,162,78,1)':C.muted,family:'Inter, system-ui, sans-serif'},
-      marker:{size:isc?12:8,color:col,line:{color:'rgba(20,28,36,.6)',width:1.5}},
-      hovertemplate:`<b>${esc(lb)}</b><br>Vol: %{x:.1%}<br>Rend: %{y:+.1%}<extra></extra>`});
-
-    // Punto iniziale (coda)
-    traces.push({x:[vs[0]],y:[ms[0]],mode:'markers',type:'scatter',
-      showlegend:false,hoverinfo:'skip',
-      marker:{size:isc?5:3,color:colFade}});});
-
+      textfont:{size:10.5,color:isc?'rgba(201,162,78,1)':C.muted,family:'Inter, system-ui, sans-serif'},
+      marker:{size:isc?13:9,color:col,symbol:'circle',line:{color:'rgba(20,28,36,.7)',width:1.5}},
+      hovertemplate:`<b>${labelOf(lb)}</b><br>Vol: %{x:.1%}<br>Rend: %{y:+.1%}<extra></extra>`});
+    traces.push({x:[vs[0]],y:[ms[0]],mode:'markers',type:'scatter',showlegend:false,
+      hoverinfo:'skip',marker:{size:isc?5:3,color:col.replace(/[\d.]+\)$/,'0.12)')}});});
   const Ls=baseLayout();
   Ls.xaxis.title={text:'Volatilità annualizzata',font:{size:11,color:C.faint,family:'Inter, system-ui, sans-serif'}};
   Ls.yaxis.title={text:'Rendimento annualizzato',font:{size:11,color:C.faint,family:'Inter, system-ui, sans-serif'}};
@@ -943,16 +991,23 @@ function selectIsin(isin){current=DATA.find(x=>x.isin===isin)||current;if(!curre
 function setSubview(t){subv=t;
   ['markup','rendimento','autocall','rischio'].forEach(k=>{const el=document.getElementById('sv-'+k);if(el)el.hidden=(k!==t);});
   document.querySelectorAll('#subtabs button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.t===t?'true':'false'));
+  if(current){const h='#/'+encodeURIComponent(current.isin)+'/'+t;if(location.hash!==h)location.hash=h;}
   if(t==='markup'){try{Plotly.Plots.resize('chartMarkup');Plotly.Plots.resize('chartPrice');}catch(e){}}
   if(t==='rendimento'&&current){loadRendimento(current);}}
-function openProduct(isin,fromHash){selectIsin(isin);setSubview('markup');showView('product');
-  if(!fromHash){const h='#/'+encodeURIComponent(isin);if(location.hash!==h)location.hash=h;}}
+function openProduct(isin,fromHash,tab){
+  selectIsin(isin);
+  const t=tab||'markup';
+  setSubview(t);showView('product');
+  if(!fromHash){const h='#/'+encodeURIComponent(isin)+'/'+t;if(location.hash!==h)location.hash=h;}}
 
 /* ---------- router (hash) ---------- */
 function applyHash(){
-  const h=location.hash.replace(/^#\/?/,'');
-  if(h){const isin=decodeURIComponent(h);
-    if(DATA.some(x=>x.isin===isin)){openProduct(isin,true);return;}}
+  const raw=location.hash.replace(/^#\/?/,'');
+  if(!raw){showView('monitor');return;}
+  const parts=raw.split('/');
+  const isin=decodeURIComponent(parts[0]);
+  const tab=parts[1]||'markup';
+  if(DATA.some(x=>x.isin===isin)){openProduct(isin,true,tab);return;}
   showView('monitor');
 }
 
