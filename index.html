@@ -993,17 +993,24 @@ function renderScatterCometa(r,win){
     const m=means[i];const v=vols[i];if(!m||!v)return;
     const ms=m.slice(startIdx),vs=v.slice(startIdx);
     const isc=isCert(lb);const col=colorOf(lb,i);const n=ms.length;
-    if(n>4){const steps=Math.min(n,40);const step=Math.floor(n/steps);
-      for(let s=0;s<steps-1;s++){const a=Math.floor(s*step),b=Math.floor((s+1)*step);
-        const alpha=0.05+0.5*(s/steps);const c=col.replace(/[\d.]+\)$/,`${alpha.toFixed(2)})`);
+    // Scia continua: segmenti con opacità crescente, l'ultimo arriva ESATTAMENTE
+    // alla testa (vs[n-1]) così il pallino è sempre collegato alla cometa.
+    if(n>2){const steps=Math.min(n-1,40);
+      for(let s=0;s<steps;s++){
+        const a=Math.round(s*(n-1)/steps),b=Math.round((s+1)*(n-1)/steps);
+        if(b<=a)continue;
+        const alpha=0.05+0.55*(s/steps);
+        const c=col.replace(/[\d.]+\)$/,`${alpha.toFixed(2)})`);
         traces.push({x:vs.slice(a,b+1),y:ms.slice(a,b+1),mode:'lines',type:'scatter',
-          showlegend:false,hoverinfo:'skip',line:{color:c,width:isc?3:1.5}});}}
+          showlegend:false,hoverinfo:'skip',line:{color:c,width:isc?3:1.5,shape:'spline',smoothing:0.3}});}}
+    // Testa cometa (posizione rischio/rendimento più recente)
     traces.push({x:[vs[n-1]],y:[ms[n-1]],mode:'markers+text',type:'scatter',
       name:labelOf(lb),text:[labelOf(lb)],
       textposition:ms[n-1]>0?'top center':'bottom center',
       textfont:{size:10.5,color:isc?'rgba(201,162,78,1)':C.muted,family:'Inter, system-ui, sans-serif'},
       marker:{size:isc?13:9,color:col,symbol:'circle',line:{color:'rgba(20,28,36,.7)',width:1.5}},
       hovertemplate:`<b>${labelOf(lb)}</b><br>Vol: %{x:.1%}<br>Rend: %{y:+.1%}<extra></extra>`});
+    // Coda (punto di partenza, sbiadito)
     traces.push({x:[vs[0]],y:[ms[0]],mode:'markers',type:'scatter',showlegend:false,
       hoverinfo:'skip',marker:{size:isc?5:3,color:col.replace(/[\d.]+\)$/,'0.12)')}});});
   const Ls=baseLayout();
@@ -1015,13 +1022,13 @@ function renderScatterCometa(r,win){
     vs.forEach(x=>{if(x!=null&&isFinite(x))allV.push(x);});});
   if(allM.length&&allV.length){
     const minM=Math.min(...allM),maxM=Math.max(...allM);
-    const maxV=Math.max(...allV),minV=Math.min(0,Math.min(...allV));
+    const maxV=Math.max(...allV);
     const padM=Math.max((maxM-minM)*0.30,0.02);
     const padV=Math.max(maxV*0.30,0.02);
     Ls.yaxis.range=[minM-padM,maxM+padM];
-    Ls.xaxis.range=[Math.max(0,minV-padV*0.3),maxV+padV];
+    Ls.xaxis.range=[-0.03,maxV+padV];   // volatilità: minimo fisso -3% per respiro
     Ls.yaxis.autorange=false;Ls.xaxis.autorange=false;}
-  // --- Assi marcati ed evidenti ---
+  // --- Assi marcati, zero evidenziato, frecce di continuazione ---
   Ls.xaxis.title={text:'Volatilità annualizzata',font:{size:12.5,color:C.muted,family:'Inter, system-ui, sans-serif'}};
   Ls.yaxis.title={text:'Rendimento annualizzato',font:{size:12.5,color:C.muted,family:'Inter, system-ui, sans-serif'}};
   Ls.yaxis.tickformat='+.0%';Ls.xaxis.tickformat='.0%';
@@ -1029,10 +1036,18 @@ function renderScatterCometa(r,win){
   Ls.yaxis.showline=true;Ls.yaxis.linecolor='rgba(201,162,78,.5)';Ls.yaxis.linewidth=1.5;
   Ls.xaxis.showgrid=true;Ls.xaxis.gridcolor='rgba(255,255,255,.04)';
   Ls.yaxis.showgrid=true;Ls.yaxis.gridcolor='rgba(255,255,255,.04)';
-  Ls.xaxis.zeroline=true;Ls.xaxis.zerolinecolor='rgba(144,162,176,.3)';Ls.xaxis.zerolinewidth=1;
-  Ls.yaxis.zeroline=true;Ls.yaxis.zerolinecolor='rgba(144,162,176,.3)';Ls.yaxis.zerolinewidth=1;
-  Ls.shapes=[{type:'line',xref:'paper',x0:0,x1:1,y0:0,y1:0,line:{color:'rgba(144,162,176,.15)',width:1,dash:'dot'}}];
-  Ls.margin={l:70,r:24,t:20,b:60};Ls.showlegend=false;
+  // Zero evidenziato (linee più marcate sullo 0% di entrambi gli assi)
+  Ls.xaxis.zeroline=true;Ls.xaxis.zerolinecolor='rgba(201,162,78,.55)';Ls.xaxis.zerolinewidth=2;
+  Ls.yaxis.zeroline=true;Ls.yaxis.zerolinecolor='rgba(201,162,78,.55)';Ls.yaxis.zerolinewidth=2;
+  // Frecce a fine asse (indicano continuazione)
+  Ls.annotations=[
+    {xref:'paper',yref:'paper',x:1,y:0,ax:-18,ay:0,xanchor:'left',yanchor:'middle',
+     text:'',showarrow:true,arrowhead:2,arrowsize:1.4,arrowwidth:1.5,arrowcolor:'rgba(201,162,78,.6)'},
+    {xref:'paper',yref:'paper',x:0,y:1,ax:0,ay:18,xanchor:'center',yanchor:'bottom',
+     text:'',showarrow:true,arrowhead:2,arrowsize:1.4,arrowwidth:1.5,arrowcolor:'rgba(201,162,78,.6)'}
+  ];
+  Ls.shapes=[];
+  Ls.margin={l:70,r:30,t:24,b:60};Ls.showlegend=false;
   Plotly.react('chartScatter',traces,Ls,PCFG);fadeIn('chartScatter');forceRedraw('chartScatter');}
 
 function applyWindow(){if(!current)return;const w=sliceByWindow(current,win);renderStats(w);renderMarkup(w);renderPrice(w);}
