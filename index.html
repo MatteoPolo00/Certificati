@@ -561,6 +561,19 @@ function baseLayout(){return{
 };}
 const PCFG={responsive:true,displayModeBar:false,scrollZoom:false};
 
+/* Forza ridisegno corretto: risolve grafici tagliati o scale sbagliate
+   quando il container non era ancora dimensionato al momento del react */
+function forceRedraw(id,reAutorange){
+  const el=document.getElementById(id);if(!el)return;
+  // Doppio rAF: aspetta che il layout del browser sia stabile, poi resize.
+  // Risolve grafici tagliati / ultimo punto mancante al primo render.
+  requestAnimationFrame(()=>{requestAnimationFrame(()=>{
+    try{Plotly.Plots.resize(id);
+      if(reAutorange)Plotly.relayout(id,{'xaxis.autorange':true,'yaxis.autorange':true});}catch(e){}
+    setTimeout(()=>{try{Plotly.Plots.resize(id);
+      if(reAutorange)Plotly.relayout(id,{'xaxis.autorange':true,'yaxis.autorange':true});}catch(e){}},150);});});
+}
+
 function renderMarkup(r){const x=r.dates;
   const vals=r.cost_premium||[];
   const pos=vals.map(v=>v==null?null:(v>=0?v:0));
@@ -582,7 +595,7 @@ function renderMarkup(r){const x=r.dates;
     line:{color:'rgba(144,162,176,.25)',width:1,dash:'dot'}}];
   L.yaxis.ticksuffix='%';
   L.yaxis.tickformat='+.2f';
-  Plotly.react('chartMarkup',traces,L,PCFG);}
+  Plotly.react('chartMarkup',traces,L,PCFG);forceRedraw('chartMarkup');}
 
 function renderPrice(r){const x=r.dates;
   const traces=[
@@ -601,7 +614,7 @@ function renderPrice(r){const x=r.dates;
     font:{size:11.5,color:C.muted,family:'Inter, system-ui, sans-serif'},
     bgcolor:'rgba(0,0,0,0)',borderwidth:0};
   L.margin.t=28;
-  Plotly.react('chartPrice',traces,L,PCFG);}
+  Plotly.react('chartPrice',traces,L,PCFG);forceRedraw('chartPrice');}
 
 /* ---------- util ---------- */
 function lastNum(a){if(!a)return null;for(let i=a.length-1;i>=0;i--){if(a[i]!=null&&!Number.isNaN(a[i]))return a[i];}return null;}
@@ -886,20 +899,18 @@ function renderRendimento(r){
   if(document.getElementById('chartRollMean')){
     const traces=labels.map((lb,i)=>mkTrace(lb,i,dates,means[i],{}));
     const Lm=baseLayout();Lm.yaxis.tickformat='+.0%';Lm.yaxis.ticksuffix='';
-    Lm.yaxis.autorange=true;
-    if(xRange){Lm.xaxis.range=xRange;Lm.xaxis.autorange=false;}
+    Lm.yaxis.autorange=true;Lm.xaxis.autorange=true;
     Lm.shapes=[{type:'line',xref:'paper',x0:0,x1:1,y0:0,y1:0,line:{color:'rgba(144,162,176,.15)',width:1,dash:'dot'}}];
     Lm.showlegend=true;Lm.legend=mkLegend();Lm.margin.b=70;
-    Plotly.react('chartRollMean',traces,Lm,PCFG);fadeIn('chartRollMean');}
+    Plotly.react('chartRollMean',traces,Lm,PCFG);fadeIn('chartRollMean');forceRedraw('chartRollMean',true);}
 
   if(document.getElementById('chartRollVol')){
     const traces=labels.map((lb,i)=>mkTrace(lb,i,dates,vols[i],
       {hovertemplate:`<b>${labelOf(lb)}</b>\u00a0\u00a0%{y:.1%}<extra></extra>`}));
     const Lv=baseLayout();Lv.yaxis.tickformat='.0%';Lv.yaxis.ticksuffix='';
-    Lv.yaxis.autorange=true;
-    if(xRange){Lv.xaxis.range=xRange;Lv.xaxis.autorange=false;}
+    Lv.yaxis.autorange=true;Lv.xaxis.autorange=true;
     Lv.showlegend=true;Lv.legend=mkLegend();Lv.margin.b=70;
-    Plotly.react('chartRollVol',traces,Lv,PCFG);fadeIn('chartRollVol');}}
+    Plotly.react('chartRollVol',traces,Lv,PCFG);fadeIn('chartRollVol');forceRedraw('chartRollVol',true);}}
 
 function fadeIn(id){const el=document.getElementById(id);if(!el)return;
   el.classList.remove('plot-fadein');void el.offsetWidth;el.classList.add('plot-fadein');}
