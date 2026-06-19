@@ -396,6 +396,7 @@
 
     <!-- sotto-viste future (segnaposto) -->
     <div class="subview" id="sv-rendimento" hidden>
+      <div id="rendLoading" hidden><div class="empty" style="padding:32px">Caricamento dati rendimento…</div></div>
       <div class="subtabs" id="rendtabs" role="group" style="margin-bottom:14px">
         <button data-rt="mean" aria-pressed="true">Rendimento</button>
         <button data-rt="vol" aria-pressed="false">Volatilità</button>
@@ -948,13 +949,13 @@ function loadRendimento(r){
   const isin=r.isin;
   if(rendCache[isin]){renderRendimento(rendCache[isin]);setRendTab(rendTab);return;}
   const isin_safe=isin.replace(/[^A-Za-z0-9]/g,'_');
-  const host=document.getElementById('rv-mean');
-  if(host)host.innerHTML='<div class="empty" style="padding:32px">Caricamento dati rendimento…</div>';
-  // 1. Carica lista sigle del certificato
+  // Mostro stato di caricamento SENZA distruggere i div dei grafici
+  const loadingEl=document.getElementById('rendLoading');
+  if(loadingEl)loadingEl.hidden=false;
   fetch('rendimento/'+isin_safe+'.json')
     .then(res=>{if(!res.ok)throw new Error('no file');return res.json();})
     .then(data=>{
-      // Mappa nuova struttura → compatibile con renderRendimento
+      if(loadingEl)loadingEl.hidden=true;
       const assembled={
         isin,
         rendimento_dates:  data.dates||[],
@@ -966,9 +967,9 @@ function loadRendimento(r){
         scatter_vol:       data.vol_tot||[],
         scatter_labels:    data.labels||[]};
       rendCache[isin]=assembled;
-      renderRendimento(assembled);setRendTab(rendTab);
-      setTimeout(()=>['chartRollMean','chartRollVol','chartScatter'].forEach(id=>{try{Plotly.Plots.resize(id);}catch(e){}}),80);})
-    .catch(()=>{if(host)host.innerHTML='<div class="card placeholder">Dati rendimento non disponibili per questo certificato.</div>';});
+      renderRendimento(assembled);setRendTab(rendTab);})
+    .catch(()=>{if(loadingEl){loadingEl.hidden=false;
+      loadingEl.innerHTML='<div class="card placeholder">Dati rendimento non disponibili per questo certificato.</div>';}});
 }
 
 function renderScatterCometa(r,win){
@@ -1010,7 +1011,7 @@ function renderScatterCometa(r,win){
   Ls.yaxis.tickformat='+.0%';Ls.xaxis.tickformat='.0%';
   Ls.shapes=[{type:'line',xref:'paper',x0:0,x1:1,y0:0,y1:0,line:{color:'rgba(144,162,176,.15)',width:1,dash:'dot'}}];
   Ls.margin={l:64,r:20,t:16,b:52};Ls.showlegend=false;
-  Plotly.react('chartScatter',traces,Ls,PCFG);}
+  Plotly.react('chartScatter',traces,Ls,PCFG);fadeIn('chartScatter');forceRedraw('chartScatter',true);}
 
 function applyWindow(){if(!current)return;const w=sliceByWindow(current,win);renderStats(w);renderMarkup(w);renderPrice(w);}
 function selectIsin(isin){current=DATA.find(x=>x.isin===isin)||current;if(!current)return;
