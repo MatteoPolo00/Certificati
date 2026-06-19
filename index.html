@@ -1029,10 +1029,11 @@ function setSubview(t){subv=t;
   if(t==='rendimento'&&current){loadRendimento(current);}}
 function openProduct(isin,fromHash,tab){
   const changed=!current||current.isin!==isin;
-  selectIsin(isin);
   if(changed)rendTab='mean';  // reset sotto-scheda rendimento sul nuovo prodotto
   const t=tab||'markup';
-  setSubview(t);showView('product');
+  showView('product');   // mostro il contenitore PRIMA di disegnare i grafici
+  selectIsin(isin);      // ora Plotly disegna con dimensioni reali
+  setSubview(t);
   if(!fromHash){const h='#/'+encodeURIComponent(isin)+'/'+t;if(location.hash!==h)location.hash=h;}}
 
 /* ---------- router (hash) ---------- */
@@ -1050,7 +1051,6 @@ function applyHash(){
 function showView(v){
   document.getElementById('viewMonitor').classList.toggle('active',v==='monitor');
   document.getElementById('viewProduct').classList.toggle('active',v==='product');
-  if(v==='product'&&subv==='markup'){try{Plotly.Plots.resize('chartMarkup');Plotly.Plots.resize('chartPrice');}catch(e){}}
   window.scrollTo({top:0,behavior:'instant'in document.documentElement.style?'instant':'auto'});
 }
 
