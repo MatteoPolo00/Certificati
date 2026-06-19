@@ -567,29 +567,32 @@ const PCFG={responsive:true,displayModeBar:false,scrollZoom:false};
 // ResizeObserver per ogni grafico: ridisegna in modo deterministico
 // quando il contenitore raggiunge/cambia le sue dimensioni reali.
 const _chartObservers={};
-function ensureObserver(id,reAutorange){
+function ensureObserver(id){
   if(_chartObservers[id])return;
   const el=document.getElementById(id);if(!el||typeof ResizeObserver==='undefined')return;
   let lastW=0,lastH=0;
   const ro=new ResizeObserver(entries=>{
     for(const e of entries){
       const w=e.contentRect.width,h=e.contentRect.height;
-      if(w<10||h<10)continue;                       // div nascosto
-      if(Math.abs(w-lastW)<1&&Math.abs(h-lastH)<1)continue; // nessun cambio reale
+      if(w<10||h<10)continue;
+      if(Math.abs(w-lastW)<1&&Math.abs(h-lastH)<1)continue;
       lastW=w;lastH=h;
-      try{Plotly.Plots.resize(id);
-        if(reAutorange)Plotly.relayout(id,{'xaxis.autorange':true,'yaxis.autorange':true});}catch(err){}
+      try{Plotly.Plots.resize(id);}catch(err){}
     }});
   ro.observe(el);_chartObservers[id]=ro;
 }
 
+// Redraw solido: attacca observer + forza resize dopo che il layout è stabile.
+// reAutorange=true → riapplica autorange (per markup/price/rolling con assi auto).
+// reAutorange=false → NON tocca i range (per lo scatter che ha range fissi).
 function forceRedraw(id,reAutorange){
   const el=document.getElementById(id);if(!el)return;
-  ensureObserver(id,reAutorange);
-  // Primo resize immediato + uno dopo il layout (copre il caso già-visibile)
-  requestAnimationFrame(()=>{requestAnimationFrame(()=>{
-    try{Plotly.Plots.resize(id);
-      if(reAutorange)Plotly.relayout(id,{'xaxis.autorange':true,'yaxis.autorange':true});}catch(e){}});});
+  ensureObserver(id);
+  const fix=()=>{try{
+    Plotly.Plots.resize(id);
+    if(reAutorange)Plotly.relayout(id,{'xaxis.autorange':true,'yaxis.autorange':true});
+  }catch(e){}};
+  requestAnimationFrame(()=>requestAnimationFrame(fix));
 }
 
 function renderMarkup(r){const x=r.dates;
@@ -613,7 +616,7 @@ function renderMarkup(r){const x=r.dates;
     line:{color:'rgba(144,162,176,.25)',width:1,dash:'dot'}}];
   L.yaxis.ticksuffix='%';
   L.yaxis.tickformat='+.2f';
-  Plotly.react('chartMarkup',traces,L,PCFG);forceRedraw('chartMarkup');}
+  Plotly.react('chartMarkup',traces,L,PCFG);forceRedraw('chartMarkup',true);}
 
 function renderPrice(r){const x=r.dates;
   const traces=[
@@ -632,7 +635,7 @@ function renderPrice(r){const x=r.dates;
     font:{size:11.5,color:C.muted,family:'Inter, system-ui, sans-serif'},
     bgcolor:'rgba(0,0,0,0)',borderwidth:0};
   L.margin.t=28;
-  Plotly.react('chartPrice',traces,L,PCFG);forceRedraw('chartPrice');}
+  Plotly.react('chartPrice',traces,L,PCFG);forceRedraw('chartPrice',true);}
 
 /* ---------- util ---------- */
 function lastNum(a){if(!a)return null;for(let i=a.length-1;i>=0;i--){if(a[i]!=null&&!Number.isNaN(a[i]))return a[i];}return null;}
@@ -1026,20 +1029,19 @@ function renderScatterCometa(r,win){
     const padM=Math.max((maxM-minM)*0.30,0.02);
     const padV=Math.max(maxV*0.30,0.02);
     Ls.yaxis.range=[minM-padM,maxM+padM];
-    Ls.xaxis.range=[-0.03,maxV+padV];   // volatilità: minimo fisso -3% per respiro
+    Ls.xaxis.range=[0,maxV+padV];   // volatilità: da 0 (no valori negativi)
     Ls.yaxis.autorange=false;Ls.xaxis.autorange=false;}
-  // --- Assi marcati, zero evidenziato, frecce di continuazione ---
+  // --- Un solo asse cartesiano (zeroline), nessuna linea di bordo ---
   Ls.xaxis.title={text:'Volatilità annualizzata',font:{size:12.5,color:C.muted,family:'Inter, system-ui, sans-serif'}};
   Ls.yaxis.title={text:'Rendimento annualizzato',font:{size:12.5,color:C.muted,family:'Inter, system-ui, sans-serif'}};
   Ls.yaxis.tickformat='+.0%';Ls.xaxis.tickformat='.0%';
-  Ls.xaxis.showline=true;Ls.xaxis.linecolor='rgba(201,162,78,.5)';Ls.xaxis.linewidth=1.5;
-  Ls.yaxis.showline=true;Ls.yaxis.linecolor='rgba(201,162,78,.5)';Ls.yaxis.linewidth=1.5;
+  Ls.xaxis.showline=false;Ls.yaxis.showline=false;   // niente bordo
   Ls.xaxis.showgrid=true;Ls.xaxis.gridcolor='rgba(255,255,255,.04)';
   Ls.yaxis.showgrid=true;Ls.yaxis.gridcolor='rgba(255,255,255,.04)';
-  // Zero evidenziato (linee più marcate sullo 0% di entrambi gli assi)
-  Ls.xaxis.zeroline=true;Ls.xaxis.zerolinecolor='rgba(201,162,78,.55)';Ls.xaxis.zerolinewidth=2;
-  Ls.yaxis.zeroline=true;Ls.yaxis.zerolinecolor='rgba(201,162,78,.55)';Ls.yaxis.zerolinewidth=2;
-  // Frecce a fine asse (indicano continuazione)
+  // Asse = zeroline (dorata, marcata). Vol parte da 0 → coincide col bordo sinistro.
+  Ls.xaxis.zeroline=true;Ls.xaxis.zerolinecolor='rgba(201,162,78,.6)';Ls.xaxis.zerolinewidth=2;
+  Ls.yaxis.zeroline=true;Ls.yaxis.zerolinecolor='rgba(201,162,78,.6)';Ls.yaxis.zerolinewidth=2;
+  // Frecce a fine asse
   Ls.annotations=[
     {xref:'paper',yref:'paper',x:1,y:0,ax:-18,ay:0,xanchor:'left',yanchor:'middle',
      text:'',showarrow:true,arrowhead:2,arrowsize:1.4,arrowwidth:1.5,arrowcolor:'rgba(201,162,78,.6)'},
