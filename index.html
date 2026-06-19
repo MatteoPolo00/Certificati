@@ -215,7 +215,7 @@
   .xlsbtn:hover{border-color:var(--faint);transform:translateY(-1px)}
   .xlsbtn:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
   .xlsbtn svg{display:block}
-  .plot{width:100%;height:380px} .plot.sm{height:300px}
+  .plot{width:100%;height:380px} .plot.sm{height:300px} .plot.tall{height:520px}
 
   .foot{margin-top:30px;border-top:1px solid var(--hair-soft);padding-top:22px;display:flex;justify-content:space-between;align-items:flex-end;gap:18px;flex-wrap:wrap}
   .foot .method{font-size:11.5px;color:var(--faint);line-height:1.7;max-width:60ch}
@@ -433,7 +433,7 @@
               </div>
             </div>
           </div>
-          <div id="chartScatter" class="plot plot-fadein"></div>
+          <div id="chartScatter" class="plot tall plot-fadein"></div>
         </div>
       </div>
     </div>
@@ -1007,12 +1007,33 @@ function renderScatterCometa(r,win){
     traces.push({x:[vs[0]],y:[ms[0]],mode:'markers',type:'scatter',showlegend:false,
       hoverinfo:'skip',marker:{size:isc?5:3,color:col.replace(/[\d.]+\)$/,'0.12)')}});});
   const Ls=baseLayout();
-  Ls.xaxis.title={text:'Volatilità annualizzata',font:{size:11,color:C.faint,family:'Inter, system-ui, sans-serif'}};
-  Ls.yaxis.title={text:'Rendimento annualizzato',font:{size:11,color:C.faint,family:'Inter, system-ui, sans-serif'}};
+  // --- Range "zoom out" con margine 30% per leggere la frontiera efficiente ---
+  let allM=[],allV=[];
+  labels.forEach((lb,i)=>{const m=means[i],v=vols[i];if(!m||!v)return;
+    const ms=m.slice(startIdx),vs=v.slice(startIdx);
+    ms.forEach(x=>{if(x!=null&&isFinite(x))allM.push(x);});
+    vs.forEach(x=>{if(x!=null&&isFinite(x))allV.push(x);});});
+  if(allM.length&&allV.length){
+    const minM=Math.min(...allM),maxM=Math.max(...allM);
+    const maxV=Math.max(...allV),minV=Math.min(0,Math.min(...allV));
+    const padM=Math.max((maxM-minM)*0.30,0.02);
+    const padV=Math.max(maxV*0.30,0.02);
+    Ls.yaxis.range=[minM-padM,maxM+padM];
+    Ls.xaxis.range=[Math.max(0,minV-padV*0.3),maxV+padV];
+    Ls.yaxis.autorange=false;Ls.xaxis.autorange=false;}
+  // --- Assi marcati ed evidenti ---
+  Ls.xaxis.title={text:'Volatilità annualizzata',font:{size:12.5,color:C.muted,family:'Inter, system-ui, sans-serif'}};
+  Ls.yaxis.title={text:'Rendimento annualizzato',font:{size:12.5,color:C.muted,family:'Inter, system-ui, sans-serif'}};
   Ls.yaxis.tickformat='+.0%';Ls.xaxis.tickformat='.0%';
+  Ls.xaxis.showline=true;Ls.xaxis.linecolor='rgba(201,162,78,.5)';Ls.xaxis.linewidth=1.5;
+  Ls.yaxis.showline=true;Ls.yaxis.linecolor='rgba(201,162,78,.5)';Ls.yaxis.linewidth=1.5;
+  Ls.xaxis.showgrid=true;Ls.xaxis.gridcolor='rgba(255,255,255,.04)';
+  Ls.yaxis.showgrid=true;Ls.yaxis.gridcolor='rgba(255,255,255,.04)';
+  Ls.xaxis.zeroline=true;Ls.xaxis.zerolinecolor='rgba(144,162,176,.3)';Ls.xaxis.zerolinewidth=1;
+  Ls.yaxis.zeroline=true;Ls.yaxis.zerolinecolor='rgba(144,162,176,.3)';Ls.yaxis.zerolinewidth=1;
   Ls.shapes=[{type:'line',xref:'paper',x0:0,x1:1,y0:0,y1:0,line:{color:'rgba(144,162,176,.15)',width:1,dash:'dot'}}];
-  Ls.margin={l:64,r:20,t:16,b:52};Ls.showlegend=false;
-  Plotly.react('chartScatter',traces,Ls,PCFG);fadeIn('chartScatter');forceRedraw('chartScatter',true);}
+  Ls.margin={l:70,r:24,t:20,b:60};Ls.showlegend=false;
+  Plotly.react('chartScatter',traces,Ls,PCFG);fadeIn('chartScatter');forceRedraw('chartScatter');}
 
 function applyWindow(){if(!current)return;const w=sliceByWindow(current,win);renderStats(w);renderMarkup(w);renderPrice(w);}
 function selectIsin(isin){current=DATA.find(x=>x.isin===isin)||current;if(!current)return;
