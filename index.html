@@ -405,10 +405,7 @@
         <div class="card chart-card">
           <div class="chart-head">
             <div class="t">Rendimento annualizzato rolling <span class="badge">252 gg</span></div>
-            <div class="hd-right">
-              <span class="h">media mobile · % ann.</span>
-              <button id="toggleEqMean" onclick="toggleEquipesato()" style="margin-left:10px;appearance:none;background:var(--panel-2);border:1px solid var(--hair);border-radius:7px;color:var(--muted);cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:10.5px;padding:4px 10px;transition:color .15s,border-color .15s">Paniere equipesato ✓</button>
-            </div>
+            <div class="hd-right"><span class="h">media mobile · % ann.</span></div>
           </div>
           <div id="chartRollMean" class="plot plot-fadein"></div>
         </div>
@@ -417,10 +414,7 @@
         <div class="card chart-card">
           <div class="chart-head">
             <div class="t">Volatilità annualizzata rolling <span class="badge">252 gg</span></div>
-            <div class="hd-right">
-              <span class="h">std mobile · % ann.</span>
-              <button id="toggleEqVol" onclick="toggleEquipesato()" style="margin-left:10px;appearance:none;background:var(--panel-2);border:1px solid var(--hair);border-radius:7px;color:var(--muted);cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:10.5px;padding:4px 10px;transition:color .15s,border-color .15s">Paniere equipesato ✓</button>
-            </div>
+            <div class="hd-right"><span class="h">std mobile · % ann.</span></div>
           </div>
           <div id="chartRollVol" class="plot plot-fadein"></div>
         </div>
@@ -874,19 +868,17 @@ function renderRendimento(r){
     itemsizing:'constant',itemwidth:16,
     traceorder:'reversed'};}
 
+  // Linee pulite nei grafici; cerchietto in legenda ottenuto con lines+markers
+  // ma marker invisibile sui dati (opacity 0) e visibile solo in legenda
   function mkTrace(lb,i,x,y,extra){
     const isc=isCert(lb),isbm=lb==='Indice',iseq=isEq(lb);
     const col=colorOf(lb,i);
-    const hideEq=iseq&&!showEquipesato;
-    const vis=(isbm&&!showBenchmark)||hideEq?'legendonly':true;
-    const t={x,y,type:'scatter',mode:'lines+markers',name:labelOf(lb),visible:vis,
-
+    const vis=(isbm&&!showBenchmark)?'legendonly':true;
+    return{x,y,type:'scatter',mode:'lines+markers',name:labelOf(lb),visible:vis,
       line:{color:col,width:isc?2.2:isbm?1.4:iseq?1.6:1.3,
         dash:isbm?'dot':iseq?'dash':'solid',shape:'spline',smoothing:0.4},
-      marker:{symbol:'circle',size:isc?6:4,color:col,
-        line:{color:'rgba(0,0,0,0)',width:0},maxdisplayed:0},
-      hovertemplate:`<b>${labelOf(lb)}</b>\u00a0\u00a0%{y:+.1%}<extra></extra>`,...extra};
-    return t;}
+      marker:{symbol:'circle',size:7,color:col,opacity:0},
+      hovertemplate:`<b>${labelOf(lb)}</b>\u00a0\u00a0%{y:+.1%}<extra></extra>`,...extra};}
 
   const vd=dates.filter(Boolean);
   const xRange=vd.length?[vd[0],vd[vd.length-1]]:null;
@@ -912,22 +904,16 @@ function renderRendimento(r){
 function fadeIn(id){const el=document.getElementById(id);if(!el)return;
   el.classList.remove('plot-fadein');void el.offsetWidth;el.classList.add('plot-fadein');}
 
-let showEquipesato=true;
-function toggleEquipesato(){
-  showEquipesato=!showEquipesato;
-  const lbl=showEquipesato?'Paniere equipesato ✓':'Paniere equipesato';
-  ['toggleEqMean','toggleEqVol'].forEach(id=>{const b=document.getElementById(id);
-    if(b){b.textContent=lbl;b.style.color=showEquipesato?'var(--brass)':'var(--faint)';}});
-  if(current)renderRendimento(current);}
-
 let rendTab='mean',scatterWin='all';
 function setRendTab(t){rendTab=t;
   ['mean','vol','scatter'].forEach(k=>{const el=document.getElementById('rv-'+k);if(el)el.hidden=(k!==t);});
   document.querySelectorAll('#rendtabs button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.rt===t?'true':'false'));
   if(!current)return;
-  if(t==='mean'){try{Plotly.Plots.resize('chartRollMean');}catch(e){}}
-  if(t==='vol'){try{Plotly.Plots.resize('chartRollVol');}catch(e){}}
-  if(t==='scatter'){renderScatterCometa(current,scatterWin);setTimeout(()=>{try{Plotly.Plots.resize('chartScatter');}catch(e){}},80);}}
+  // delay per dare tempo al browser di applicare hidden=false prima del resize
+  const doResize=id=>setTimeout(()=>{try{Plotly.Plots.resize(id);}catch(e){}},60);
+  if(t==='mean')doResize('chartRollMean');
+  if(t==='vol')doResize('chartRollVol');
+  if(t==='scatter'){renderScatterCometa(current,scatterWin);doResize('chartScatter');}}
 
 let rendCache={};
 function loadRendimento(r){
@@ -1013,7 +999,9 @@ function setSubview(t){subv=t;
   if(t==='markup'){try{Plotly.Plots.resize('chartMarkup');Plotly.Plots.resize('chartPrice');}catch(e){}}
   if(t==='rendimento'&&current){loadRendimento(current);}}
 function openProduct(isin,fromHash,tab){
+  const changed=!current||current.isin!==isin;
   selectIsin(isin);
+  if(changed)rendTab='mean';  // reset sotto-scheda rendimento sul nuovo prodotto
   const t=tab||'markup';
   setSubview(t);showView('product');
   if(!fromHash){const h='#/'+encodeURIComponent(isin)+'/'+t;if(location.hash!==h)location.hash=h;}}
