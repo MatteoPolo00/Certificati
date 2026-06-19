@@ -217,6 +217,22 @@
   .xlsbtn svg{display:block}
   .plot{width:100%;height:380px} .plot.sm{height:300px} .plot.tall{height:520px}
 
+  /* nav principale */
+  .mainnav{display:flex;gap:4px;margin:0 0 14px;padding:4px;background:var(--panel-2);border:1px solid var(--hair);border-radius:11px;width:fit-content}
+  .mainnav button{appearance:none;background:transparent;border:none;border-radius:8px;color:var(--muted);cursor:pointer;font-family:'Cinzel',serif;font-size:12.5px;letter-spacing:.08em;padding:8px 18px;transition:all .18s}
+  .mainnav button[aria-pressed="true"]{background:var(--brass);color:#0C1116;font-weight:600}
+  .mainnav button:hover:not([aria-pressed="true"]){color:var(--txt)}
+
+  /* slider frontier */
+  .fr-slider-wrap{padding:18px 8px 6px}
+  #frSlider{-webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:3px;
+    background:linear-gradient(90deg,rgba(201,162,78,.5),rgba(201,162,78,.15));outline:none;cursor:pointer}
+  #frSlider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:18px;height:18px;border-radius:50%;
+    background:var(--brass);border:3px solid var(--ink);box-shadow:0 0 0 1px var(--brass),0 2px 8px rgba(201,162,78,.4);cursor:pointer;transition:transform .12s}
+  #frSlider::-webkit-slider-thumb:hover{transform:scale(1.15)}
+  #frSlider::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:var(--brass);border:3px solid var(--ink);box-shadow:0 0 0 1px var(--brass);cursor:pointer}
+  .fr-slider-ticks{display:flex;justify-content:space-between;margin-top:8px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--faint)}
+
   .foot{margin-top:30px;border-top:1px solid var(--hair-soft);padding-top:22px;display:flex;justify-content:space-between;align-items:flex-end;gap:18px;flex-wrap:wrap}
   .foot .method{font-size:11.5px;color:var(--faint);line-height:1.7;max-width:60ch}
   .foot .method b{color:var(--muted);font-weight:500}
@@ -280,6 +296,12 @@
   </header>
 
   <div class="rule rise" style="--d:.05s"></div>
+
+  <nav class="mainnav rise" id="mainnav" style="--d:.06s">
+    <button data-nav="monitor" aria-pressed="true">Monitor</button>
+    <button data-nav="frontier" aria-pressed="false">Efficient Frontier</button>
+  </nav>
+
   <div class="banner" id="banner">Dati dimostrativi. Genera <code>data.json</code> con <code>export_markup_json.m</code> e caricalo accanto a <code>index.html</code>.</div>
 
   <!-- ================= MONITOR (screener) ================= -->
@@ -337,7 +359,54 @@
     </div>
   </section>
 
-  <!-- ================= PRODOTTO (pagina singola) ================= -->
+  <!-- ================= EFFICIENT FRONTIER ================= -->
+  <section id="viewFrontier" class="view">
+    <div class="mtoolbar" style="margin-top:4px">
+      <div class="fld"><label>Cerca</label>
+        <div style="position:relative">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--faint)"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>
+          <input id="fq" type="search" placeholder="ISIN, emittente…" style="padding-left:32px">
+        </div>
+      </div>
+      <div class="fld"><label>Emittente</label>
+        <div class="srch-wrap" id="fswEmit">
+          <input class="srch-inp" type="text" placeholder="Tutti gli emittenti" autocomplete="off" id="fsiEmit">
+          <div class="srch-drop" id="fsdEmit"></div>
+        </div>
+      </div>
+      <div class="fld"><label>Struttura</label>
+        <div class="srch-wrap" id="fswStruct">
+          <input class="srch-inp" type="text" placeholder="Tutte le strutture" autocomplete="off" id="fsiStruct">
+          <div class="srch-drop" id="fsdStruct"></div>
+        </div>
+      </div>
+      <div class="fld"><label>Sottostante</label>
+        <div class="srch-wrap" id="fswSott">
+          <input class="srch-inp" type="text" placeholder="Tutti i sottostanti" autocomplete="off" id="fsiSott">
+          <div class="srch-drop" id="fsdSott"></div>
+        </div>
+      </div>
+      <div class="fld"><label>Frequenza</label>
+        <div class="srch-wrap" id="fswFreq">
+          <input class="srch-inp" type="text" placeholder="Tutte le frequenze" autocomplete="off" id="fsiFreq">
+          <div class="srch-drop" id="fsdFreq"></div>
+        </div>
+      </div>
+      <button class="reset" id="fReset">azzera</button>
+    </div>
+
+    <div class="card chart-card" style="margin-top:4px">
+      <div class="chart-head">
+        <div class="t">Efficient Frontier <span class="badge" id="frCount">—</span></div>
+        <div class="hd-right"><span class="h" id="frDateLabel">—</span></div>
+      </div>
+      <div id="chartFrontier" class="plot tall"></div>
+      <div class="fr-slider-wrap">
+        <input type="range" id="frSlider" min="0" max="0" value="0" step="1">
+        <div class="fr-slider-ticks" id="frTicks"></div>
+      </div>
+    </div>
+  </section>
   <section id="viewProduct" class="view">
     <div class="prodhead">
       <div class="prodleft">
@@ -567,29 +636,32 @@ const PCFG={responsive:true,displayModeBar:false,scrollZoom:false};
 // ResizeObserver per ogni grafico: ridisegna in modo deterministico
 // quando il contenitore raggiunge/cambia le sue dimensioni reali.
 const _chartObservers={};
-function ensureObserver(id,reAutorange){
+function ensureObserver(id){
   if(_chartObservers[id])return;
   const el=document.getElementById(id);if(!el||typeof ResizeObserver==='undefined')return;
   let lastW=0,lastH=0;
   const ro=new ResizeObserver(entries=>{
     for(const e of entries){
       const w=e.contentRect.width,h=e.contentRect.height;
-      if(w<10||h<10)continue;                       // div nascosto
-      if(Math.abs(w-lastW)<1&&Math.abs(h-lastH)<1)continue; // nessun cambio reale
+      if(w<10||h<10)continue;
+      if(Math.abs(w-lastW)<1&&Math.abs(h-lastH)<1)continue;
       lastW=w;lastH=h;
-      try{Plotly.Plots.resize(id);
-        if(reAutorange)Plotly.relayout(id,{'xaxis.autorange':true,'yaxis.autorange':true});}catch(err){}
+      try{Plotly.Plots.resize(id);}catch(err){}
     }});
   ro.observe(el);_chartObservers[id]=ro;
 }
 
+// Redraw solido: attacca observer + forza resize dopo che il layout è stabile.
+// reAutorange=true → riapplica autorange (per markup/price/rolling con assi auto).
+// reAutorange=false → NON tocca i range (per lo scatter che ha range fissi).
 function forceRedraw(id,reAutorange){
   const el=document.getElementById(id);if(!el)return;
-  ensureObserver(id,reAutorange);
-  // Primo resize immediato + uno dopo il layout (copre il caso già-visibile)
-  requestAnimationFrame(()=>{requestAnimationFrame(()=>{
-    try{Plotly.Plots.resize(id);
-      if(reAutorange)Plotly.relayout(id,{'xaxis.autorange':true,'yaxis.autorange':true});}catch(e){}});});
+  ensureObserver(id);
+  const fix=()=>{try{
+    Plotly.Plots.resize(id);
+    if(reAutorange)Plotly.relayout(id,{'xaxis.autorange':true,'yaxis.autorange':true});
+  }catch(e){}};
+  requestAnimationFrame(()=>requestAnimationFrame(fix));
 }
 
 function renderMarkup(r){const x=r.dates;
@@ -613,7 +685,7 @@ function renderMarkup(r){const x=r.dates;
     line:{color:'rgba(144,162,176,.25)',width:1,dash:'dot'}}];
   L.yaxis.ticksuffix='%';
   L.yaxis.tickformat='+.2f';
-  Plotly.react('chartMarkup',traces,L,PCFG);forceRedraw('chartMarkup');}
+  Plotly.react('chartMarkup',traces,L,PCFG);forceRedraw('chartMarkup',true);}
 
 function renderPrice(r){const x=r.dates;
   const traces=[
@@ -632,7 +704,7 @@ function renderPrice(r){const x=r.dates;
     font:{size:11.5,color:C.muted,family:'Inter, system-ui, sans-serif'},
     bgcolor:'rgba(0,0,0,0)',borderwidth:0};
   L.margin.t=28;
-  Plotly.react('chartPrice',traces,L,PCFG);forceRedraw('chartPrice');}
+  Plotly.react('chartPrice',traces,L,PCFG);forceRedraw('chartPrice',true);}
 
 /* ---------- util ---------- */
 function lastNum(a){if(!a)return null;for(let i=a.length-1;i>=0;i--){if(a[i]!=null&&!Number.isNaN(a[i]))return a[i];}return null;}
@@ -993,17 +1065,24 @@ function renderScatterCometa(r,win){
     const m=means[i];const v=vols[i];if(!m||!v)return;
     const ms=m.slice(startIdx),vs=v.slice(startIdx);
     const isc=isCert(lb);const col=colorOf(lb,i);const n=ms.length;
-    if(n>4){const steps=Math.min(n,40);const step=Math.floor(n/steps);
-      for(let s=0;s<steps-1;s++){const a=Math.floor(s*step),b=Math.floor((s+1)*step);
-        const alpha=0.05+0.5*(s/steps);const c=col.replace(/[\d.]+\)$/,`${alpha.toFixed(2)})`);
+    // Scia continua: segmenti con opacità crescente, l'ultimo arriva ESATTAMENTE
+    // alla testa (vs[n-1]) così il pallino è sempre collegato alla cometa.
+    if(n>2){const steps=Math.min(n-1,40);
+      for(let s=0;s<steps;s++){
+        const a=Math.round(s*(n-1)/steps),b=Math.round((s+1)*(n-1)/steps);
+        if(b<=a)continue;
+        const alpha=0.05+0.55*(s/steps);
+        const c=col.replace(/[\d.]+\)$/,`${alpha.toFixed(2)})`);
         traces.push({x:vs.slice(a,b+1),y:ms.slice(a,b+1),mode:'lines',type:'scatter',
-          showlegend:false,hoverinfo:'skip',line:{color:c,width:isc?3:1.5}});}}
+          showlegend:false,hoverinfo:'skip',line:{color:c,width:isc?3:1.5,shape:'spline',smoothing:0.3}});}}
+    // Testa cometa (posizione rischio/rendimento più recente)
     traces.push({x:[vs[n-1]],y:[ms[n-1]],mode:'markers+text',type:'scatter',
       name:labelOf(lb),text:[labelOf(lb)],
       textposition:ms[n-1]>0?'top center':'bottom center',
       textfont:{size:10.5,color:isc?'rgba(201,162,78,1)':C.muted,family:'Inter, system-ui, sans-serif'},
       marker:{size:isc?13:9,color:col,symbol:'circle',line:{color:'rgba(20,28,36,.7)',width:1.5}},
       hovertemplate:`<b>${labelOf(lb)}</b><br>Vol: %{x:.1%}<br>Rend: %{y:+.1%}<extra></extra>`});
+    // Coda (punto di partenza, sbiadito)
     traces.push({x:[vs[0]],y:[ms[0]],mode:'markers',type:'scatter',showlegend:false,
       hoverinfo:'skip',marker:{size:isc?5:3,color:col.replace(/[\d.]+\)$/,'0.12)')}});});
   const Ls=baseLayout();
@@ -1015,24 +1094,31 @@ function renderScatterCometa(r,win){
     vs.forEach(x=>{if(x!=null&&isFinite(x))allV.push(x);});});
   if(allM.length&&allV.length){
     const minM=Math.min(...allM),maxM=Math.max(...allM);
-    const maxV=Math.max(...allV),minV=Math.min(0,Math.min(...allV));
+    const maxV=Math.max(...allV);
     const padM=Math.max((maxM-minM)*0.30,0.02);
     const padV=Math.max(maxV*0.30,0.02);
     Ls.yaxis.range=[minM-padM,maxM+padM];
-    Ls.xaxis.range=[Math.max(0,minV-padV*0.3),maxV+padV];
+    Ls.xaxis.range=[0,maxV+padV];   // volatilità: da 0 (no valori negativi)
     Ls.yaxis.autorange=false;Ls.xaxis.autorange=false;}
-  // --- Assi marcati ed evidenti ---
+  // --- Un solo asse cartesiano (zeroline), nessuna linea di bordo ---
   Ls.xaxis.title={text:'Volatilità annualizzata',font:{size:12.5,color:C.muted,family:'Inter, system-ui, sans-serif'}};
   Ls.yaxis.title={text:'Rendimento annualizzato',font:{size:12.5,color:C.muted,family:'Inter, system-ui, sans-serif'}};
   Ls.yaxis.tickformat='+.0%';Ls.xaxis.tickformat='.0%';
-  Ls.xaxis.showline=true;Ls.xaxis.linecolor='rgba(201,162,78,.5)';Ls.xaxis.linewidth=1.5;
-  Ls.yaxis.showline=true;Ls.yaxis.linecolor='rgba(201,162,78,.5)';Ls.yaxis.linewidth=1.5;
+  Ls.xaxis.showline=false;Ls.yaxis.showline=false;   // niente bordo
   Ls.xaxis.showgrid=true;Ls.xaxis.gridcolor='rgba(255,255,255,.04)';
   Ls.yaxis.showgrid=true;Ls.yaxis.gridcolor='rgba(255,255,255,.04)';
-  Ls.xaxis.zeroline=true;Ls.xaxis.zerolinecolor='rgba(144,162,176,.3)';Ls.xaxis.zerolinewidth=1;
-  Ls.yaxis.zeroline=true;Ls.yaxis.zerolinecolor='rgba(144,162,176,.3)';Ls.yaxis.zerolinewidth=1;
-  Ls.shapes=[{type:'line',xref:'paper',x0:0,x1:1,y0:0,y1:0,line:{color:'rgba(144,162,176,.15)',width:1,dash:'dot'}}];
-  Ls.margin={l:70,r:24,t:20,b:60};Ls.showlegend=false;
+  // Asse = zeroline (dorata, marcata). Vol parte da 0 → coincide col bordo sinistro.
+  Ls.xaxis.zeroline=true;Ls.xaxis.zerolinecolor='rgba(201,162,78,.6)';Ls.xaxis.zerolinewidth=2;
+  Ls.yaxis.zeroline=true;Ls.yaxis.zerolinecolor='rgba(201,162,78,.6)';Ls.yaxis.zerolinewidth=2;
+  // Frecce a fine asse
+  Ls.annotations=[
+    {xref:'paper',yref:'paper',x:1,y:0,ax:-18,ay:0,xanchor:'left',yanchor:'middle',
+     text:'',showarrow:true,arrowhead:2,arrowsize:1.4,arrowwidth:1.5,arrowcolor:'rgba(201,162,78,.6)'},
+    {xref:'paper',yref:'paper',x:0,y:1,ax:0,ay:18,xanchor:'center',yanchor:'bottom',
+     text:'',showarrow:true,arrowhead:2,arrowsize:1.4,arrowwidth:1.5,arrowcolor:'rgba(201,162,78,.6)'}
+  ];
+  Ls.shapes=[];
+  Ls.margin={l:70,r:30,t:24,b:60};Ls.showlegend=false;
   Plotly.react('chartScatter',traces,Ls,PCFG);fadeIn('chartScatter');forceRedraw('chartScatter');}
 
 function applyWindow(){if(!current)return;const w=sliceByWindow(current,win);renderStats(w);renderMarkup(w);renderPrice(w);}
@@ -1062,6 +1148,7 @@ function openProduct(isin,fromHash,tab){
 function applyHash(){
   const raw=location.hash.replace(/^#\/?/,'');
   if(!raw){showView('monitor');return;}
+  if(raw==='frontier'){showView('frontier');return;}
   const parts=raw.split('/');
   const isin=decodeURIComponent(parts[0]);
   const tab=parts[1]||'markup';
@@ -1073,8 +1160,162 @@ function applyHash(){
 function showView(v){
   document.getElementById('viewMonitor').classList.toggle('active',v==='monitor');
   document.getElementById('viewProduct').classList.toggle('active',v==='product');
+  const vf=document.getElementById('viewFrontier');if(vf)vf.classList.toggle('active',v==='frontier');
+  // nav: Monitor attivo per monitor+product, Frontier per frontier
+  document.querySelectorAll('#mainnav button').forEach(b=>{
+    const on=(b.dataset.nav==='frontier')?(v==='frontier'):(v==='monitor'||v==='product');
+    b.setAttribute('aria-pressed',on?'true':'false');});
+  if(v==='frontier')openFrontier();
   window.scrollTo({top:0,behavior:'instant'in document.documentElement.style?'instant':'auto'});
 }
+
+/* ================= EFFICIENT FRONTIER ================= */
+let FRONTIER=null, frDates=[], frDateIdx=0;
+const frFilters={q:'',emit:'',struct:'',sott:'',freq:''};
+
+function loadFrontier(){
+  if(FRONTIER)return Promise.resolve(FRONTIER);
+  return fetch('frontier.json')
+    .then(r=>r.ok?r.json():Promise.reject())
+    .then(d=>{FRONTIER=d;frDates=d.dates||[];frDateIdx=frDates.length-1;return d;})
+    .catch(()=>{FRONTIER=demoFrontier();frDates=FRONTIER.dates;frDateIdx=frDates.length-1;return FRONTIER;});
+}
+
+// Frontier dimostrativa quando frontier.json non è presente
+function demoFrontier(){
+  const dates=[];const start=new Date('2024-01-05');
+  for(let i=0;i<52;i++){const d=new Date(start);d.setDate(d.getDate()+i*7);dates.push(d.toISOString().slice(0,10));}
+  const emit=['UniCredit','BNP Paribas','Vontobel','Leonteq','Mediobanca'];
+  const strutt=['Cash Collect','Bonus Cap','Express','Reverse Convertible'];
+  const products=[];
+  for(let k=0;k<40;k++){
+    const baseV=0.08+Math.random()*0.25,baseM=-0.05+Math.random()*0.30;
+    const mean=[],vol=[];
+    for(let i=0;i<dates.length;i++){
+      mean.push(+(baseM+Math.sin(i/8+k)*0.04+(Math.random()-0.5)*0.02).toFixed(4));
+      vol.push(+Math.max(0.02,baseV+Math.cos(i/10+k)*0.03+(Math.random()-0.5)*0.01).toFixed(4));}
+    products.push({isin:'DEMO'+String(k).padStart(4,'0'),emittente:emit[k%emit.length],
+      struttura:strutt[k%strutt.length],frequenza:['Mensile','Trimestrale','Semestrale'][k%3],
+      sottostanti:['DEMO1','DEMO2'],scadenza:'2027-12-31',dates,mean,vol});}
+  return{dates,products};
+}
+
+function frontierProducts(){return (FRONTIER&&FRONTIER.products)||[];}
+
+function frFilterOptions(){
+  const P=frontierProducts();
+  const emit=new Set(),struct=new Set(),sott=new Set(),freq=new Set();
+  P.forEach(p=>{
+    if(p.emittente)emit.add(p.emittente);
+    if(p.struttura)struct.add(p.struttura);
+    if(p.frequenza)freq.add(p.frequenza);
+    (p.sottostanti||[]).forEach(s=>sott.add(s));});
+  return{emit:[...emit].sort(),struct:[...struct].sort(),sott:[...sott].sort(),freq:[...freq].sort()};
+}
+
+function frVisible(){
+  const P=frontierProducts();
+  const q=frFilters.q.toLowerCase();
+  return P.filter(p=>{
+    if(q){const hay=(p.isin+' '+p.emittente+' '+p.struttura).toLowerCase();if(!hay.includes(q))return false;}
+    if(frFilters.emit&&p.emittente!==frFilters.emit)return false;
+    if(frFilters.struct&&p.struttura!==frFilters.struct)return false;
+    if(frFilters.freq&&p.frequenza!==frFilters.freq)return false;
+    if(frFilters.sott&&!(p.sottostanti||[]).includes(frFilters.sott))return false;
+    return true;});
+}
+
+// Trova valore a una data: i prodotti hanno date proprie, cerco l'indice
+// corrispondente alla data globale selezionata (o il più vicino precedente).
+function valueAtDate(p,dateStr){
+  const di=(p.dates||[]).indexOf(dateStr);
+  if(di>=0)return{v:p.vol[di],m:p.mean[di]};
+  // fallback: ultima data del prodotto <= dateStr
+  let best=-1;
+  for(let i=0;i<(p.dates||[]).length;i++){if(p.dates[i]<=dateStr)best=i;else break;}
+  if(best>=0)return{v:p.vol[best],m:p.mean[best]};
+  return null;
+}
+
+function renderFrontier(){
+  if(!document.getElementById('chartFrontier'))return;
+  const vis=frVisible();
+  const dateStr=frDates[frDateIdx]||'';
+  document.getElementById('frCount').textContent=vis.length+' prodotti';
+  document.getElementById('frDateLabel').textContent=dateStr?fmtDate(dateStr):'—';
+
+  const xs=[],ys=[],txt=[],cols=[];
+  vis.forEach(p=>{
+    const pt=valueAtDate(p,dateStr);if(!pt||pt.v==null||pt.m==null)return;
+    xs.push(pt.v);ys.push(pt.m);txt.push(p.isin+' · '+(p.emittente||''));
+    cols.push(pt.m>=0?'rgba(79,209,165,.85)':'rgba(242,118,107,.85)');});
+
+  const trace={x:xs,y:ys,text:txt,mode:'markers',type:'scatter',
+    marker:{size:9,color:cols,line:{color:'rgba(20,28,36,.6)',width:1},opacity:.85},
+    hovertemplate:'<b>%{text}</b><br>Vol: %{x:.1%}<br>Rend: %{y:+.1%}<extra></extra>'};
+
+  const L=baseLayout();
+  L.xaxis.title={text:'Volatilità annualizzata',font:{size:12.5,color:C.muted,family:'Inter, system-ui, sans-serif'}};
+  L.yaxis.title={text:'Rendimento annualizzato',font:{size:12.5,color:C.muted,family:'Inter, system-ui, sans-serif'}};
+  L.xaxis.tickformat='.0%';L.yaxis.tickformat='+.0%';
+  L.xaxis.showline=false;L.yaxis.showline=false;
+  L.xaxis.showgrid=true;L.xaxis.gridcolor='rgba(255,255,255,.04)';
+  L.yaxis.showgrid=true;L.yaxis.gridcolor='rgba(255,255,255,.04)';
+  L.xaxis.zeroline=true;L.xaxis.zerolinecolor='rgba(201,162,78,.6)';L.xaxis.zerolinewidth=2;
+  L.yaxis.zeroline=true;L.yaxis.zerolinecolor='rgba(201,162,78,.6)';L.yaxis.zerolinewidth=2;
+  // range stabile su tutto lo storico così i punti "si muovono" senza saltare scala
+  if(FRONTIER&&FRONTIER.products.length){
+    let mM=[],vM=[];
+    FRONTIER.products.forEach(p=>{(p.mean||[]).forEach(x=>{if(x!=null&&isFinite(x))mM.push(x);});
+      (p.vol||[]).forEach(x=>{if(x!=null&&isFinite(x))vM.push(x);});});
+    if(mM.length&&vM.length){
+      const minM=Math.min(...mM),maxM=Math.max(...mM),maxV=Math.max(...vM);
+      const padM=(maxM-minM)*0.12,padV=maxV*0.12;
+      L.yaxis.range=[minM-padM,maxM+padM];L.xaxis.range=[0,maxV+padV];
+      L.yaxis.autorange=false;L.xaxis.autorange=false;}}
+  L.annotations=[
+    {xref:'paper',yref:'paper',x:1,y:0,ax:-18,ay:0,xanchor:'left',yanchor:'middle',text:'',showarrow:true,arrowhead:2,arrowsize:1.4,arrowwidth:1.5,arrowcolor:'rgba(201,162,78,.6)'},
+    {xref:'paper',yref:'paper',x:0,y:1,ax:0,ay:18,xanchor:'center',yanchor:'bottom',text:'',showarrow:true,arrowhead:2,arrowsize:1.4,arrowwidth:1.5,arrowcolor:'rgba(201,162,78,.6)'}];
+  L.margin={l:70,r:30,t:20,b:60};L.showlegend=false;
+  Plotly.react('chartFrontier',[trace],L,PCFG);forceRedraw('chartFrontier');
+}
+
+function fmtDate(s){const[y,m,d]=s.split('-');return d+'/'+m+'/'+y;}
+
+function initFrontierSlider(){
+  const sl=document.getElementById('frSlider');if(!sl)return;
+  sl.min=0;sl.max=Math.max(0,frDates.length-1);sl.value=frDateIdx;
+  sl.oninput=()=>{frDateIdx=parseInt(sl.value,10)||0;renderFrontier();};
+  // ticks: prima, metà, ultima data
+  const tc=document.getElementById('frTicks');
+  if(tc&&frDates.length){
+    const first=frDates[0],mid=frDates[Math.floor(frDates.length/2)],last=frDates[frDates.length-1];
+    tc.innerHTML=`<span>${fmtDate(first)}</span><span>${fmtDate(mid)}</span><span>${fmtDate(last)}</span>`;}
+}
+
+function setupFrontierFilters(){
+  const opt=frFilterOptions();
+  makeSearchable('fswEmit','fsiEmit','fsdEmit',opt.emit,null,v=>{frFilters.emit=v;renderFrontier();});
+  makeSearchable('fswStruct','fsiStruct','fsdStruct',opt.struct,null,v=>{frFilters.struct=v;renderFrontier();});
+  makeSearchable('fswSott','fsiSott','fsdSott',opt.sott,nameOf,v=>{frFilters.sott=v;renderFrontier();});
+  makeSearchable('fswFreq','fsiFreq','fsdFreq',opt.freq,null,v=>{frFilters.freq=v;renderFrontier();});
+  const fq=document.getElementById('fq');
+  if(fq)fq.oninput=()=>{frFilters.q=fq.value;renderFrontier();};
+  const fr=document.getElementById('fReset');
+  if(fr)fr.onclick=()=>{frFilters.q='';frFilters.emit='';frFilters.struct='';frFilters.sott='';frFilters.freq='';
+    if(fq)fq.value='';
+    ['fsiEmit','fsiStruct','fsiSott','fsiFreq'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+    renderFrontier();};
+}
+
+let frontierReady=false;
+function openFrontier(){
+  loadFrontier().then(()=>{
+    if(!frontierReady){setupFrontierFilters();initFrontierSlider();frontierReady=true;}
+    renderFrontier();
+    setTimeout(()=>{try{Plotly.Plots.resize('chartFrontier');}catch(e){}},80);});
+}
+
 
 /* ---------- profilo + analytics ---------- */
 function renderProfile(){
@@ -1140,6 +1381,12 @@ function init(){
   document.querySelectorAll('#subtabs button').forEach(b=>b.addEventListener('click',()=>setSubview(b.dataset.t)));
   document.querySelectorAll('#tabs button').forEach(b=>b.addEventListener('click',()=>{
     win=b.dataset.w;document.querySelectorAll('#tabs button').forEach(x=>x.setAttribute('aria-pressed',x===b?'true':'false'));applyWindow();}));
+
+  // Navigazione principale Monitor / Efficient Frontier
+  document.querySelectorAll('#mainnav button').forEach(b=>b.addEventListener('click',()=>{
+    const nav=b.dataset.nav;
+    if(nav==='frontier'){location.hash='#/frontier';}
+    else{location.hash='';}}));
 
   renderMonitor();
   const _missing=[...new Set(DATA.flatMap(r=>r.sottostanti||[]))].filter(t=>!SOTTOSTANTI[t]);
