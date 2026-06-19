@@ -1209,7 +1209,7 @@ function frFilterOptions(){
     if(p.emittente)emit.add(p.emittente);
     if(p.struttura)struct.add(p.struttura);
     if(p.frequenza)freq.add(p.frequenza);
-    (p.sottostanti||[]).forEach(s=>sott.add(s));});
+    (asArr(p.sottostanti)).forEach(s=>sott.add(s));});
   return{emit:[...emit].sort(),struct:[...struct].sort(),sott:[...sott].sort(),freq:[...freq].sort()};
 }
 
@@ -1221,19 +1221,23 @@ function frVisible(){
     if(frFilters.emit&&p.emittente!==frFilters.emit)return false;
     if(frFilters.struct&&p.struttura!==frFilters.struct)return false;
     if(frFilters.freq&&p.frequenza!==frFilters.freq)return false;
-    if(frFilters.sott&&!(p.sottostanti||[]).includes(frFilters.sott))return false;
+    if(frFilters.sott&&!asArr(p.sottostanti).includes(frFilters.sott))return false;
     return true;});
 }
+
+// MATLAB jsonencode produce uno scalare (non array) quando il campo ha 1 elemento.
+// asArr normalizza sempre a array così .forEach/.indexOf funzionano.
+function asArr(x){if(x==null)return[];return Array.isArray(x)?x:[x];}
 
 // Trova valore a una data: i prodotti hanno date proprie, cerco l'indice
 // corrispondente alla data globale selezionata (o il più vicino precedente).
 function valueAtDate(p,dateStr){
-  const di=(p.dates||[]).indexOf(dateStr);
-  if(di>=0)return{v:p.vol[di],m:p.mean[di]};
-  // fallback: ultima data del prodotto <= dateStr
+  const pd=asArr(p.dates),pv=asArr(p.vol),pm=asArr(p.mean);
+  const di=pd.indexOf(dateStr);
+  if(di>=0)return{v:pv[di],m:pm[di]};
   let best=-1;
-  for(let i=0;i<(p.dates||[]).length;i++){if(p.dates[i]<=dateStr)best=i;else break;}
-  if(best>=0)return{v:p.vol[best],m:p.mean[best]};
+  for(let i=0;i<pd.length;i++){if(pd[i]<=dateStr)best=i;else break;}
+  if(best>=0)return{v:pv[best],m:pm[best]};
   return null;
 }
 
@@ -1266,8 +1270,8 @@ function renderFrontier(){
   // range stabile su tutto lo storico così i punti "si muovono" senza saltare scala
   if(FRONTIER&&FRONTIER.products.length){
     let mM=[],vM=[];
-    FRONTIER.products.forEach(p=>{(p.mean||[]).forEach(x=>{if(x!=null&&isFinite(x))mM.push(x);});
-      (p.vol||[]).forEach(x=>{if(x!=null&&isFinite(x))vM.push(x);});});
+    FRONTIER.products.forEach(p=>{asArr(p.mean).forEach(x=>{if(x!=null&&isFinite(x))mM.push(x);});
+      asArr(p.vol).forEach(x=>{if(x!=null&&isFinite(x))vM.push(x);});});
     if(mM.length&&vM.length){
       const minM=Math.min(...mM),maxM=Math.max(...mM),maxV=Math.max(...vM);
       const padM=(maxM-minM)*0.12,padV=maxV*0.12;
