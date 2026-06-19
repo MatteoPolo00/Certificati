@@ -938,11 +938,12 @@ function setRendTab(t){rendTab=t;
   ['mean','vol','scatter'].forEach(k=>{const el=document.getElementById('rv-'+k);if(el)el.hidden=(k!==t);});
   document.querySelectorAll('#rendtabs button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.rt===t?'true':'false'));
   if(!current)return;
+  const rd=rendCache[current.isin];   // dati rendimento (non l'oggetto prodotto!)
   // delay per dare tempo al browser di applicare hidden=false prima del resize
   const doResize=id=>setTimeout(()=>{try{Plotly.Plots.resize(id);}catch(e){}},60);
   if(t==='mean')doResize('chartRollMean');
   if(t==='vol')doResize('chartRollVol');
-  if(t==='scatter'){renderScatterCometa(current,scatterWin);doResize('chartScatter');}}
+  if(t==='scatter'){if(rd)renderScatterCometa(rd,scatterWin);doResize('chartScatter');}}
 
 let rendCache={};
 function loadRendimento(r){
@@ -1110,7 +1111,7 @@ function init(){
   document.querySelectorAll('#scatterWin button').forEach(b=>b.addEventListener('click',()=>{
     scatterWin=b.dataset.sw;
     document.querySelectorAll('#scatterWin button').forEach(x=>x.setAttribute('aria-pressed',x===b?'true':'false'));
-    if(current)renderScatterCometa(current,scatterWin);}));
+    if(current&&rendCache[current.isin])renderScatterCometa(rendCache[current.isin],scatterWin);}));
   document.getElementById('backBtn').addEventListener('click',()=>{
     if(location.hash){location.hash='';}else{showView('monitor');}});
   document.getElementById('xlsMarkup').addEventListener('click',()=>exportChart('markup'));
