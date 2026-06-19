@@ -563,15 +563,32 @@ const PCFG={responsive:true,displayModeBar:false,scrollZoom:false};
 
 /* Forza ridisegno corretto: risolve grafici tagliati o scale sbagliate
    quando il container non era ancora dimensionato al momento del react */
+// ResizeObserver per ogni grafico: ridisegna in modo deterministico
+// quando il contenitore raggiunge/cambia le sue dimensioni reali.
+const _chartObservers={};
+function ensureObserver(id,reAutorange){
+  if(_chartObservers[id])return;
+  const el=document.getElementById(id);if(!el||typeof ResizeObserver==='undefined')return;
+  let lastW=0,lastH=0;
+  const ro=new ResizeObserver(entries=>{
+    for(const e of entries){
+      const w=e.contentRect.width,h=e.contentRect.height;
+      if(w<10||h<10)continue;                       // div nascosto
+      if(Math.abs(w-lastW)<1&&Math.abs(h-lastH)<1)continue; // nessun cambio reale
+      lastW=w;lastH=h;
+      try{Plotly.Plots.resize(id);
+        if(reAutorange)Plotly.relayout(id,{'xaxis.autorange':true,'yaxis.autorange':true});}catch(err){}
+    }});
+  ro.observe(el);_chartObservers[id]=ro;
+}
+
 function forceRedraw(id,reAutorange){
   const el=document.getElementById(id);if(!el)return;
-  // Doppio rAF: aspetta che il layout del browser sia stabile, poi resize.
-  // Risolve grafici tagliati / ultimo punto mancante al primo render.
+  ensureObserver(id,reAutorange);
+  // Primo resize immediato + uno dopo il layout (copre il caso già-visibile)
   requestAnimationFrame(()=>{requestAnimationFrame(()=>{
     try{Plotly.Plots.resize(id);
-      if(reAutorange)Plotly.relayout(id,{'xaxis.autorange':true,'yaxis.autorange':true});}catch(e){}
-    setTimeout(()=>{try{Plotly.Plots.resize(id);
-      if(reAutorange)Plotly.relayout(id,{'xaxis.autorange':true,'yaxis.autorange':true});}catch(e){}},150);});});
+      if(reAutorange)Plotly.relayout(id,{'xaxis.autorange':true,'yaxis.autorange':true});}catch(e){}});});
 }
 
 function renderMarkup(r){const x=r.dates;
