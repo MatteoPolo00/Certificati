@@ -235,6 +235,13 @@
   .mainnav button:hover:not([aria-pressed="true"]){color:var(--muted)}
   .mainnav button:first-child{padding-left:2px}
 
+  /* selettore segmentato (Mostra: certificati/sottostanti/entrambi) */
+  .seg{display:inline-flex;background:var(--panel-2);border:1px solid var(--hair);border-radius:9px;padding:3px;gap:2px}
+  .seg button{appearance:none;border:0;background:transparent;color:var(--muted);cursor:pointer;font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.03em;padding:7px 13px;border-radius:6px;transition:background .15s,color .15s;white-space:nowrap}
+  .seg button:hover{color:var(--txt)}
+  .seg button[aria-pressed="true"]{background:var(--brass);color:var(--ink);font-weight:600}
+  .seg button:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+
   /* slider frontier */
   .fr-slider-wrap{padding:18px 8px 6px}
   #frSlider{-webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:3px;
@@ -456,6 +463,13 @@
   <!-- ================= EFFICIENT FRONTIER ================= -->
   <section id="viewFrontier" class="view">
     <div class="mtoolbar" style="margin-top:4px">
+      <div class="fld"><label>Mostra</label>
+        <div class="seg" id="frShowSeg" role="group" aria-label="Cosa mostrare">
+          <button data-show="cert" aria-pressed="true">Certificati</button>
+          <button data-show="both" aria-pressed="false">Entrambi</button>
+          <button data-show="sott" aria-pressed="false">Sottostanti</button>
+        </div>
+      </div>
       <div class="fld"><label>Cerca</label>
         <div style="position:relative">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--faint)"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>
@@ -1298,6 +1312,9 @@ function showView(v){
 let FRONTIER=null, frDates=[], frDateIdx=0;
 const frFilters={q:'',emit:'',struct:'',sott:''};
 let frColorBy={field:'',value:''};   // caratteristica + valore da evidenziare in rosso
+let frShow='cert';   // 'cert' | 'sott' | 'both'
+
+function frontierSottostanti(){return (FRONTIER&&asArr(FRONTIER.sottostanti))||[];}
 
 function loadFrontier(){
   if(FRONTIER)return Promise.resolve(FRONTIER);
@@ -1323,7 +1340,17 @@ function demoFrontier(){
     products.push({isin:'DEMO'+String(k).padStart(4,'0'),emittente:emit[k%emit.length],
       struttura:strutt[k%strutt.length],frequenza:['Mensile','Trimestrale','Semestrale'][k%3],
       sottostanti:['DEMO1','DEMO2'],scadenza:'2027-12-31',dates,mean,vol});}
-  return{dates,products};
+  // sottostanti demo
+  const sottostanti=[];
+  const sigle=['AAPL','MSFT','TSLA','ENI','ENEL','NVDA','AMZN','GOOG','META','INTC'];
+  for(let k=0;k<sigle.length;k++){
+    const baseV=0.12+Math.random()*0.35,baseM=-0.10+Math.random()*0.45;
+    const mean=[],vol=[];
+    for(let i=0;i<dates.length;i++){
+      mean.push(+(baseM+Math.sin(i/7+k)*0.05+(Math.random()-0.5)*0.03).toFixed(4));
+      vol.push(+Math.max(0.03,baseV+Math.cos(i/9+k)*0.04+(Math.random()-0.5)*0.015).toFixed(4));}
+    sottostanti.push({sigla:sigle[k],dates,mean,vol});}
+  return{dates,products,sottostanti};
 }
 
 function frontierProducts(){return (FRONTIER&&FRONTIER.products)||[];}
@@ -1367,15 +1394,23 @@ function valueAtDate(p,dateStr){
 
 function renderFrontier(){
   if(!document.getElementById('chartFrontier'))return;
-  const vis=frVisible();
   const dateStr=frDates[frDateIdx]||'';
-  document.getElementById('frCount').textContent=vis.length+' prodotti';
+  const showCert=(frShow==='cert'||frShow==='both');
+  const showSott=(frShow==='sott'||frShow==='both');
+  // sottostanti molto leggeri solo quando si vedono insieme ai certificati
+  const sottLight=(frShow==='both');
+
+  const vis=showCert?frVisible():[];
+  const sottAll=showSott?frontierSottostanti():[];
+  document.getElementById('frCount').textContent=
+    (showCert?vis.length+' certificati':'')+
+    (showCert&&showSott?' · ':'')+
+    (showSott?sottAll.length+' sottostanti':'');
   document.getElementById('frDateLabel').textContent=dateStr?fmtDate(dateStr):'—';
 
-  // Colorazione: se è attivo un filtro-colore, i prodotti che lo soddisfano
-  // sono ROSSI, tutti gli altri BLU. Mai arcobaleno.
-  const SEL='rgba(242,118,107,.92)';   // rosso = selezionati
-  const BASE='rgba(90,130,170,.55)';   // blu = resto
+  // Colorazione certificati: selezionati ROSSI, resto BLU. Mai arcobaleno.
+  const SEL='rgba(242,118,107,.92)';
+  const BASE='rgba(90,130,170,.55)';
   function isSel(p){
     if(!frColorBy.field)return false;
     if(frColorBy.field==='emittente')return p.emittente===frColorBy.value;
@@ -1383,7 +1418,7 @@ function renderFrontier(){
     if(frColorBy.field==='sottostante')return asArr(p.sottostanti).includes(frColorBy.value);
     return false;}
 
-  // customdata = [isin, emittente, struttura, sottostanti] per tooltip e click
+  // ---- Certificati ----
   const selX=[],selY=[],selCd=[],othX=[],othY=[],othCd=[];
   vis.forEach(p=>{
     const pt=valueAtDate(p,dateStr);if(!pt||pt.v==null||pt.m==null)return;
@@ -1391,19 +1426,38 @@ function renderFrontier(){
     if(isSel(p)){selX.push(pt.v);selY.push(pt.m);selCd.push(cd);}
     else{othX.push(pt.v);othY.push(pt.m);othCd.push(cd);}});
 
-  // Tooltip elegante: ISIN, Emittente, Struttura, Sottostanti (no righe x/y)
-  const HOVER='<b>%{customdata[0]}</b><br>'+
+  // ---- Sottostanti (crocette nere) ----
+  const soX=[],soY=[],soCd=[];
+  sottAll.forEach(s=>{
+    const pt=valueAtDate(s,dateStr);if(!pt||pt.v==null||pt.m==null)return;
+    soX.push(pt.v);soY.push(pt.m);soCd.push([nameOf(s.sigla)||s.sigla,s.sigla]);});
+
+  const HOVER_C='<b>%{customdata[0]}</b><br>'+
     '<span style="color:#C9A24E">%{customdata[1]}</span><br>'+
     '%{customdata[2]}<br>'+
     '<span style="color:#90A2B0">%{customdata[3]}</span><extra></extra>';
+  const HOVER_S='<b>%{customdata[0]}</b><br>'+
+    '<span style="color:#90A2B0">Sottostante · %{customdata[1]}</span><extra></extra>';
+  const HL={bgcolor:'rgba(18,24,32,.97)',bordercolor:'rgba(201,162,78,.5)',
+      font:{family:'Inter, system-ui, sans-serif',size:12,color:'#EAEFF3'},align:'left'};
 
-  const mk=(x,y,cd,col,sz)=>({x,y,customdata:cd,mode:'markers',type:'scatter',
+  const mkC=(x,y,cd,col,sz)=>({x,y,customdata:cd,mode:'markers',type:'scatter',
     marker:{size:sz,color:col,line:{color:'rgba(20,28,36,.6)',width:1},opacity:.9},
-    hovertemplate:HOVER,hoverlabel:{bgcolor:'rgba(18,24,32,.97)',bordercolor:'rgba(201,162,78,.5)',
-      font:{family:'Inter, system-ui, sans-serif',size:12,color:'#EAEFF3'},align:'left'}});
+    hovertemplate:HOVER_C,hoverlabel:HL});
 
-  const traces=[mk(othX,othY,othCd,BASE,8)];
-  if(selX.length)traces.push(mk(selX,selY,selCd,SEL,10));   // selezionati sopra, più grandi
+  // crocetta nera (simbolo x sottile); molto leggera in modalità "both"
+  const mkS=(x,y,cd)=>({x,y,customdata:cd,mode:'markers',type:'scatter',
+    marker:{size:sottLight?7:9,symbol:'x-thin',
+      color:sottLight?'rgba(10,14,18,.28)':'rgba(15,20,26,.85)',
+      line:{color:sottLight?'rgba(10,14,18,.28)':'rgba(10,14,18,.9)',width:sottLight?1.2:1.8}},
+    hovertemplate:HOVER_S,hoverlabel:HL});
+
+  const traces=[];
+  if(showCert){
+    traces.push(mkC(othX,othY,othCd,BASE,8));
+    if(selX.length)traces.push(mkC(selX,selY,selCd,SEL,10));
+  }
+  if(showSott)traces.push(mkS(soX,soY,soCd));
 
   const L=baseLayout();
   L.xaxis.title={text:'Volatilità annualizzata',font:{size:12.5,color:C.muted,family:'Inter, system-ui, sans-serif'}};
@@ -1449,6 +1503,11 @@ function initFrontierSlider(){
 
 function setupFrontierFilters(){
   const opt=frFilterOptions();
+  // Selettore "Mostra": certificati / entrambi / sottostanti
+  document.querySelectorAll('#frShowSeg button').forEach(b=>b.addEventListener('click',()=>{
+    frShow=b.dataset.show;
+    document.querySelectorAll('#frShowSeg button').forEach(x=>x.setAttribute('aria-pressed',x===b?'true':'false'));
+    renderFrontier();}));
   makeSearchable('fswEmit','fsiEmit','fsdEmit',opt.emit,null,v=>{frFilters.emit=v;renderFrontier();});
   makeSearchable('fswStruct','fsiStruct','fsdStruct',opt.struct,null,v=>{frFilters.struct=v;renderFrontier();});
   makeSearchable('fswSott','fsiSott','fsdSott',opt.sott,nameOf,v=>{frFilters.sott=v;renderFrontier();});
