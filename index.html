@@ -159,9 +159,11 @@
   .stamp b{color:var(--muted);font-weight:500}
 
   .subtabs{display:inline-flex;background:var(--panel);border:1px solid var(--hair);border-radius:11px;padding:4px;gap:3px;margin-bottom:18px;flex-wrap:wrap}
-  .subtabs button{appearance:none;border:0;background:transparent;color:var(--muted);cursor:pointer;font-family:"Space Grotesk",sans-serif;font-weight:600;font-size:13px;padding:8px 18px;border-radius:8px;transition:background .15s,color .15s}
+  .subtabs button{display:inline-flex;align-items:center;gap:7px;appearance:none;border:0;background:transparent;color:var(--muted);cursor:pointer;font-family:"Space Grotesk",sans-serif;font-weight:600;font-size:13px;padding:8px 16px;border-radius:8px;transition:background .15s,color .15s}
+  .subtabs button svg{width:15px;height:15px;flex-shrink:0;opacity:.7;transition:opacity .15s,color .15s}
   .subtabs button:hover{color:var(--txt)}
   .subtabs button[aria-pressed="true"]{background:var(--panel-2);color:var(--txt);box-shadow:inset 0 0 0 1px var(--hair)}
+  .subtabs button[aria-pressed="true"] svg{opacity:1;color:var(--brass)}
   .subtabs button:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
   .subview{display:flex;flex-direction:column;gap:16px}
   .subview[hidden]{display:none}
@@ -215,13 +217,30 @@
   .xlsbtn:hover{border-color:var(--faint);transform:translateY(-1px)}
   .xlsbtn:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
   .xlsbtn svg{display:block}
-  .plot{width:100%;height:380px} .plot.sm{height:300px} .plot.tall{height:520px}
+  .plot{width:100%;height:380px} .plot.sm{height:300px} .plot.tall{height:520px} .plot.mk{height:300px}
 
-  /* nav principale */
-  .mainnav{display:flex;gap:4px;margin:0 0 14px;padding:4px;background:var(--panel-2);border:1px solid var(--hair);border-radius:11px;width:fit-content}
-  .mainnav button{appearance:none;background:transparent;border:none;border-radius:8px;color:var(--muted);cursor:pointer;font-family:'Cinzel',serif;font-size:12.5px;letter-spacing:.08em;padding:8px 18px;transition:all .18s}
-  .mainnav button[aria-pressed="true"]{background:var(--brass);color:#0C1116;font-weight:600}
-  .mainnav button:hover:not([aria-pressed="true"]){color:var(--txt)}
+  /* nav principale — stile a sottolineatura, più editoriale, con icone */
+  .mainnav{display:flex;gap:0;margin:8px 0 0;padding:0;border-bottom:1px solid var(--hair-soft);position:relative}
+  .mainnav button{display:inline-flex;align-items:center;gap:9px;appearance:none;background:transparent;border:none;border-radius:0;
+    color:var(--faint);cursor:pointer;font-family:'Cinzel',serif;font-size:15px;letter-spacing:.04em;
+    padding:2px 26px 15px;position:relative;transition:color .2s ease}
+  /* divisore verticale tra le sezioni */
+  .mainnav button:not(:last-child)::before{content:'';position:absolute;right:0;top:2px;bottom:14px;width:1px;background:var(--hair-soft)}
+  .mainnav button svg{width:17px;height:17px;flex-shrink:0;opacity:.75;transition:opacity .2s ease}
+  .mainnav button::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--brass);
+    transform:scaleX(0);transform-origin:left;transition:transform .25s cubic-bezier(.2,.7,.2,1)}
+  .mainnav button[aria-pressed="true"]{color:var(--txt)}
+  .mainnav button[aria-pressed="true"] svg{opacity:1;color:var(--brass)}
+  .mainnav button[aria-pressed="true"]::after{transform:scaleX(1)}
+  .mainnav button:hover:not([aria-pressed="true"]){color:var(--muted)}
+  .mainnav button:first-child{padding-left:2px}
+
+  /* selettore segmentato (Mostra: certificati/sottostanti/entrambi) */
+  .seg{display:inline-flex;background:var(--panel-2);border:1px solid var(--hair);border-radius:9px;padding:3px;gap:2px}
+  .seg button{appearance:none;border:0;background:transparent;color:var(--muted);cursor:pointer;font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.03em;padding:7px 13px;border-radius:6px;transition:background .15s,color .15s;white-space:nowrap}
+  .seg button:hover{color:var(--txt)}
+  .seg button[aria-pressed="true"]{background:var(--brass);color:var(--ink);font-weight:600}
+  .seg button:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
 
   /* slider frontier */
   .fr-slider-wrap{padding:18px 8px 6px}
@@ -359,7 +378,7 @@
         <div class="bt" style="font-family:'Cinzel',serif;font-size:23px;font-weight:400;letter-spacing:.12em">JENSEN</div>
         <div style="display:flex;align-items:center;gap:10px;margin-top:6px">
           <div style="height:1px;width:18px;background:#C9A24E;flex-shrink:0"></div>
-          <div style="font-family:'Cinzel',serif;font-size:11px;font-weight:400;letter-spacing:.16em;color:var(--faint)">CERTIFICATE MONITOR &amp; <span style="font-style:italic;color:var(--brass)">Analytics</span></div>
+          <div style="font-family:'Cinzel',serif;font-size:11px;font-weight:400;letter-spacing:.16em;color:var(--faint)">CERTIFICATE MONITOR &amp; ANALYTICS</div>
         </div>
       </div>
     </div>
@@ -373,9 +392,15 @@
 
   <div class="rule rise" style="--d:.05s"></div>
 
-  <nav class="mainnav rise" id="mainnav" style="--d:.06s">
-    <button data-nav="monitor" aria-pressed="true">Monitor</button>
-    <button data-nav="frontier" aria-pressed="false">Efficient Frontier</button>
+  <nav class="mainnav rise" id="mainnav" style="--d:.06s;margin-bottom:22px">
+    <button data-nav="monitor" aria-pressed="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/><circle cx="7" cy="6" r="1.4" fill="currentColor" stroke="none"/><circle cx="13" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="9" cy="18" r="1.4" fill="currentColor" stroke="none"/></svg>
+      <span>Monitor</span>
+    </button>
+    <button data-nav="frontier" aria-pressed="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20 L4 4"/><path d="M4 20 L20 20"/><path d="M5 16 Q10 8 20 6" stroke-dasharray="0.1 3.2"/><circle cx="8" cy="13" r="1.5" fill="currentColor" stroke="none"/><circle cx="13" cy="9.5" r="1.5" fill="currentColor" stroke="none"/><circle cx="17.5" cy="7" r="1.5" fill="currentColor" stroke="none"/></svg>
+      <span>Efficient Frontier</span>
+    </button>
   </nav>
 
   <div class="banner" id="banner">Dati dimostrativi. Genera <code>data.json</code> con <code>export_markup_json.m</code> e caricalo accanto a <code>index.html</code>.</div>
@@ -438,6 +463,13 @@
   <!-- ================= EFFICIENT FRONTIER ================= -->
   <section id="viewFrontier" class="view">
     <div class="mtoolbar" style="margin-top:4px">
+      <div class="fld"><label>Mostra</label>
+        <div class="seg" id="frShowSeg" role="group" aria-label="Cosa mostrare">
+          <button data-show="cert" aria-pressed="true">Certificati</button>
+          <button data-show="both" aria-pressed="false">Entrambi</button>
+          <button data-show="sott" aria-pressed="false">Sottostanti</button>
+        </div>
+      </div>
       <div class="fld"><label>Cerca</label>
         <div style="position:relative">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--faint)"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>
@@ -499,10 +531,22 @@
     </div>
 
     <div class="subtabs" id="subtabs" role="group" aria-label="Vista prodotto">
-      <button data-t="markup" aria-pressed="true">Markup</button>
-      <button data-t="rendimento" aria-pressed="false">Rendimento</button>
-      <button data-t="autocall" aria-pressed="false">Autocall</button>
-      <button data-t="rischio" aria-pressed="false">Rischio</button>
+      <button data-t="markup" aria-pressed="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17 L9 11 L13 15 L21 7"/><path d="M16 7 L21 7 L21 12"/></svg>
+        <span>Markup</span>
+      </button>
+      <button data-t="rendimento" aria-pressed="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12 Q7 4 12 12 T21 12"/></svg>
+        <span>Rendimento</span>
+      </button>
+      <button data-t="autocall" aria-pressed="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 A9 9 0 1 1 5.6 5.6"/><path d="M3 4 L3 9 L8 9"/><path d="M12 8 L12 12 L15 14"/></svg>
+        <span>Autocall</span>
+      </button>
+      <button data-t="rischio" aria-pressed="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 L20 7 L20 12 C20 17 16.5 20 12 21.5 C7.5 20 4 17 4 12 L4 7 Z"/><line x1="12" y1="9" x2="12" y2="13"/><circle cx="12" cy="16.5" r="0.6" fill="currentColor" stroke="none"/></svg>
+        <span>Rischio</span>
+      </button>
     </div>
 
     <!-- sotto-vista: MARKUP -->
@@ -536,8 +580,8 @@
         </div>
       </div>
       <div class="card chart-card">
-        <div class="chart-head"><div class="t">Costo implicito nel tempo <span class="badge">primario</span></div><div class="hd-right"><span class="h">min(markup, markup ann.) · linea zero = fair value</span><button id="xlsMarkup" class="xlsbtn" title="Scarica dati in Excel" aria-label="Scarica dati in Excel"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3" fill="#1D6F42"/><path d="M8.8 7.6l6.4 8.8M15.2 7.6l-6.4 8.8" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg></button></div></div>
-        <div id="chartMarkup" class="plot"></div>
+        <div class="chart-head"><div class="t">Stima costo implicito <span class="badge">primario</span></div><div class="hd-right"><span class="h">min(markup, markup ann.) · linea zero = fair value</span><button id="xlsMarkup" class="xlsbtn" title="Scarica dati in Excel" aria-label="Scarica dati in Excel"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3" fill="#1D6F42"/><path d="M8.8 7.6l6.4 8.8M15.2 7.6l-6.4 8.8" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg></button></div></div>
+        <div id="chartMarkup" class="plot mk"></div>
       </div>
       <div class="card chart-card">
         <div class="chart-head"><div class="t">Prezzo di mercato vs modello</div><div class="hd-right"><span class="h">€ per certificato</span><button id="xlsPrice" class="xlsbtn" title="Scarica dati in Excel" aria-label="Scarica dati in Excel"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3" fill="#1D6F42"/><path d="M8.8 7.6l6.4 8.8M15.2 7.6l-6.4 8.8" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg></button></div></div>
@@ -754,13 +798,13 @@ function renderMarkup(r){const x=r.dates;
   const neg=vals.map(v=>v==null?null:(v<0?v:0));
   const traces=[
     {x,y:pos,type:'scatter',mode:'none',fill:'tozeroy',
-     fillcolor:'rgba(79,209,165,.08)',
-     line:{shape:'spline',smoothing:0.5,width:0},hoverinfo:'skip',connectgaps:false},
+     fillcolor:'rgba(79,209,165,.05)',
+     line:{width:0},hoverinfo:'skip',connectgaps:false},
     {x,y:neg,type:'scatter',mode:'none',fill:'tozeroy',
-     fillcolor:'rgba(242,118,107,.08)',
-     line:{shape:'spline',smoothing:0.5,width:0},hoverinfo:'skip',connectgaps:false},
+     fillcolor:'rgba(242,118,107,.05)',
+     line:{width:0},hoverinfo:'skip',connectgaps:false},
     {x,y:vals,type:'scatter',mode:'lines',
-     line:{color:'rgba(201,162,78,.9)',width:2,shape:'spline',smoothing:0.5},
+     line:{color:'rgba(201,162,78,.95)',width:1.8,shape:'linear'},
      connectgaps:false,
      hovertemplate:'<b>%{x|%d %b %Y}</b><br>Costo implicito&nbsp;&nbsp;<b>%{y:+.2f}%</b><extra></extra>'}
   ];
@@ -769,17 +813,26 @@ function renderMarkup(r){const x=r.dates;
     line:{color:'rgba(144,162,176,.25)',width:1,dash:'dot'}}];
   L.yaxis.ticksuffix='%';
   L.yaxis.tickformat='+.2f';
-  L.xaxis.autorange=true;L.yaxis.autorange=true;
-  Plotly.react('chartMarkup',traces,L,PCFG);forceRedraw('chartMarkup',true);}
+  // Range Y: garantisce sempre la finestra [-10%, +10%], si allarga se i dati la superano
+  const fin=vals.filter(v=>v!=null&&isFinite(v));
+  let yMin=-10,yMax=10;
+  if(fin.length){
+    const dMin=Math.min(...fin),dMax=Math.max(...fin);
+    yMax=Math.max(10,dMax+Math.max(1,(dMax-dMin)*0.12));
+    yMin=Math.min(-10,dMin-Math.max(1,(dMax-dMin)*0.12));
+  }
+  L.yaxis.range=[yMin,yMax];L.yaxis.autorange=false;
+  L.xaxis.autorange=true;
+  Plotly.react('chartMarkup',traces,L,PCFG);forceRedraw('chartMarkup',false);}
 
 function renderPrice(r){const x=r.dates;
   const traces=[
     {x,y:r.prezzo_mercato,type:'scatter',mode:'lines',name:'Mercato',
-     line:{color:'rgba(201,162,78,.9)',width:2,shape:'spline',smoothing:0.5},
+     line:{color:'rgba(201,162,78,.95)',width:1.8,shape:'linear'},
      connectgaps:false,
      hovertemplate:'Mercato&nbsp;&nbsp;<b>%{y:.2f}</b><extra></extra>'},
     {x,y:r.prezzo_modello,type:'scatter',mode:'lines',name:'Modello',
-     line:{color:'rgba(79,209,165,.75)',width:1.5,shape:'spline',smoothing:0.5,dash:'dot'},
+     line:{color:'rgba(79,209,165,.8)',width:1.5,shape:'linear',dash:'dot'},
      connectgaps:false,
      hovertemplate:'Modello&nbsp;&nbsp;<b>%{y:.2f}</b><extra></extra>'}
   ];
@@ -1064,8 +1117,8 @@ function renderRendimento(r){
     const col=colorOf(lb,i);
     const vis=(isbm&&!showBenchmark)?'legendonly':true;
     return{x,y,type:'scatter',mode:'lines+markers',name:labelOf(lb),visible:vis,
-      line:{color:col,width:isc?2.2:isbm?1.4:iseq?1.6:1.3,
-        dash:isbm?'dot':iseq?'dash':'solid',shape:'spline',smoothing:0.4},
+      line:{color:col,width:isc?2:isbm?1.3:iseq?1.5:1.2,
+        dash:isbm?'dot':iseq?'dash':'solid',shape:'linear'},
       marker:{symbol:'circle',size:7,color:col,opacity:0},
       hovertemplate:`<b>${labelOf(lb)}</b>\u00a0\u00a0%{y:+.1%}<extra></extra>`,...extra};}
 
@@ -1259,6 +1312,9 @@ function showView(v){
 let FRONTIER=null, frDates=[], frDateIdx=0;
 const frFilters={q:'',emit:'',struct:'',sott:''};
 let frColorBy={field:'',value:''};   // caratteristica + valore da evidenziare in rosso
+let frShow='cert';   // 'cert' | 'sott' | 'both'
+
+function frontierSottostanti(){return (FRONTIER&&asArr(FRONTIER.sottostanti))||[];}
 
 function loadFrontier(){
   if(FRONTIER)return Promise.resolve(FRONTIER);
@@ -1284,7 +1340,17 @@ function demoFrontier(){
     products.push({isin:'DEMO'+String(k).padStart(4,'0'),emittente:emit[k%emit.length],
       struttura:strutt[k%strutt.length],frequenza:['Mensile','Trimestrale','Semestrale'][k%3],
       sottostanti:['DEMO1','DEMO2'],scadenza:'2027-12-31',dates,mean,vol});}
-  return{dates,products};
+  // sottostanti demo
+  const sottostanti=[];
+  const sigle=['AAPL','MSFT','TSLA','ENI','ENEL','NVDA','AMZN','GOOG','META','INTC'];
+  for(let k=0;k<sigle.length;k++){
+    const baseV=0.12+Math.random()*0.35,baseM=-0.10+Math.random()*0.45;
+    const mean=[],vol=[];
+    for(let i=0;i<dates.length;i++){
+      mean.push(+(baseM+Math.sin(i/7+k)*0.05+(Math.random()-0.5)*0.03).toFixed(4));
+      vol.push(+Math.max(0.03,baseV+Math.cos(i/9+k)*0.04+(Math.random()-0.5)*0.015).toFixed(4));}
+    sottostanti.push({sigla:sigle[k],dates,mean,vol});}
+  return{dates,products,sottostanti};
 }
 
 function frontierProducts(){return (FRONTIER&&FRONTIER.products)||[];}
@@ -1328,15 +1394,23 @@ function valueAtDate(p,dateStr){
 
 function renderFrontier(){
   if(!document.getElementById('chartFrontier'))return;
-  const vis=frVisible();
   const dateStr=frDates[frDateIdx]||'';
-  document.getElementById('frCount').textContent=vis.length+' prodotti';
+  const showCert=(frShow==='cert'||frShow==='both');
+  const showSott=(frShow==='sott'||frShow==='both');
+  // sottostanti molto leggeri solo quando si vedono insieme ai certificati
+  const sottLight=(frShow==='both');
+
+  const vis=showCert?frVisible():[];
+  const sottAll=showSott?frontierSottostanti():[];
+  document.getElementById('frCount').textContent=
+    (showCert?vis.length+' certificati':'')+
+    (showCert&&showSott?' · ':'')+
+    (showSott?sottAll.length+' sottostanti':'');
   document.getElementById('frDateLabel').textContent=dateStr?fmtDate(dateStr):'—';
 
-  // Colorazione: se è attivo un filtro-colore, i prodotti che lo soddisfano
-  // sono ROSSI, tutti gli altri BLU. Mai arcobaleno.
-  const SEL='rgba(242,118,107,.92)';   // rosso = selezionati
-  const BASE='rgba(90,130,170,.55)';   // blu = resto
+  // Colorazione certificati: selezionati ROSSI, resto BLU. Mai arcobaleno.
+  const SEL='rgba(242,118,107,.92)';
+  const BASE='rgba(90,130,170,.55)';
   function isSel(p){
     if(!frColorBy.field)return false;
     if(frColorBy.field==='emittente')return p.emittente===frColorBy.value;
@@ -1344,7 +1418,7 @@ function renderFrontier(){
     if(frColorBy.field==='sottostante')return asArr(p.sottostanti).includes(frColorBy.value);
     return false;}
 
-  // customdata = [isin, emittente, struttura, sottostanti] per tooltip e click
+  // ---- Certificati ----
   const selX=[],selY=[],selCd=[],othX=[],othY=[],othCd=[];
   vis.forEach(p=>{
     const pt=valueAtDate(p,dateStr);if(!pt||pt.v==null||pt.m==null)return;
@@ -1352,19 +1426,38 @@ function renderFrontier(){
     if(isSel(p)){selX.push(pt.v);selY.push(pt.m);selCd.push(cd);}
     else{othX.push(pt.v);othY.push(pt.m);othCd.push(cd);}});
 
-  // Tooltip elegante: ISIN, Emittente, Struttura, Sottostanti (no righe x/y)
-  const HOVER='<b>%{customdata[0]}</b><br>'+
+  // ---- Sottostanti (crocette nere) ----
+  const soX=[],soY=[],soCd=[];
+  sottAll.forEach(s=>{
+    const pt=valueAtDate(s,dateStr);if(!pt||pt.v==null||pt.m==null)return;
+    soX.push(pt.v);soY.push(pt.m);soCd.push([nameOf(s.sigla)||s.sigla,s.sigla]);});
+
+  const HOVER_C='<b>%{customdata[0]}</b><br>'+
     '<span style="color:#C9A24E">%{customdata[1]}</span><br>'+
     '%{customdata[2]}<br>'+
     '<span style="color:#90A2B0">%{customdata[3]}</span><extra></extra>';
+  const HOVER_S='<b>%{customdata[0]}</b><br>'+
+    '<span style="color:#90A2B0">Sottostante · %{customdata[1]}</span><extra></extra>';
+  const HL={bgcolor:'rgba(18,24,32,.97)',bordercolor:'rgba(201,162,78,.5)',
+      font:{family:'Inter, system-ui, sans-serif',size:12,color:'#EAEFF3'},align:'left'};
 
-  const mk=(x,y,cd,col,sz)=>({x,y,customdata:cd,mode:'markers',type:'scatter',
+  const mkC=(x,y,cd,col,sz)=>({x,y,customdata:cd,mode:'markers',type:'scatter',
     marker:{size:sz,color:col,line:{color:'rgba(20,28,36,.6)',width:1},opacity:.9},
-    hovertemplate:HOVER,hoverlabel:{bgcolor:'rgba(18,24,32,.97)',bordercolor:'rgba(201,162,78,.5)',
-      font:{family:'Inter, system-ui, sans-serif',size:12,color:'#EAEFF3'},align:'left'}});
+    hovertemplate:HOVER_C,hoverlabel:HL});
 
-  const traces=[mk(othX,othY,othCd,BASE,8)];
-  if(selX.length)traces.push(mk(selX,selY,selCd,SEL,10));   // selezionati sopra, più grandi
+  // crocetta nera (simbolo x sottile); molto leggera in modalità "both"
+  const mkS=(x,y,cd)=>({x,y,customdata:cd,mode:'markers',type:'scatter',
+    marker:{size:sottLight?7:9,symbol:'x-thin',
+      color:sottLight?'rgba(10,14,18,.28)':'rgba(15,20,26,.85)',
+      line:{color:sottLight?'rgba(10,14,18,.28)':'rgba(10,14,18,.9)',width:sottLight?1.2:1.8}},
+    hovertemplate:HOVER_S,hoverlabel:HL});
+
+  const traces=[];
+  if(showCert){
+    traces.push(mkC(othX,othY,othCd,BASE,8));
+    if(selX.length)traces.push(mkC(selX,selY,selCd,SEL,10));
+  }
+  if(showSott)traces.push(mkS(soX,soY,soCd));
 
   const L=baseLayout();
   L.xaxis.title={text:'Volatilità annualizzata',font:{size:12.5,color:C.muted,family:'Inter, system-ui, sans-serif'}};
@@ -1410,6 +1503,11 @@ function initFrontierSlider(){
 
 function setupFrontierFilters(){
   const opt=frFilterOptions();
+  // Selettore "Mostra": certificati / entrambi / sottostanti
+  document.querySelectorAll('#frShowSeg button').forEach(b=>b.addEventListener('click',()=>{
+    frShow=b.dataset.show;
+    document.querySelectorAll('#frShowSeg button').forEach(x=>x.setAttribute('aria-pressed',x===b?'true':'false'));
+    renderFrontier();}));
   makeSearchable('fswEmit','fsiEmit','fsdEmit',opt.emit,null,v=>{frFilters.emit=v;renderFrontier();});
   makeSearchable('fswStruct','fsiStruct','fsdStruct',opt.struct,null,v=>{frFilters.struct=v;renderFrontier();});
   makeSearchable('fswSott','fsiSott','fsdSott',opt.sott,nameOf,v=>{frFilters.sott=v;renderFrontier();});
