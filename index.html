@@ -386,10 +386,16 @@
           <div class="srch-drop" id="fsdSott"></div>
         </div>
       </div>
-      <div class="fld"><label>Colora per</label>
-        <div class="srch-wrap" id="fswColor">
-          <input class="srch-inp" type="text" placeholder="Nessuna" autocomplete="off" id="fsiColor" readonly style="cursor:pointer">
-          <div class="srch-drop" id="fsdColor"></div>
+      <div class="fld"><label>Evidenzia per</label>
+        <div class="srch-wrap" id="fswColorField">
+          <input class="srch-inp" type="text" placeholder="Nessuna" autocomplete="off" id="fsiColorField" readonly style="cursor:pointer">
+          <div class="srch-drop" id="fsdColorField"></div>
+        </div>
+      </div>
+      <div class="fld" id="fldColorValue" style="display:none"><label>Valore</label>
+        <div class="srch-wrap" id="fswColorVal">
+          <input class="srch-inp" type="text" placeholder="Seleziona…" autocomplete="off" id="fsiColorVal">
+          <div class="srch-drop" id="fsdColorVal"></div>
         </div>
       </div>
       <button class="reset" id="fReset">azzera</button>
@@ -1176,14 +1182,7 @@ function showView(v){
 /* ================= EFFICIENT FRONTIER ================= */
 let FRONTIER=null, frDates=[], frDateIdx=0;
 const frFilters={q:'',emit:'',struct:'',sott:''};
-let frColorBy='';   // '', 'emittente', 'struttura', 'sottostante'
-
-// Palette categorica per la colorazione dinamica
-const CAT_PALETTE=['rgba(201,162,78,.9)','rgba(79,209,165,.9)','rgba(242,118,107,.9)',
-  'rgba(90,176,232,.9)','rgba(180,130,220,.9)','rgba(255,180,80,.9)','rgba(100,200,180,.9)',
-  'rgba(220,120,160,.9)','rgba(150,200,100,.9)','rgba(120,160,240,.9)','rgba(240,160,90,.9)',
-  'rgba(160,220,200,.9)'];
-const CAT_BASE='rgba(90,130,170,.55)';   // colore neutro quando nessuna categoria selezionata o "altro"
+let frColorBy={field:'',value:''};   // caratteristica + valore da evidenziare in rosso
 
 function loadFrontier(){
   if(FRONTIER)return Promise.resolve(FRONTIER);
@@ -1235,14 +1234,6 @@ function frVisible(){
     return true;});
 }
 
-// Valore della categoria scelta per un prodotto (per la colorazione)
-function catValue(p){
-  if(frColorBy==='emittente')return p.emittente||'—';
-  if(frColorBy==='struttura')return p.struttura||'—';
-  if(frColorBy==='sottostante')return asArr(p.sottostanti)[0]||'—';
-  return null;
-}
-
 // MATLAB jsonencode produce uno scalare (non array) quando il campo ha 1 elemento.
 // asArr normalizza sempre a array così .forEach/.indexOf funzionano.
 function asArr(x){if(x==null)return[];return Array.isArray(x)?x:[x];}
@@ -1266,36 +1257,38 @@ function renderFrontier(){
   document.getElementById('frCount').textContent=vis.length+' prodotti';
   document.getElementById('frDateLabel').textContent=dateStr?fmtDate(dateStr):'—';
 
-  // Mappa valore-categoria → colore (solo se colorBy è attivo)
-  let catColorMap={};
-  if(frColorBy){
-    const cats=[...new Set(vis.map(catValue).filter(Boolean))].sort();
-    cats.forEach((c,i)=>{catColorMap[c]=CAT_PALETTE[i%CAT_PALETTE.length];});
-  }
+  // Colorazione: se è attivo un filtro-colore, i prodotti che lo soddisfano
+  // sono ROSSI, tutti gli altri BLU. Mai arcobaleno.
+  const SEL='rgba(242,118,107,.92)';   // rosso = selezionati
+  const BASE='rgba(90,130,170,.55)';   // blu = resto
+  function isSel(p){
+    if(!frColorBy.field)return false;
+    if(frColorBy.field==='emittente')return p.emittente===frColorBy.value;
+    if(frColorBy.field==='struttura')return p.struttura===frColorBy.value;
+    if(frColorBy.field==='sottostante')return asArr(p.sottostanti).includes(frColorBy.value);
+    return false;}
 
-  let traces;
-  if(frColorBy){
-    // Una traccia per categoria → legenda automatica con i nomi
-    const byCat={};
-    vis.forEach(p=>{
-      const pt=valueAtDate(p,dateStr);if(!pt||pt.v==null||pt.m==null)return;
-      const c=catValue(p)||'—';
-      (byCat[c]=byCat[c]||{x:[],y:[],txt:[]});
-      byCat[c].x.push(pt.v);byCat[c].y.push(pt.m);byCat[c].txt.push(p.isin+' · '+(p.emittente||''));});
-    traces=Object.keys(byCat).sort().map(c=>({
-      x:byCat[c].x,y:byCat[c].y,text:byCat[c].txt,name:(frColorBy==='sottostante'?(nameOf(c)||c):c),
-      mode:'markers',type:'scatter',
-      marker:{size:9,color:catColorMap[c]||CAT_BASE,line:{color:'rgba(20,28,36,.6)',width:1},opacity:.88},
-      hovertemplate:'<b>%{text}</b><br>Vol: %{x:.1%}<br>Rend: %{y:+.1%}<extra></extra>'}));
-  }else{
-    // Tutti i punti dello stesso colore neutro
-    const xs=[],ys=[],txt=[];
-    vis.forEach(p=>{const pt=valueAtDate(p,dateStr);if(!pt||pt.v==null||pt.m==null)return;
-      xs.push(pt.v);ys.push(pt.m);txt.push(p.isin+' · '+(p.emittente||''));});
-    traces=[{x:xs,y:ys,text:txt,mode:'markers',type:'scatter',
-      marker:{size:9,color:CAT_BASE,line:{color:'rgba(20,28,36,.6)',width:1},opacity:.85},
-      hovertemplate:'<b>%{text}</b><br>Vol: %{x:.1%}<br>Rend: %{y:+.1%}<extra></extra>'}];
-  }
+  // customdata = [isin, emittente, struttura, sottostanti] per tooltip e click
+  const selX=[],selY=[],selCd=[],othX=[],othY=[],othCd=[];
+  vis.forEach(p=>{
+    const pt=valueAtDate(p,dateStr);if(!pt||pt.v==null||pt.m==null)return;
+    const cd=[p.isin,p.emittente||'—',p.struttura||'—',asArr(p.sottostanti).map(s=>nameOf(s)||s).join(', ')||'—'];
+    if(isSel(p)){selX.push(pt.v);selY.push(pt.m);selCd.push(cd);}
+    else{othX.push(pt.v);othY.push(pt.m);othCd.push(cd);}});
+
+  // Tooltip elegante: ISIN, Emittente, Struttura, Sottostanti (no righe x/y)
+  const HOVER='<b>%{customdata[0]}</b><br>'+
+    '<span style="color:#C9A24E">%{customdata[1]}</span><br>'+
+    '%{customdata[2]}<br>'+
+    '<span style="color:#90A2B0">%{customdata[3]}</span><extra></extra>';
+
+  const mk=(x,y,cd,col,sz)=>({x,y,customdata:cd,mode:'markers',type:'scatter',
+    marker:{size:sz,color:col,line:{color:'rgba(20,28,36,.6)',width:1},opacity:.9},
+    hovertemplate:HOVER,hoverlabel:{bgcolor:'rgba(18,24,32,.97)',bordercolor:'rgba(201,162,78,.5)',
+      font:{family:'Inter, system-ui, sans-serif',size:12,color:'#EAEFF3'},align:'left'}});
+
+  const traces=[mk(othX,othY,othCd,BASE,8)];
+  if(selX.length)traces.push(mk(selX,selY,selCd,SEL,10));   // selezionati sopra, più grandi
 
   const L=baseLayout();
   L.xaxis.title={text:'Volatilità annualizzata',font:{size:12.5,color:C.muted,family:'Inter, system-ui, sans-serif'}};
@@ -1306,16 +1299,24 @@ function renderFrontier(){
   L.yaxis.showgrid=true;L.yaxis.gridcolor='rgba(255,255,255,.04)';
   L.xaxis.zeroline=true;L.xaxis.zerolinecolor='rgba(201,162,78,.6)';L.xaxis.zerolinewidth=2;
   L.yaxis.zeroline=true;L.yaxis.zerolinecolor='rgba(201,162,78,.6)';L.yaxis.zerolinewidth=2;
-  // Range fissi: rendimento ±70%, volatilità 0-70% (modificabili in futuro)
   L.yaxis.range=[-0.70,0.70];L.yaxis.autorange=false;
   L.xaxis.range=[0,0.70];L.xaxis.autorange=false;
+  L.hovermode='closest';   // tooltip sul punto, non righe verticali/orizzontali
   L.annotations=[
     {xref:'paper',yref:'paper',x:1,y:0,ax:-18,ay:0,xanchor:'left',yanchor:'middle',text:'',showarrow:true,arrowhead:2,arrowsize:1.4,arrowwidth:1.5,arrowcolor:'rgba(201,162,78,.6)'},
     {xref:'paper',yref:'paper',x:0,y:1,ax:0,ay:18,xanchor:'center',yanchor:'bottom',text:'',showarrow:true,arrowhead:2,arrowsize:1.4,arrowwidth:1.5,arrowcolor:'rgba(201,162,78,.6)'}];
-  L.showlegend=!!frColorBy;
-  if(frColorBy){L.legend={orientation:'h',y:-0.16,x:0,font:{size:11,color:C.muted,family:'Inter, system-ui, sans-serif'},bgcolor:'rgba(0,0,0,0)',itemsizing:'constant'};L.margin={l:70,r:30,t:20,b:96};}
-  else{L.margin={l:70,r:30,t:20,b:60};}
+  L.margin={l:70,r:30,t:20,b:60};L.showlegend=false;
   Plotly.react('chartFrontier',traces,L,PCFG);forceRedraw('chartFrontier');
+
+  // Click su un punto → apri la scheda prodotto
+  const gd=document.getElementById('chartFrontier');
+  if(gd&&!gd._frClickBound){
+    gd.on('plotly_click',ev=>{
+      const pt=ev.points&&ev.points[0];if(!pt||!pt.customdata)return;
+      const isin=pt.customdata[0];
+      if(DATA.some(x=>x.isin===isin))location.hash='#/'+encodeURIComponent(isin)+'/markup';});
+    gd._frClickBound=true;
+  }
 }
 
 function fmtDate(s){const[y,m,d]=s.split('-');return d+'/'+m+'/'+y;}
@@ -1336,16 +1337,34 @@ function setupFrontierFilters(){
   makeSearchable('fswEmit','fsiEmit','fsdEmit',opt.emit,null,v=>{frFilters.emit=v;renderFrontier();});
   makeSearchable('fswStruct','fsiStruct','fsdStruct',opt.struct,null,v=>{frFilters.struct=v;renderFrontier();});
   makeSearchable('fswSott','fsiSott','fsdSott',opt.sott,nameOf,v=>{frFilters.sott=v;renderFrontier();});
-  // Selettore "Colora per"
-  const colorOpts=['emittente','struttura','sottostante'];
-  const colorLabels={emittente:'Emittente',struttura:'Struttura',sottostante:'Sottostante'};
-  makeSearchable('fswColor','fsiColor','fsdColor',colorOpts,v=>colorLabels[v]||v,v=>{frColorBy=v;renderFrontier();});
+
+  // Evidenzia: prima la caratteristica, poi il valore (a cascata)
+  const fieldOpts=['emittente','struttura','sottostante'];
+  const fieldLabels={emittente:'Emittente',struttura:'Struttura',sottostante:'Sottostante'};
+  makeSearchable('fswColorField','fsiColorField','fsdColorField',fieldOpts,v=>fieldLabels[v]||v,field=>{
+    frColorBy={field,value:''};
+    const valWrap=document.getElementById('fldColorValue');
+    const vi=document.getElementById('fsiColorVal');if(vi)vi.value='';
+    if(!field){if(valWrap)valWrap.style.display='none';renderFrontier();return;}
+    // popolo i valori possibili per la caratteristica scelta
+    let vals=[];
+    if(field==='emittente')vals=opt.emit;
+    else if(field==='struttura')vals=opt.struct;
+    else if(field==='sottostante')vals=opt.sott;
+    const lblFn=field==='sottostante'?nameOf:null;
+    makeSearchable('fswColorVal','fsiColorVal','fsdColorVal',vals,lblFn,value=>{
+      frColorBy={field,value};renderFrontier();});
+    if(valWrap)valWrap.style.display='';
+    renderFrontier();
+  });
+
   const fq=document.getElementById('fq');
   if(fq)fq.oninput=()=>{frFilters.q=fq.value;renderFrontier();};
   const fr=document.getElementById('fReset');
-  if(fr)fr.onclick=()=>{frFilters.q='';frFilters.emit='';frFilters.struct='';frFilters.sott='';frColorBy='';
+  if(fr)fr.onclick=()=>{frFilters.q='';frFilters.emit='';frFilters.struct='';frFilters.sott='';frColorBy={field:'',value:''};
     if(fq)fq.value='';
-    ['fsiEmit','fsiStruct','fsiSott','fsiColor'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+    ['fsiEmit','fsiStruct','fsiSott','fsiColorField','fsiColorVal'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+    const valWrap=document.getElementById('fldColorValue');if(valWrap)valWrap.style.display='none';
     renderFrontier();};
 }
 
