@@ -627,6 +627,7 @@ function baseLayout(){return{
     align:'left',namelength:-1},
   hovermode:'x unified',showlegend:false,
   shapes:[],
+  uirevision:(current&&current.isin)||'none',
   transition:{duration:200,easing:'cubic-in-out'}
 };}
 const PCFG={responsive:true,displayModeBar:false,scrollZoom:false};
@@ -651,9 +652,8 @@ function ensureObserver(id){
   ro.observe(el);_chartObservers[id]=ro;
 }
 
-// Redraw solido: attacca observer + forza resize dopo che il layout è stabile.
-// reAutorange=true → riapplica autorange (per markup/price/rolling con assi auto).
-// reAutorange=false → NON tocca i range (per lo scatter che ha range fissi).
+// Redraw solido: attacca observer + forza resize/autorange in più momenti
+// per coprire ogni timing (subito, dopo i frame, dopo un breve delay).
 function forceRedraw(id,reAutorange){
   const el=document.getElementById(id);if(!el)return;
   ensureObserver(id);
@@ -661,7 +661,9 @@ function forceRedraw(id,reAutorange){
     Plotly.Plots.resize(id);
     if(reAutorange)Plotly.relayout(id,{'xaxis.autorange':true,'yaxis.autorange':true});
   }catch(e){}};
-  requestAnimationFrame(()=>requestAnimationFrame(fix));
+  fix();                                            // subito (sincrono)
+  requestAnimationFrame(()=>requestAnimationFrame(fix));  // dopo il layout
+  setTimeout(fix,200);                              // rete di sicurezza finale
 }
 
 function renderMarkup(r){const x=r.dates;
@@ -685,6 +687,7 @@ function renderMarkup(r){const x=r.dates;
     line:{color:'rgba(144,162,176,.25)',width:1,dash:'dot'}}];
   L.yaxis.ticksuffix='%';
   L.yaxis.tickformat='+.2f';
+  L.xaxis.autorange=true;L.yaxis.autorange=true;
   Plotly.react('chartMarkup',traces,L,PCFG);forceRedraw('chartMarkup',true);}
 
 function renderPrice(r){const x=r.dates;
@@ -704,6 +707,7 @@ function renderPrice(r){const x=r.dates;
     font:{size:11.5,color:C.muted,family:'Inter, system-ui, sans-serif'},
     bgcolor:'rgba(0,0,0,0)',borderwidth:0};
   L.margin.t=28;
+  L.xaxis.autorange=true;L.yaxis.autorange=true;
   Plotly.react('chartPrice',traces,L,PCFG);forceRedraw('chartPrice',true);}
 
 /* ---------- util ---------- */
