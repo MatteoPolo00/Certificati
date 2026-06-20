@@ -257,6 +257,82 @@
     .prodhead{align-items:flex-start}.stamp{text-align:left}
   }
   @media (max-width:460px){.stats{grid-template-columns:1fr}}
+
+  /* ============ RIFINITURE EDITORIALI ============ */
+  /* Accento corsivo dorato per enfasi nei titoli */
+  .accent-it{font-style:italic;color:var(--brass)}
+  /* Card con micro-elevazione e hover più raffinato */
+  .card{transition:border-color .2s ease, box-shadow .2s ease}
+  .chart-card:hover{border-color:var(--hair);box-shadow:0 1px 0 rgba(201,162,78,.06), 0 8px 30px rgba(0,0,0,.18)}
+  /* Badge più elegante */
+  .badge{display:inline-block;font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--brass);background:var(--brass-soft);border:1px solid rgba(201,162,78,.2);border-radius:5px;padding:2px 7px;vertical-align:middle;margin-left:7px}
+  /* Hairline dorato sottile sopra le sezioni principali */
+  .chart-head .t{position:relative}
+  /* Numeri tabulari ovunque per allineamento */
+  .mtable td{font-variant-numeric:tabular-nums}
+  /* Riga tabella: feedback tap più morbido */
+  .mtable tbody tr:active{background:var(--panel-2)}
+
+  /* ============ MOBILE (≤760px) ============ */
+  @media (max-width:760px){
+    body{padding:0}
+    .wrap{padding:14px}
+    /* Header compatto */
+    header.top{flex-direction:row;align-items:center;gap:12px}
+    .bt{font-size:19px!important}
+    .ident{order:0}
+    .who{display:none}  /* nascondo nome su mobile per spazio */
+    /* Nav principale full-width */
+    .mainnav{width:100%}
+    .mainnav button{flex:1;text-align:center;padding:9px 10px;font-size:11px}
+    /* Toolbar filtri: stack verticale, campi full-width */
+    .mtoolbar{flex-direction:column;align-items:stretch;gap:9px}
+    .mtoolbar .fld{width:100%}
+    .mtoolbar input,.mtoolbar select,.srch-wrap,.srch-inp{width:100%!important;min-width:0!important;box-sizing:border-box}
+    .mtoolbar input[type="search"]{min-width:0}
+    .reset{width:100%;padding:11px}
+    .dlbtn,.xlsbtn-wide{width:100%}
+    /* Tabella Monitor: scroll orizzontale fluido con momentum */
+    .tablewrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:0;border-left:0;border-right:0}
+    .mtable{font-size:12px}
+    .mtable th,.mtable td{padding:9px 10px}
+    /* indicatore visivo che la tabella scrolla */
+    .tablewrap{background:
+      linear-gradient(90deg,var(--panel) 30%,transparent),
+      linear-gradient(90deg,transparent,var(--panel) 70%) 100% 0,
+      radial-gradient(farthest-side at 0 50%,rgba(0,0,0,.3),transparent),
+      radial-gradient(farthest-side at 100% 50%,rgba(0,0,0,.3),transparent) 100% 0;
+      background-repeat:no-repeat;background-size:40px 100%,40px 100%,14px 100%,14px 100%;
+      background-attachment:local,local,scroll,scroll}
+    /* Grafici più bassi su mobile */
+    .plot{height:300px}
+    .plot.sm{height:260px}
+    .plot.tall{height:380px}
+    /* Hero numero più contenuto */
+    .hero .val{font-size:42px!important}
+    /* Sub-tabs scrollabili se non entrano */
+    .subtabs{overflow-x:auto;-webkit-overflow-scrolling:touch;flex-wrap:nowrap;-ms-overflow-style:none;scrollbar-width:none}
+    .subtabs::-webkit-scrollbar{display:none}
+    .subtabs button{flex-shrink:0}
+    /* Slider frontier: thumb più grande per il dito */
+    #frSlider::-webkit-slider-thumb{width:22px;height:22px}
+    #frSlider::-moz-range-thumb{width:22px;height:22px}
+    /* Paginazione: centrata e ariosa */
+    .pager{flex-wrap:wrap;gap:8px;justify-content:center}
+    /* Card padding ridotto */
+    .chart-card{padding:14px}
+    .meta,.card.meta{padding:16px}
+    /* Calendario: scroll orizzontale */
+    .caltable-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+    /* Chart head: titolo e controlli vanno a capo */
+    .chart-head{flex-wrap:wrap;gap:8px}
+    .hd-right{width:100%;justify-content:space-between}
+  }
+
+  /* Tap target minimi su touch */
+  @media (hover:none){
+    button,.ic,.mtable tbody tr,.srch-inp{min-height:40px}
+  }
   @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}.rise{opacity:1;transform:none}}
 </style>
 </head>
@@ -283,7 +359,7 @@
         <div class="bt" style="font-family:'Cinzel',serif;font-size:23px;font-weight:400;letter-spacing:.12em">JENSEN</div>
         <div style="display:flex;align-items:center;gap:10px;margin-top:6px">
           <div style="height:1px;width:18px;background:#C9A24E;flex-shrink:0"></div>
-          <div style="font-family:'Cinzel',serif;font-size:11px;font-weight:400;letter-spacing:.16em;color:var(--faint)">CERTIFICATE MONITOR & ANALYTICS</div>
+          <div style="font-family:'Cinzel',serif;font-size:11px;font-weight:400;letter-spacing:.16em;color:var(--faint)">CERTIFICATE MONITOR &amp; <span style="font-style:italic;color:var(--brass)">Analytics</span></div>
         </div>
       </div>
     </div>
