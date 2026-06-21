@@ -188,6 +188,7 @@
   .subtabs button[aria-pressed="true"]{background:var(--panel-2);color:var(--txt);box-shadow:inset 0 0 0 1px var(--hair)}
   .subtabs button[aria-pressed="true"] svg{opacity:1;color:var(--brass)}
   .subtabs button:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+  .subtabs button.is-disabled,.subtabs button:disabled{opacity:.4;cursor:not-allowed;pointer-events:none}
   .subview{display:flex;flex-direction:column;gap:16px}
   .subview[hidden]{display:none}
   .placeholder{padding:52px 28px;text-align:center;color:var(--faint);font-size:14px;line-height:1.6}
@@ -216,6 +217,9 @@
   .row .v{font-family:"IBM Plex Mono",monospace;font-size:13.5px;color:var(--txt);text-align:right;font-variant-numeric:tabular-nums}
   .chips{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}
   .chip{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--brass);background:var(--brass-soft);border:1px solid rgba(184,151,90,.25);padding:3px 9px;border-radius:6px}
+  .chip-link{cursor:pointer;transition:background .15s,border-color .15s,transform .12s}
+  .chip-link:hover{background:rgba(184,151,90,.2);border-color:rgba(184,151,90,.5);transform:translateY(-1px)}
+  .chip-link:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
 
   .stats{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
   .stat{padding:18px 20px}
@@ -294,6 +298,13 @@
   .caltable tr:last-child td{border-bottom:0}
   .caltable .nxt{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink);background:var(--brass);padding:1px 6px;border-radius:4px;margin-left:8px}
   .cpill{display:inline-block;font-family:"Inter",sans-serif;font-size:10.5px;font-weight:600;letter-spacing:.01em;padding:3px 10px;border-radius:999px;white-space:nowrap}
+  .sottcert-list{display:flex;flex-direction:column;gap:7px}
+  .sottcert-row{display:flex;align-items:center;gap:10px;width:100%;text-align:left;appearance:none;cursor:pointer;
+    background:var(--panel-2);border:1px solid var(--hair-soft);border-radius:9px;padding:10px 13px;transition:border-color .15s,background .15s,transform .12s}
+  .sottcert-row:hover{border-color:var(--hair);background:var(--panel-3);transform:translateX(2px)}
+  .sottcert-row .scr-isin{font-family:"IBM Plex Mono",monospace;font-size:12.5px;color:var(--txt);font-weight:600}
+  .sottcert-row .scr-meta{flex:1;font-size:11.5px;color:var(--muted)}
+  .sottcert-row .scr-arrow{color:var(--brass);font-size:14px}
   .cpill-ok{color:var(--pos);background:var(--pos-soft);border:1px solid rgba(91,191,155,.3)}
   .cpill-no{color:var(--neg);background:var(--neg-soft);border:1px solid rgba(217,131,115,.35)}
   .caltable .muted-dash{color:var(--faint)}
@@ -676,6 +687,40 @@
     </div>
     <div class="subview" id="sv-autocall" hidden><div class="card placeholder">Vista <b>Autocall</b> — in arrivo.</div></div>
     <div class="subview" id="sv-rischio" hidden><div class="card placeholder">Vista <b>Rischio</b> — in arrivo.</div></div>
+  </section>
+
+  <!-- ================= SOTTOSTANTE ================= -->
+  <section id="viewSottostante" class="view">
+    <div class="prodhead">
+      <div class="prodleft">
+        <button class="back" id="backBtnSott">← Indietro</button>
+        <div class="prodtitle"><div class="mtitle" id="sTitle">—</div><div class="msub" id="sSub">Sottostante</div></div>
+      </div>
+    </div>
+
+    <div class="subtabs-sticky" id="sottSubtabsSticky">
+    <div class="subtabs" id="sottSubtabs" role="group" aria-label="Vista sottostante">
+      <button data-st="prezzo" aria-pressed="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17 L9 11 L13 15 L21 7"/><path d="M16 7 L21 7 L21 12"/></svg>
+        <span>Prezzo</span>
+      </button>
+      <button data-st="rendimento" aria-pressed="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12 Q7 4 12 12 T21 12"/></svg>
+        <span>Rendimento</span>
+      </button>
+    </div>
+    </div>
+
+    <div class="ov-top">
+      <div class="card chart-card">
+        <div class="chart-head"><div class="t" id="sChartTitle">Prezzo storico</div><div class="h" id="sChartSub"></div></div>
+        <div id="chartSott" class="plot ov"></div>
+      </div>
+      <div class="card meta">
+        <h2>Certificati collegati</h2>
+        <div id="sottCertList"></div>
+      </div>
+    </div>
   </section>
 <!-- pop-up benvenuto -->
 <div class="welcome-overlay" id="welcomeOverlay">
@@ -1066,7 +1111,15 @@ function renderMeta(r){const pmkt=lastNum(r.prezzo_mercato),pmod=lastNum(r.prezz
     const l=document.createElement('div');l.className='lab';l.textContent=lab;
     const v=document.createElement('div');v.className='v';
     if(val==='__chips__'){const c=document.createElement('div');c.className='chips';
-      (r.sottostanti||[]).forEach(s=>{const ch=document.createElement('span');ch.className='chip';ch.textContent=nameOf(s);ch.title=s;c.appendChild(ch);});v.appendChild(c);}
+      (r.sottostanti||[]).forEach(s=>{
+        const ch=document.createElement('span');ch.className='chip chip-link';
+        ch.textContent=nameOf(s);ch.title='Apri scheda '+(nameOf(s)||s);
+        ch.setAttribute('role','button');ch.tabIndex=0;
+        const go=()=>{location.hash='#/sott/'+encodeURIComponent(s);};
+        ch.addEventListener('click',go);
+        ch.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go();}});
+        c.appendChild(ch);});
+      v.appendChild(c);}
     else{v.textContent=val;}row.appendChild(l);row.appendChild(v);host.appendChild(row);});}
 function asPerDate(field,n){if(field==null)return new Array(n).fill(null);
   if(Array.isArray(field)){const a=field.slice(0,n);while(a.length<n)a.push(null);return a;}
@@ -1440,6 +1493,13 @@ function applyHash(){
   if(!raw){showView('monitor');return;}
   if(raw==='frontier'){showView('frontier');return;}
   const parts=raw.split('/');
+  // rotta sottostante: #/sott/SIGLA
+  if(parts[0]==='sott'&&parts[1]){
+    const sigla=decodeURIComponent(parts[1]);
+    // assicuro che i dati frontier (con i sottostanti) siano caricati
+    loadFrontier().then(()=>openSottostante(sigla,true));
+    return;
+  }
   const isin=decodeURIComponent(parts[0]);
   const tab=parts[1]||'overview';
   if(DATA.some(x=>x.isin===isin)){openProduct(isin,true,tab);return;}
@@ -1451,12 +1511,110 @@ function showView(v){
   document.getElementById('viewMonitor').classList.toggle('active',v==='monitor');
   document.getElementById('viewProduct').classList.toggle('active',v==='product');
   const vf=document.getElementById('viewFrontier');if(vf)vf.classList.toggle('active',v==='frontier');
-  // nav: Monitor attivo per monitor+product, Frontier per frontier
+  const vs=document.getElementById('viewSottostante');if(vs)vs.classList.toggle('active',v==='sottostante');
+  // nav: Monitor attivo per monitor+product, Frontier per frontier+sottostante
   document.querySelectorAll('#mainnav button').forEach(b=>{
-    const on=(b.dataset.nav==='frontier')?(v==='frontier'):(v==='monitor'||v==='product');
+    const on=(b.dataset.nav==='frontier')?(v==='frontier'||v==='sottostante'):(v==='monitor'||v==='product');
     b.setAttribute('aria-pressed',on?'true':'false');});
   if(v==='frontier')openFrontier();
   window.scrollTo({top:0,behavior:'instant'in document.documentElement.style?'instant':'auto'});
+}
+
+/* ================= SCHEDA SOTTOSTANTE ================= */
+let currentSott=null, sottTab='prezzo';
+
+// Trova i certificati (in DATA) che contengono la sigla del sottostante
+function certificatiConSottostante(sigla){
+  return DATA.filter(c=>asArr(c.sottostanti).includes(sigla));
+}
+
+function openSottostante(sigla,fromHash){
+  const s=(frontierSottostanti()||[]).find(x=>x.sigla===sigla);
+  if(!s){
+    // sottostante non presente in frontier.json: avviso e ritorno
+    console.info('Sottostante non disponibile in frontier.json:',sigla);
+    if(!fromHash)alert('Dati non disponibili per questo sottostante ('+sigla+').');
+    return;
+  }
+  currentSott=s;
+  document.getElementById('sTitle').textContent=nameOf(sigla)||sigla;
+  document.getElementById('sSub').textContent='Sottostante · '+sigla;
+  showView('sottostante');
+  renderSottCertList(sigla);
+  // Abilito/disabilito la sotto-scheda Prezzo a seconda della disponibilità del dato
+  const hasPrezzo=asArr(s.prezzo).length>0;
+  const btnPrezzo=document.querySelector('#sottSubtabs button[data-st="prezzo"]');
+  if(btnPrezzo){
+    btnPrezzo.disabled=!hasPrezzo;
+    btnPrezzo.classList.toggle('is-disabled',!hasPrezzo);
+    btnPrezzo.title=hasPrezzo?'':'Serie prezzo non ancora disponibile';
+  }
+  // se il prezzo non c'è, parto dal rendimento
+  setSottTab(hasPrezzo?(sottTab||'prezzo'):'rendimento');
+  if(!fromHash){const h='#/sott/'+encodeURIComponent(sigla);if(location.hash!==h)location.hash=h;}
+}
+
+function setSottTab(t){
+  // se il prezzo non è disponibile, resto sul rendimento
+  if(t==='prezzo'&&currentSott&&!asArr(currentSott.prezzo).length)t='rendimento';
+  sottTab=t;
+  document.querySelectorAll('#sottSubtabs button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.st===t?'true':'false'));
+  renderSottChart();
+}
+
+function renderSottChart(){
+  if(!currentSott)return;
+  const x=asArr(currentSott.dates);
+  let y,titolo,sub,suffix='';
+  if(sottTab==='prezzo'){
+    y=asArr(currentSott.prezzo);titolo='Prezzo storico';sub='valore del sottostante';
+  }else{
+    y=asArr(currentSott.mean);titolo='Rendimento rolling';sub='annualizzato (252g)';suffix='%';
+  }
+  const isPct=sottTab==='rendimento';
+  const traces=[{x,y:isPct?y.map(v=>v==null?null:v*100):y,type:'scatter',mode:'lines',
+    line:{color:'rgba(184,151,90,.95)',width:1.8,shape:'linear'},
+    connectgaps:false,fill:'tozeroy',fillcolor:'rgba(184,151,90,.05)',
+    hovertemplate:'<b>%{x|%d %b %Y}</b><br>'+(isPct?'Rendimento&nbsp;&nbsp;<b>%{y:+.1f}%</b>':'Prezzo&nbsp;&nbsp;<b>%{y:.2f}</b>')+'<extra></extra>'}];
+  document.getElementById('sChartTitle').textContent=titolo;
+  document.getElementById('sChartSub').textContent=sub;
+  const L=baseLayout();
+  L.xaxis.autorange=true;
+  if(isPct){L.yaxis.ticksuffix='%';L.yaxis.autorange=true;}
+  else{
+    const fin=y.filter(v=>v!=null&&isFinite(v));
+    if(fin.length){const dMin=Math.min(...fin),dMax=Math.max(...fin);const pad=Math.max(1,(dMax-dMin)*0.08);
+      L.yaxis.range=[dMin-pad,dMax+pad];L.yaxis.autorange=false;}
+    else L.yaxis.autorange=true;
+  }
+  drawChartSott('chartSott',traces,L);
+}
+
+// drawChart dedicato che resetta al cambio sottostante
+let _lastSottDrawn=null;
+function drawChartSott(id,traces,layout){
+  const gd=document.getElementById(id);if(!gd)return;
+  const key=(currentSott&&currentSott.sigla||'none')+'|'+sottTab;
+  whenSized(id,()=>{try{
+    if(_lastSottDrawn!==key){Plotly.purge(gd);Plotly.newPlot(gd,traces,layout,PCFG);_lastSottDrawn=key;}
+    else Plotly.react(gd,traces,layout,PCFG);
+  }catch(e){}});
+}
+
+function renderSottCertList(sigla){
+  const host=document.getElementById('sottCertList');if(!host)return;
+  const certs=certificatiConSottostante(sigla);
+  if(!certs.length){host.innerHTML='<div class="empty">Nessun certificato collegato in archivio.</div>';return;}
+  let html='<div class="sottcert-list">';
+  certs.forEach(c=>{
+    html+=`<button class="sottcert-row" data-isin="${esc(c.isin)}">`
+      +`<span class="scr-isin">${esc(c.isin)}</span>`
+      +`<span class="scr-meta">${esc(c.emittente||'—')} · ${esc(c.struttura||'—')}</span>`
+      +`<span class="scr-arrow">→</span></button>`;});
+  html+='</div>';
+  host.innerHTML=html;
+  host.querySelectorAll('.sottcert-row').forEach(b=>b.addEventListener('click',()=>{
+    location.hash='#/'+encodeURIComponent(b.dataset.isin)+'/overview';}));
 }
 
 /* ================= EFFICIENT FRONTIER ================= */
@@ -1500,11 +1658,13 @@ function demoFrontier(){
   const sottostanti=[];
   for(let k=0;k<sigle.length;k++){
     const baseV=0.12+Math.random()*0.35,baseM=-0.10+Math.random()*0.45;
-    const mean=[],vol=[];
+    const p0=50+Math.random()*150;
+    const mean=[],vol=[],prezzo=[];let pv=p0;
     for(let i=0;i<dates.length;i++){
       mean.push(+(baseM+Math.sin(i/7+k)*0.05+(Math.random()-0.5)*0.03).toFixed(4));
-      vol.push(+Math.max(0.03,baseV+Math.cos(i/9+k)*0.04+(Math.random()-0.5)*0.015).toFixed(4));}
-    sottostanti.push({sigla:sigle[k],dates,mean,vol});}
+      vol.push(+Math.max(0.03,baseV+Math.cos(i/9+k)*0.04+(Math.random()-0.5)*0.015).toFixed(4));
+      pv=pv*(1+(Math.random()-0.49)*0.03);prezzo.push(+pv.toFixed(2));}
+    sottostanti.push({sigla:sigle[k],dates,mean,vol,prezzo});}
   return{dates,products,sottostanti};
 }
 
@@ -1659,8 +1819,15 @@ function renderFrontier(){
   if(gd&&!gd._frClickBound){
     gd.on('plotly_click',ev=>{
       const pt=ev.points&&ev.points[0];if(!pt||!pt.customdata)return;
-      const isin=pt.customdata[0];
-      if(DATA.some(x=>x.isin===isin))location.hash='#/'+encodeURIComponent(isin)+'/overview';});
+      // certificato: customdata ha 5 campi (5° = JSON sigle) → apri prodotto
+      // sottostante: customdata ha 2 campi [nome, sigla] → apri scheda sottostante
+      if(pt.customdata.length>=5){
+        const isin=pt.customdata[0];
+        if(DATA.some(x=>x.isin===isin))location.hash='#/'+encodeURIComponent(isin)+'/overview';
+      }else{
+        const sigla=pt.customdata[1];
+        if(sigla)location.hash='#/sott/'+encodeURIComponent(sigla);
+      }});
     // Hover → comete (scia storica) del prodotto sotto il mouse.
     // Su un certificato: cometa del certificato + comete dei suoi sottostanti + sigle.
     // Su un sottostante (vista sottostanti): cometa di quel sottostante.
@@ -1884,6 +2051,10 @@ function init(){
   document.getElementById('xlsMarkup').addEventListener('click',()=>exportChart('markup'));
   document.getElementById('xlsPrice').addEventListener('click',()=>exportChart('price'));
   document.querySelectorAll('#subtabs button').forEach(b=>b.addEventListener('click',()=>setSubview(b.dataset.t)));
+  // Scheda sottostante: back + sotto-schede Prezzo/Rendimento
+  const backSott=document.getElementById('backBtnSott');
+  if(backSott)backSott.addEventListener('click',()=>{location.hash='#/frontier';});
+  document.querySelectorAll('#sottSubtabs button').forEach(b=>b.addEventListener('click',()=>setSottTab(b.dataset.st)));
   document.querySelectorAll('#tabs button').forEach(b=>b.addEventListener('click',()=>{
     win=b.dataset.w;document.querySelectorAll('#tabs button').forEach(x=>x.setAttribute('aria-pressed',x===b?'true':'false'));applyWindow();}));
 
