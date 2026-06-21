@@ -1564,12 +1564,14 @@ function setSottTab(t){
 
 function renderSottChart(){
   if(!currentSott)return;
-  const x=asArr(currentSott.dates);
-  let y,titolo,sub,suffix='';
+  let x,y,titolo,sub;
   if(sottTab==='prezzo'){
-    y=asArr(currentSott.prezzo);titolo='Prezzo storico';sub='valore del sottostante';
+    // serie prezzo completa con le sue date proprie (da AssetTT.mat)
+    x=asArr(currentSott.prezzo_dates).length?asArr(currentSott.prezzo_dates):asArr(currentSott.dates);
+    y=asArr(currentSott.prezzo);titolo='Prezzo storico';sub='serie storica completa';
   }else{
-    y=asArr(currentSott.mean);titolo='Rendimento rolling';sub='annualizzato (252g)';suffix='%';
+    x=asArr(currentSott.dates);
+    y=asArr(currentSott.mean);titolo='Rendimento rolling';sub='annualizzato (252g) · periodo del certificato';
   }
   const isPct=sottTab==='rendimento';
   const traces=[{x,y:isPct?y.map(v=>v==null?null:v*100):y,type:'scatter',mode:'lines',
@@ -1664,7 +1666,7 @@ function demoFrontier(){
       mean.push(+(baseM+Math.sin(i/7+k)*0.05+(Math.random()-0.5)*0.03).toFixed(4));
       vol.push(+Math.max(0.03,baseV+Math.cos(i/9+k)*0.04+(Math.random()-0.5)*0.015).toFixed(4));
       pv=pv*(1+(Math.random()-0.49)*0.03);prezzo.push(+pv.toFixed(2));}
-    sottostanti.push({sigla:sigle[k],dates,mean,vol,prezzo});}
+    sottostanti.push({sigla:sigle[k],dates,mean,vol,prezzo,prezzo_dates:dates});}
   return{dates,products,sottostanti};
 }
 
