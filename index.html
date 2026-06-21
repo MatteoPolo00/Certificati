@@ -40,7 +40,7 @@
   /* header */
   .top{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap}
 
-  /* ============ STICKY: navigazione e intestazioni sempre visibili ============ */
+  /* ============ STICKY: solo header+nav (e subtabs prodotto) ============ */
   /* Barra superiore (logo + identità + nav principale) appiccicata in cima */
   .topbar-sticky{position:sticky;top:0;z-index:60;
     background:color-mix(in srgb, var(--ink) 88%, transparent);
@@ -48,14 +48,8 @@
     margin:0 -24px;padding:14px 24px 0;
     border-bottom:1px solid transparent;transition:border-color .3s ease, box-shadow .3s ease}
   .topbar-sticky.scrolled{border-bottom-color:var(--hair-soft);box-shadow:0 6px 24px -12px rgba(0,0,0,.5)}
-  /* Toolbar dei filtri Monitor: appiccicata sotto la barra superiore */
-  .toolbar-sticky{position:sticky;z-index:50;background:var(--ink);
-    margin:0 -24px;padding:14px 24px;transition:box-shadow .3s ease}
-  /* Intestazione tabella Monitor sempre visibile durante lo scroll delle righe */
-  .mtable thead th{position:sticky;z-index:30;
-    background:var(--panel-2);
-    box-shadow:inset 0 -1px 0 var(--hair);
-    transition:background .2s ease}
+  /* Toolbar filtri Monitor: NON sticky, scorre con la pagina */
+  /* Intestazione tabella Monitor: NON sticky, scorre con le righe */
   /* Sotto-schede prodotto (Overview/Markup/…) appiccicate in cima */
   .subtabs-sticky{position:sticky;z-index:50;
     background:color-mix(in srgb, var(--ink) 90%, transparent);
@@ -63,11 +57,6 @@
     margin:0 -24px;padding:12px 24px;transition:border-color .3s ease, box-shadow .3s ease;
     border-bottom:1px solid transparent}
   .subtabs-sticky.scrolled{border-bottom-color:var(--hair-soft);box-shadow:0 6px 24px -12px rgba(0,0,0,.5)}
-  /* La barra di navigazione prodotto (back + titolo) appiccicata in cima */
-  .prodhead-sticky{position:sticky;z-index:55;top:0;
-    background:color-mix(in srgb, var(--ink) 90%, transparent);
-    backdrop-filter:saturate(140%) blur(10px);-webkit-backdrop-filter:saturate(140%) blur(10px);
-    margin:0 -24px;padding:14px 24px 12px}
   .brand{display:flex;align-items:center;gap:13px}
   .brand .logo{display:grid;place-items:center;width:42px;height:42px;border-radius:11px;background:var(--panel);border:1px solid var(--hair)}
   .brand .bt{font-family:"Inter",sans-serif;font-weight:600;font-size:16px;letter-spacing:.01em;line-height:1.1}
@@ -791,7 +780,7 @@ function baseLayout(){return{
     align:'left',namelength:-1},
   hovermode:'x unified',showlegend:false,
   shapes:[],
-  uirevision:(current&&current.isin)||'none',
+  uirevision:((current&&current.isin)||'none')+'|'+win+'|'+subv,
   transition:{duration:200,easing:'cubic-in-out'}
 };}
 const PCFG={responsive:true,displayModeBar:false,scrollZoom:false};
@@ -1191,10 +1180,11 @@ function setRendTab(t){rendTab=t;
   document.querySelectorAll('#rendtabs button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.rt===t?'true':'false'));
   if(!current)return;
   const rd=rendCache[current.isin];   // dati rendimento (non l'oggetto prodotto!)
-  // delay per dare tempo al browser di applicare hidden=false prima del resize
+  // rolling mean/vol: scala automatica. scatter: mantiene il suo range calcolato (solo resize).
+  const doAuto=id=>setTimeout(()=>{try{Plotly.Plots.resize(id);Plotly.relayout(id,{'xaxis.autorange':true,'yaxis.autorange':true});}catch(e){}},60);
   const doResize=id=>setTimeout(()=>{try{Plotly.Plots.resize(id);}catch(e){}},60);
-  if(t==='mean')doResize('chartRollMean');
-  if(t==='vol')doResize('chartRollVol');
+  if(t==='mean')doAuto('chartRollMean');
+  if(t==='vol')doAuto('chartRollVol');
   if(t==='scatter'){if(rd)renderScatterCometa(rd,scatterWin);doResize('chartScatter');}}
 
 let rendCache={};
@@ -1301,7 +1291,13 @@ function renderScatterCometa(r,win){
   Ls.margin={l:70,r:30,t:24,b:60};Ls.showlegend=false;
   Plotly.react('chartScatter',traces,Ls,PCFG);fadeIn('chartScatter');forceRedraw('chartScatter');}
 
-function applyWindow(){if(!current)return;const w=sliceByWindow(current,win);renderStats(w);renderMarkup(w);renderPrice(w);}
+function applyWindow(){if(!current)return;const w=sliceByWindow(current,win);renderStats(w);renderMarkup(w);renderPrice(w);
+  // reset scala dopo il ridisegno (coerente col comportamento di cambio scheda)
+  const reset=()=>{try{
+    Plotly.relayout('chartPrice',{'xaxis.autorange':true,'yaxis.autorange':true});
+    Plotly.relayout('chartMarkup',{'xaxis.autorange':true});
+  }catch(e){}};
+  requestAnimationFrame(()=>requestAnimationFrame(reset));}
 function selectIsin(isin){current=DATA.find(x=>x.isin===isin)||current;if(!current)return;
   document.getElementById('mTitle').textContent=current.isin;
   document.getElementById('mSub').textContent=[current.emittente,current.struttura].filter(Boolean).join(' · ');
@@ -1313,8 +1309,28 @@ function setSubview(t){subv=t;
   ['overview','markup','rendimento','autocall','rischio'].forEach(k=>{const el=document.getElementById('sv-'+k);if(el)el.hidden=(k!==t);});
   document.querySelectorAll('#subtabs button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.t===t?'true':'false'));
   if(current){const h='#/'+encodeURIComponent(current.isin)+'/'+t;if(location.hash!==h)location.hash=h;}
-  if(t==='markup'){try{Plotly.Plots.resize('chartMarkup');Plotly.Plots.resize('chartPrice');}catch(e){}}
+  // Ridisegno i grafici della scheda appena aperta, così la scala è corretta
+  // senza bisogno di doppio clic o cambio timeframe manuale.
+  if(t==='markup'&&current){redrawMarkupTab();}
   if(t==='rendimento'&&current){loadRendimento(current);}}
+
+// Ridisegna i due grafici della scheda Markup e RESETTA la scala (autorange),
+// replicando l'effetto del doppio clic in automatico.
+function redrawMarkupTab(){
+  if(!current)return;
+  const w=sliceByWindow(current,win);
+  renderMarkup(w);renderPrice(w);
+  // forzo l'autorange dopo che i div sono visibili e dimensionati
+  const reset=()=>{try{
+    Plotly.Plots.resize('chartMarkup');Plotly.Plots.resize('chartPrice');
+    // chartPrice: scala totalmente automatica
+    Plotly.relayout('chartPrice',{'xaxis.autorange':true,'yaxis.autorange':true});
+    // chartMarkup: X automatica (Y resta col clamp gestito in renderMarkup)
+    Plotly.relayout('chartMarkup',{'xaxis.autorange':true});
+  }catch(e){}};
+  requestAnimationFrame(()=>requestAnimationFrame(reset));
+  setTimeout(reset,120);
+}
 function openProduct(isin,fromHash,tab){
   const changed=!current||current.isin!==isin;
   if(changed)rendTab='mean';  // reset sotto-scheda rendimento sul nuovo prodotto
@@ -1676,25 +1692,17 @@ function init(){
 
 function setupSticky(){
   const topbar=document.getElementById('topbarSticky');
-  const toolbar=document.getElementById('monitorToolbar');
   const subSticky=document.getElementById('subtabsSticky');
   const root=document.documentElement;
 
-  // Misura l'altezza della topbar e posiziona toolbar + intestazione tabella subito sotto
+  // Posiziono i subtabs prodotto subito sotto la topbar fissa
   function measure(){
     const h=topbar?topbar.getBoundingClientRect().height:0;
     root.style.setProperty('--topbar-h',h+'px');
-    if(toolbar)toolbar.style.top=h+'px';
-    // l'intestazione tabella si aggancia sotto topbar + toolbar
-    const th=toolbar?toolbar.getBoundingClientRect().height:0;
-    root.style.setProperty('--thead-top',(h+th)+'px');
-    document.querySelectorAll('.mtable thead th').forEach(el=>{el.style.top=(h+th)+'px';});
-    // i subtabs prodotto si agganciano sotto la topbar
     if(subSticky)subSticky.style.top=h+'px';
   }
   measure();
   window.addEventListener('resize',measure);
-  // rimisura quando cambiano viste (la tabella può essere ridisegnata)
   window.addEventListener('hashchange',()=>setTimeout(measure,60));
 
   // Ombra/bordo graduale quando si scrolla
@@ -1710,7 +1718,6 @@ function setupSticky(){
   }
   window.addEventListener('scroll',onScroll,{passive:true});
   onScroll();
-  // espongo measure per re-invocarla dopo il render della tabella
   window._stickyMeasure=measure;
 }
 
