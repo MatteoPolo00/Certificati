@@ -1464,6 +1464,7 @@ let FRONTIER=null, frDates=[], frDateIdx=0;
 const frFilters={q:'',emit:'',struct:'',sott:''};
 let frColorBy={field:'',value:''};   // caratteristica + valore da evidenziare in rosso
 let frShow='cert';   // 'cert' | 'sott' | 'both'
+const _frHover={sottPos:{},nBase:0,sottLight:false,showSott:false};   // stato per l'hover sui certificati
 
 function frontierSottostanti(){return (FRONTIER&&asArr(FRONTIER.sottostanti))||[];}
 
@@ -1481,6 +1482,7 @@ function demoFrontier(){
   for(let i=0;i<52;i++){const d=new Date(start);d.setDate(d.getDate()+i*7);dates.push(d.toISOString().slice(0,10));}
   const emit=['UniCredit','BNP Paribas','Vontobel','Leonteq','Mediobanca'];
   const strutt=['Cash Collect','Bonus Cap','Express','Reverse Convertible'];
+  const sigle=['AAPL','MSFT','TSLA','ENI','ENEL','NVDA','AMZN','GOOG','META','INTC'];
   const products=[];
   for(let k=0;k<40;k++){
     const baseV=0.08+Math.random()*0.25,baseM=-0.05+Math.random()*0.30;
@@ -1488,12 +1490,14 @@ function demoFrontier(){
     for(let i=0;i<dates.length;i++){
       mean.push(+(baseM+Math.sin(i/8+k)*0.04+(Math.random()-0.5)*0.02).toFixed(4));
       vol.push(+Math.max(0.02,baseV+Math.cos(i/10+k)*0.03+(Math.random()-0.5)*0.01).toFixed(4));}
+    // assegno 2-3 sottostanti reali (tra le sigle) così l'hover ha corrispondenze
+    const ns=2+(k%2),start_s=k%sigle.length,sott=[];
+    for(let j=0;j<ns;j++)sott.push(sigle[(start_s+j)%sigle.length]);
     products.push({isin:'DEMO'+String(k).padStart(4,'0'),emittente:emit[k%emit.length],
       struttura:strutt[k%strutt.length],frequenza:['Mensile','Trimestrale','Semestrale'][k%3],
-      sottostanti:['DEMO1','DEMO2'],scadenza:'2027-12-31',dates,mean,vol});}
+      sottostanti:sott,scadenza:'2027-12-31',dates,mean,vol});}
   // sottostanti demo
   const sottostanti=[];
-  const sigle=['AAPL','MSFT','TSLA','ENI','ENEL','NVDA','AMZN','GOOG','META','INTC'];
   for(let k=0;k<sigle.length;k++){
     const baseV=0.12+Math.random()*0.35,baseM=-0.10+Math.random()*0.45;
     const mean=[],vol=[];
@@ -1569,19 +1573,29 @@ function renderFrontier(){
     if(frColorBy.field==='sottostante')return asArr(p.sottostanti).includes(frColorBy.value);
     return false;}
 
+  // ---- Mappa posizione sottostanti alla data corrente (per hover e per i punti) ----
+  // sigla -> {v, m, nome}. Usata sia per disegnare i sottostanti sia per l'hover.
+  const sottPos={};
+  frontierSottostanti().forEach(s=>{
+    const pt=valueAtDate(s,dateStr);if(!pt||pt.v==null||pt.m==null)return;
+    sottPos[s.sigla]={v:pt.v,m:pt.m,nome:nameOf(s.sigla)||s.sigla};});
+
   // ---- Certificati ----
+  // customdata: [isin, emittente, struttura, sottostanti_label, sigle_json]
   const selX=[],selY=[],selCd=[],othX=[],othY=[],othCd=[];
   vis.forEach(p=>{
     const pt=valueAtDate(p,dateStr);if(!pt||pt.v==null||pt.m==null)return;
-    const cd=[p.isin,p.emittente||'—',p.struttura||'—',asArr(p.sottostanti).map(s=>nameOf(s)||s).join(', ')||'—'];
+    const sigle=asArr(p.sottostanti);
+    const cd=[p.isin,p.emittente||'—',p.struttura||'—',sigle.map(s=>nameOf(s)||s).join(', ')||'—',JSON.stringify(sigle)];
     if(isSel(p)){selX.push(pt.v);selY.push(pt.m);selCd.push(cd);}
     else{othX.push(pt.v);othY.push(pt.m);othCd.push(cd);}});
 
-  // ---- Sottostanti (crocette nere) ----
+  // ---- Sottostanti (punti permanenti, solo se richiesto) ----
   const soX=[],soY=[],soCd=[];
-  sottAll.forEach(s=>{
-    const pt=valueAtDate(s,dateStr);if(!pt||pt.v==null||pt.m==null)return;
-    soX.push(pt.v);soY.push(pt.m);soCd.push([nameOf(s.sigla)||s.sigla,s.sigla]);});
+  if(showSott){
+    Object.keys(sottPos).forEach(sig=>{const o=sottPos[sig];
+      soX.push(o.v);soY.push(o.m);soCd.push([o.nome,sig]);});
+  }
 
   const HOVER_C='<b>%{customdata[0]}</b><br>'+
     '<span style="color:#B8975A">%{customdata[1]}</span><br>'+
@@ -1596,11 +1610,11 @@ function renderFrontier(){
     marker:{size:sz,color:col,line:{color:'rgba(20,28,36,.6)',width:1},opacity:.9},
     hovertemplate:HOVER_C,hoverlabel:HL});
 
-  // crocetta nera (simbolo x sottile); molto leggera in modalità "both"
+  // Sottostante: asterisco oro piccolino. Più tenue in modalità "both".
   const mkS=(x,y,cd)=>({x,y,customdata:cd,mode:'markers',type:'scatter',
-    marker:{size:sottLight?7:9,symbol:'x-thin',
-      color:sottLight?'rgba(10,14,18,.28)':'rgba(15,20,26,.85)',
-      line:{color:sottLight?'rgba(10,14,18,.28)':'rgba(10,14,18,.9)',width:sottLight?1.2:1.8}},
+    marker:{size:sottLight?7:9,symbol:'asterisk-open',
+      color:sottLight?'rgba(184,151,90,.45)':'rgba(184,151,90,.95)',
+      line:{color:sottLight?'rgba(184,151,90,.45)':'rgba(184,151,90,.95)',width:sottLight?1:1.4}},
     hovertemplate:HOVER_S,hoverlabel:HL});
 
   const traces=[];
@@ -1609,6 +1623,13 @@ function renderFrontier(){
     if(selX.length)traces.push(mkC(selX,selY,selCd,SEL,10));
   }
   if(showSott)traces.push(mkS(soX,soY,soCd));
+  // numero di tracce "permanenti": l'hover ne aggiunge una temporanea in coda
+  const nBaseTraces=traces.length;
+  // dati per l'hover: indice customdata delle sigle e mappa posizioni
+  _frHover.sottPos=sottPos;
+  _frHover.nBase=nBaseTraces;
+  _frHover.sottLight=sottLight;
+  _frHover.showSott=showSott;
 
   const L=baseLayout();
   L.xaxis.title={text:'Volatilità annualizzata',font:{size:12.5,color:C.muted,family:'Inter, system-ui, sans-serif'}};
@@ -1635,6 +1656,44 @@ function renderFrontier(){
       const pt=ev.points&&ev.points[0];if(!pt||!pt.customdata)return;
       const isin=pt.customdata[0];
       if(DATA.some(x=>x.isin===isin))location.hash='#/'+encodeURIComponent(isin)+'/overview';});
+    // Hover su un CERTIFICATO → compaiono i suoi sottostanti, ben visibili
+    gd.on('plotly_hover',ev=>{
+      const pt=ev.points&&ev.points[0];if(!pt||!pt.customdata)return;
+      // se sto passando sopra la traccia hover temporanea (sottostanti), non rifare nulla
+      if(gd.data.length>_frHover.nBase && pt.curveNumber>=_frHover.nBase)return;
+      // i certificati hanno 5 campi customdata (il 5° è il JSON delle sigle)
+      const sigleJson=pt.customdata[4];if(!sigleJson){
+        // non è un certificato (es. sottostante permanente): rimuovo eventuale hover
+        if(gd.data.length>_frHover.nBase)Plotly.deleteTraces(gd,gd.data.length-1).catch(()=>{});
+        return;}
+      let sigle;try{sigle=JSON.parse(sigleJson);}catch(e){return;}
+      if(!sigle||!sigle.length)return;
+      const xs=[],ys=[],cd=[];
+      sigle.forEach(sig=>{const o=_frHover.sottPos[sig];if(!o)return;
+        xs.push(o.v);ys.push(o.m);cd.push([o.nome,sig]);});
+      if(!xs.length)return;
+      const HL2={bgcolor:'rgba(18,24,32,.97)',bordercolor:'rgba(184,151,90,.5)',
+        font:{family:'Inter, system-ui, sans-serif',size:12,color:'#E8EDF1'},align:'left'};
+      const hoverTrace={x:xs,y:ys,customdata:cd,mode:'markers+text',type:'scatter',
+        text:xs.map((_,i)=>cd[i][1]),textposition:'top center',
+        textfont:{size:10,color:'rgba(184,151,90,1)',family:'Inter, system-ui, sans-serif'},
+        marker:{size:13,symbol:'asterisk-open',color:'rgba(184,151,90,1)',
+          line:{color:'rgba(184,151,90,1)',width:2}},
+        hovertemplate:'<b>%{customdata[0]}</b><br><span style="color:#8C9BA8">Sottostante · %{customdata[1]}</span><extra></extra>',
+        hoverlabel:HL2,showlegend:false};
+      // se c'è già una traccia hover la sostituisco, altrimenti la aggiungo
+      if(gd.data.length>_frHover.nBase){
+        Plotly.deleteTraces(gd,gd.data.length-1).then(()=>Plotly.addTraces(gd,hoverTrace)).catch(()=>{});
+      }else{
+        Plotly.addTraces(gd,hoverTrace).catch(()=>{});
+      }
+    });
+    gd.on('plotly_unhover',()=>{
+      // rimuovo la traccia hover temporanea (se presente)
+      if(gd.data.length>_frHover.nBase){
+        Plotly.deleteTraces(gd,gd.data.length-1).catch(()=>{});
+      }
+    });
     gd._frClickBound=true;
   }
 }
