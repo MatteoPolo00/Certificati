@@ -188,6 +188,7 @@
   .subtabs button[aria-pressed="true"]{background:var(--panel-2);color:var(--txt);box-shadow:inset 0 0 0 1px var(--hair)}
   .subtabs button[aria-pressed="true"] svg{opacity:1;color:var(--brass)}
   .subtabs button:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+  .subtabs button.is-disabled,.subtabs button:disabled{opacity:.4;cursor:not-allowed;pointer-events:none}
   .subview{display:flex;flex-direction:column;gap:16px}
   .subview[hidden]{display:none}
   .placeholder{padding:52px 28px;text-align:center;color:var(--faint);font-size:14px;line-height:1.6}
@@ -1524,12 +1525,21 @@ function openSottostante(sigla,fromHash){
   document.getElementById('sSub').textContent='Sottostante · '+sigla;
   showView('sottostante');
   renderSottCertList(sigla);
-  setSottTab(sottTab||'prezzo');
+  // Abilito/disabilito la sotto-scheda Prezzo a seconda della disponibilità del dato
+  const hasPrezzo=asArr(s.prezzo).length>0;
+  const btnPrezzo=document.querySelector('#sottSubtabs button[data-st="prezzo"]');
+  if(btnPrezzo){
+    btnPrezzo.disabled=!hasPrezzo;
+    btnPrezzo.classList.toggle('is-disabled',!hasPrezzo);
+    btnPrezzo.title=hasPrezzo?'':'Serie prezzo non ancora disponibile';
+  }
+  // se il prezzo non c'è, parto dal rendimento
+  setSottTab(hasPrezzo?(sottTab||'prezzo'):'rendimento');
   if(!fromHash){const h='#/sott/'+encodeURIComponent(sigla);if(location.hash!==h)location.hash=h;}
 }
 
 function setSottTab(t){
-  // se il prezzo non è disponibile, ripiego sul rendimento
+  // se il prezzo non è disponibile, resto sul rendimento
   if(t==='prezzo'&&currentSott&&!asArr(currentSott.prezzo).length)t='rendimento';
   sottTab=t;
   document.querySelectorAll('#sottSubtabs button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.st===t?'true':'false'));
