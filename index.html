@@ -49,7 +49,9 @@
     border-bottom:1px solid transparent;transition:border-color .3s ease, box-shadow .3s ease}
   .topbar-sticky.scrolled{border-bottom-color:var(--hair-soft);box-shadow:0 6px 24px -12px rgba(0,0,0,.5)}
   /* Toolbar filtri Monitor: NON sticky, scorre con la pagina */
-  /* Intestazione tabella Monitor: NON sticky, scorre con le righe */
+  /* Intestazione tabella Monitor: sticky, si aggancia sotto la topbar fissa */
+  .mtable thead th{position:sticky;top:var(--topbar-h,0px);z-index:30;
+    background:var(--panel-2);box-shadow:inset 0 -1px 0 var(--hair)}
   /* Sotto-schede prodotto (Overview/Markup/…) appiccicate in cima */
   .subtabs-sticky{position:sticky;z-index:50;
     background:color-mix(in srgb, var(--ink) 90%, transparent);
@@ -192,6 +194,8 @@
   .placeholder b{color:var(--muted)}
 
   .grid-top{display:grid;grid-template-columns:1.05fr 1fr;gap:16px}
+  .ov-top{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:stretch}
+  .ov-top .meta{overflow:auto}
   .hero{padding:26px 28px 28px;position:relative;overflow:hidden}
   .hero .k{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--faint)}
   .hero .val{font-family:var(--serif);font-weight:600;font-size:56px;line-height:1;letter-spacing:-.02em;margin:14px 0 6px;font-variant-numeric:tabular-nums}
@@ -238,7 +242,7 @@
   .xlsbtn:hover{border-color:var(--faint);transform:translateY(-1px)}
   .xlsbtn:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
   .xlsbtn svg{display:block}
-  .plot{width:100%;height:380px} .plot.sm{height:300px} .plot.tall{height:520px} .plot.mk{height:300px}
+  .plot{width:100%;height:380px} .plot.sm{height:300px} .plot.tall{height:520px} .plot.mk{height:300px} .plot.ov{height:340px}
 
   /* nav principale — stile a sottolineatura, più editoriale, con icone */
   .mainnav{display:flex;gap:0;margin:8px 0 0;padding:0;border-bottom:1px solid var(--hair-soft);position:relative}
@@ -292,6 +296,7 @@
 
   @media (max-width:900px){
     .grid-top{grid-template-columns:1fr}.hero .val{font-size:52px}
+    .ov-top{grid-template-columns:1fr}
     .ident{order:2}.who{text-align:left}
     .foot{flex-direction:column;align-items:flex-start}.foot .sign{text-align:left}
     .prodhead{align-items:flex-start}.stamp{text-align:left}
@@ -584,7 +589,13 @@
 
     <!-- sotto-vista: OVERVIEW -->
     <div class="subview" id="sv-overview">
-      <div class="card meta"><h2>Scheda strumento</h2><div id="metaRows"></div></div>
+      <div class="ov-top">
+        <div class="card chart-card">
+          <div class="chart-head"><div class="t">Serie storica</div><div class="h">prezzo di mercato</div></div>
+          <div id="chartOverview" class="plot ov"></div>
+        </div>
+        <div class="card meta"><h2>Scheda strumento</h2><div id="metaRows"></div></div>
+      </div>
       <div class="card chart-card">
         <div class="chart-head"><div class="t">Calendario cedole e autocall</div><div class="h">date di osservazione</div></div>
         <div id="calWrap" class="caltable-wrap"></div>
@@ -871,6 +882,24 @@ function renderPrice(r){const x=r.dates;
   L.margin.t=28;
   L.xaxis.autorange=true;L.yaxis.autorange=true;
   Plotly.react('chartPrice',traces,L,PCFG);forceRedraw('chartPrice',true);}
+
+// Serie storica del prezzo di mercato (scheda Overview).
+function renderOverviewChart(){
+  if(!current||!document.getElementById('chartOverview'))return;
+  const x=current.dates||[];
+  const y=current.prezzo_mercato||[];
+  const traces=[{x,y,type:'scatter',mode:'lines',name:'Mercato',
+    line:{color:'rgba(184,151,90,.95)',width:1.8,shape:'linear'},
+    connectgaps:false,fill:'tozeroy',fillcolor:'rgba(184,151,90,.05)',
+    hovertemplate:'<b>%{x|%d %b %Y}</b><br>Prezzo&nbsp;&nbsp;<b>%{y:.2f}</b><extra></extra>'}];
+  const L=baseLayout();
+  L.xaxis.autorange=true;L.yaxis.autorange=true;
+  Plotly.react('chartOverview',traces,L,PCFG);
+  whenSized('chartOverview',()=>{try{
+    Plotly.Plots.resize('chartOverview');
+    Plotly.relayout('chartOverview',{'xaxis.autorange':true,'yaxis.autorange':true});
+  }catch(e){}});
+}
 
 /* ---------- util ---------- */
 function lastNum(a){if(!a)return null;for(let i=a.length-1;i>=0;i--){if(a[i]!=null&&!Number.isNaN(a[i]))return a[i];}return null;}
@@ -1291,45 +1320,60 @@ function renderScatterCometa(r,win){
   Ls.margin={l:70,r:30,t:24,b:60};Ls.showlegend=false;
   Plotly.react('chartScatter',traces,Ls,PCFG);fadeIn('chartScatter');forceRedraw('chartScatter');}
 
-function applyWindow(){if(!current)return;const w=sliceByWindow(current,win);renderStats(w);renderMarkup(w);renderPrice(w);
-  // reset scala dopo il ridisegno (coerente col comportamento di cambio scheda)
-  const reset=()=>{try{
-    Plotly.relayout('chartPrice',{'xaxis.autorange':true,'yaxis.autorange':true});
+function applyWindow(){if(!current)return;const w=sliceByWindow(current,win);renderStats(w);
+  // Disegno i grafici markup SOLO se la scheda markup è attualmente visibile
+  if(subv==='markup'){renderMarkup(w);renderPrice(w);resetMarkupScale();}}
+
+// Attende che il container abbia dimensioni reali, poi esegue cb.
+// Risolve il disegno su div nascosti/non dimensionati (causa scala rotta e tagli).
+function whenSized(id,cb,tries){
+  tries=tries==null?30:tries;
+  const el=document.getElementById(id);
+  if(!el){return;}
+  const r=el.getBoundingClientRect();
+  if(r.width>20&&r.height>20){cb();return;}
+  if(tries<=0){cb();return;}  // fallback: provo comunque
+  requestAnimationFrame(()=>whenSized(id,cb,tries-1));
+}
+
+// Reset scala dei grafici markup (X automatica; Y del costo implicito resta col clamp)
+function resetMarkupScale(){
+  whenSized('chartMarkup',()=>{try{
+    Plotly.Plots.resize('chartMarkup');
     Plotly.relayout('chartMarkup',{'xaxis.autorange':true});
-  }catch(e){}};
-  requestAnimationFrame(()=>requestAnimationFrame(reset));}
+  }catch(e){}});
+  whenSized('chartPrice',()=>{try{
+    Plotly.Plots.resize('chartPrice');
+    Plotly.relayout('chartPrice',{'xaxis.autorange':true,'yaxis.autorange':true});
+  }catch(e){}});
+}
+
 function selectIsin(isin){current=DATA.find(x=>x.isin===isin)||current;if(!current)return;
   document.getElementById('mTitle').textContent=current.isin;
   document.getElementById('mSub').textContent=[current.emittente,current.struttura].filter(Boolean).join(' · ');
   const upd=(current.aggiornamento&&current.aggiornamento!=='demo')?current.aggiornamento:'—';
   document.getElementById('stamp').innerHTML=`aggiornato &nbsp;<b>${esc(upd)}</b>`;
-  renderHero(current);renderMeta(current);renderCalendar(current);applyWindow();}
+  // Solo dati comuni a tutte le schede. I grafici li disegna la scheda quando si apre.
+  renderHero(current);renderMeta(current);renderCalendar(current);}
 
 function setSubview(t){subv=t;
   ['overview','markup','rendimento','autocall','rischio'].forEach(k=>{const el=document.getElementById('sv-'+k);if(el)el.hidden=(k!==t);});
   document.querySelectorAll('#subtabs button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.t===t?'true':'false'));
   if(current){const h='#/'+encodeURIComponent(current.isin)+'/'+t;if(location.hash!==h)location.hash=h;}
-  // Ridisegno i grafici della scheda appena aperta, così la scala è corretta
-  // senza bisogno di doppio clic o cambio timeframe manuale.
-  if(t==='markup'&&current){redrawMarkupTab();}
-  if(t==='rendimento'&&current){loadRendimento(current);}}
+  // Disegno i grafici della scheda appena resa visibile (timing corretto: div ora dimensionato)
+  drawTab(t);}
 
-// Ridisegna i due grafici della scheda Markup e RESETTA la scala (autorange),
-// replicando l'effetto del doppio clic in automatico.
-function redrawMarkupTab(){
+// Disegna i grafici della scheda t, ora che è visibile e dimensionata.
+function drawTab(t){
   if(!current)return;
-  const w=sliceByWindow(current,win);
-  renderMarkup(w);renderPrice(w);
-  // forzo l'autorange dopo che i div sono visibili e dimensionati
-  const reset=()=>{try{
-    Plotly.Plots.resize('chartMarkup');Plotly.Plots.resize('chartPrice');
-    // chartPrice: scala totalmente automatica
-    Plotly.relayout('chartPrice',{'xaxis.autorange':true,'yaxis.autorange':true});
-    // chartMarkup: X automatica (Y resta col clamp gestito in renderMarkup)
-    Plotly.relayout('chartMarkup',{'xaxis.autorange':true});
-  }catch(e){}};
-  requestAnimationFrame(()=>requestAnimationFrame(reset));
-  setTimeout(reset,120);
+  if(t==='overview'){
+    renderOverviewChart();
+  }else if(t==='markup'){
+    const w=sliceByWindow(current,win);
+    renderMarkup(w);renderPrice(w);resetMarkupScale();
+  }else if(t==='rendimento'){
+    loadRendimento(current);
+  }
 }
 function openProduct(isin,fromHash,tab){
   const changed=!current||current.isin!==isin;
