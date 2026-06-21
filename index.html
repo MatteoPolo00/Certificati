@@ -195,10 +195,12 @@
   .placeholder b{color:var(--muted)}
 
   .grid-top{display:grid;grid-template-columns:1.05fr 1fr;gap:16px}
-  .ov-top{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:stretch}
+  .ov-top{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
   /* scheda sottostante: card certificati alta come il grafico, lista che scorre dentro */
-  .sott-certs-card{display:flex;flex-direction:column;min-height:0}
-  .sott-certs-scroll{flex:1;overflow-y:auto;min-height:0;padding-right:4px}
+  .ov-sott{align-items:stretch}
+  .ov-sott .chart-card{display:flex;flex-direction:column}
+  .sott-certs-card{display:flex;flex-direction:column;min-height:0;max-height:100%;overflow:hidden}
+  .sott-certs-scroll{flex:1 1 0;overflow-y:auto;min-height:0;padding-right:6px}
   .sott-certs-scroll::-webkit-scrollbar{width:8px}
   .sott-certs-scroll::-webkit-scrollbar-thumb{background:var(--hair);border-radius:4px}
   .sott-certs-scroll::-webkit-scrollbar-track{background:transparent}
@@ -1558,7 +1560,25 @@ function openSottostante(sigla,fromHash){
   }
   // se il prezzo non c'è, parto dal rendimento
   setSottTab(hasPrezzo?(sottTab||'prezzo'):'rendimento');
+  syncSottHeights();
   if(!fromHash){const h='#/sott/'+encodeURIComponent(sigla);if(location.hash!==h)location.hash=h;}
+}
+
+// Vincola l'altezza della card "Certificati collegati" a quella della card grafico,
+// così la lista scrolla internamente e gli ultimi prodotti restano accessibili
+// senza far crescere la riga oltre l'altezza del grafico.
+function syncSottHeights(){
+  const row=document.querySelector('.ov-sott');if(!row)return;
+  const chartCard=row.querySelector('.chart-card');
+  const certCard=row.querySelector('.sott-certs-card');
+  if(!chartCard||!certCard)return;
+  // solo su desktop (due colonne affiancate); su mobile lascio fluire
+  const twoCols=window.matchMedia('(min-width:761px)').matches;
+  if(!twoCols){certCard.style.maxHeight='';certCard.style.height='';return;}
+  const apply=()=>{const h=chartCard.getBoundingClientRect().height;
+    if(h>40){certCard.style.height=h+'px';certCard.style.maxHeight=h+'px';}};
+  requestAnimationFrame(()=>requestAnimationFrame(apply));
+  setTimeout(apply,120);
 }
 
 function setSottTab(t){
@@ -1567,6 +1587,7 @@ function setSottTab(t){
   sottTab=t;
   document.querySelectorAll('#sottSubtabs button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.st===t?'true':'false'));
   renderSottChart();
+  syncSottHeights();
 }
 
 function renderSottChart(){
@@ -1581,10 +1602,27 @@ function renderSottChart(){
     y=asArr(currentSott.mean);titolo='Rendimento rolling';sub='';
   }
   const isPct=sottTab==='rendimento';
-  const traces=[{x,y:isPct?y.map(v=>v==null?null:v*100):y,type:'scatter',mode:'lines',
+  const yPlot=isPct?y.map(v=>v==null?null:v*100):y;
+  const traces=[{x,y:yPlot,type:'scatter',mode:'lines',
     line:{color:'rgba(184,151,90,.95)',width:1.8,shape:'linear'},
     connectgaps:false,fill:'tozeroy',fillcolor:'rgba(184,151,90,.05)',
     hovertemplate:'<b>%{x|%d %b %Y}</b><br>'+(isPct?'Rendimento&nbsp;&nbsp;<b>%{y:+.1f}%</b>':'Prezzo&nbsp;&nbsp;<b>%{y:.2f}</b>')+'<extra></extra>'}];
+
+  // --- Segnalini date di emissione dei certificati collegati (sotto l'asse) ---
+  const certs=certificatiConSottostante(currentSott.sigla).filter(c=>c.data_emissione);
+  if(certs.length){
+    const mx=certs.map(c=>c.data_emissione);
+    const mcd=certs.map(c=>[c.isin,c.emittente||'—',c.struttura||'—']);
+    // li ancoro a un asse Y secondario in basso (dominio 0..0.06) così stanno "sotto"
+    traces.push({x:mx,y:mx.map(()=>0.5),customdata:mcd,yaxis:'y2',
+      mode:'markers',type:'scatter',name:'emissioni',
+      marker:{symbol:'triangle-up',size:9,color:'rgba(184,151,90,.9)',
+        line:{color:'#0B0F13',width:1}},
+      hovertemplate:'<b>%{customdata[0]}</b><br><span style="color:#8C9BA8">%{customdata[1]} · %{customdata[2]}</span><br>Emissione %{x|%d %b %Y}<extra></extra>',
+      hoverlabel:{bgcolor:'rgba(18,24,32,.97)',bordercolor:'rgba(184,151,90,.5)',
+        font:{family:'Inter, system-ui, sans-serif',size:12,color:'#E8EDF1'},align:'left'}});
+  }
+
   document.getElementById('sChartTitle').textContent=titolo;
   document.getElementById('sChartSub').textContent=sub;
   const L=baseLayout();
@@ -1595,6 +1633,12 @@ function renderSottChart(){
     if(fin.length){const dMin=Math.min(...fin),dMax=Math.max(...fin);const pad=Math.max(1,(dMax-dMin)*0.08);
       L.yaxis.range=[dMin-pad,dMax+pad];L.yaxis.autorange=false;}
     else L.yaxis.autorange=true;
+  }
+  // asse Y secondario per i segnalini: striscia bassa, invisibile
+  if(certs.length){
+    L.yaxis.domain=[0.08,1];
+    L.yaxis2={domain:[0,0.055],range:[0,1],fixedrange:true,
+      showgrid:false,zeroline:false,showticklabels:false,showline:false};
   }
   drawChartSott('chartSott',traces,L);
 }
@@ -1607,6 +1651,14 @@ function drawChartSott(id,traces,layout){
   whenSized(id,()=>{try{
     if(_lastSottDrawn!==key){Plotly.purge(gd);Plotly.newPlot(gd,traces,layout,PCFG);_lastSottDrawn=key;}
     else Plotly.react(gd,traces,layout,PCFG);
+    // click sui segnalini delle date di emissione → apri il prodotto
+    if(!gd._sottClickBound){
+      gd.on('plotly_click',ev=>{const pt=ev.points&&ev.points[0];
+        if(pt&&pt.data&&pt.data.name==='emissioni'&&pt.customdata){
+          const isin=pt.customdata[0];
+          if(DATA.some(x=>x.isin===isin))location.hash='#/'+encodeURIComponent(isin)+'/overview';}});
+      gd._sottClickBound=true;
+    }
   }catch(e){}});
 }
 
@@ -2125,6 +2177,7 @@ function setupSticky(){
   }
   measure();
   window.addEventListener('resize',measure);
+  window.addEventListener('resize',()=>{if(typeof syncSottHeights==='function')syncSottHeights();},{passive:true});
   window.addEventListener('hashchange',()=>setTimeout(measure,60));
 
   // Ombra/bordo graduale quando si scrolla
