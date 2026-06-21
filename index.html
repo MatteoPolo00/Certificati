@@ -880,7 +880,7 @@ function renderMarkup(r){const x=r.dates;
   }
   L.yaxis.range=[yMin,yMax];L.yaxis.autorange=false;
   L.xaxis.autorange=true;
-  Plotly.react('chartMarkup',traces,L,PCFG);forceRedraw('chartMarkup',false);}
+  drawChart('chartMarkup',traces,L);}
 
 function renderPrice(r){const x=r.dates;
   const traces=[
@@ -900,7 +900,7 @@ function renderPrice(r){const x=r.dates;
     bgcolor:'rgba(0,0,0,0)',borderwidth:0};
   L.margin.t=28;
   L.xaxis.autorange=true;L.yaxis.autorange=true;
-  Plotly.react('chartPrice',traces,L,PCFG);forceRedraw('chartPrice',true);}
+  drawChart('chartPrice',traces,L);}
 
 // Serie storica del prezzo di mercato (scheda Overview).
 function renderOverviewChart(){
@@ -913,21 +913,36 @@ function renderOverviewChart(){
     hovertemplate:'<b>%{x|%d %b %Y}</b><br>Prezzo&nbsp;&nbsp;<b>%{y:.2f}</b><extra></extra>'}];
   const L=baseLayout();
   L.xaxis.autorange=true;
-  // Scala Y: parte da 25 sotto il valore minimo, fino a poco sopra il massimo
+  // Scala Y: poco sotto il minimo, poco sopra il massimo
   const fin=y.filter(v=>v!=null&&isFinite(v));
   if(fin.length){
     const dMin=Math.min(...fin),dMax=Math.max(...fin);
-    L.yaxis.range=[dMin-25,dMax+Math.max(2,(dMax-dMin)*0.08)];
+    const pad=Math.max(1,(dMax-dMin)*0.08);
+    L.yaxis.range=[dMin-pad,dMax+pad];
     L.yaxis.autorange=false;
   }else{L.yaxis.autorange=true;}
-  Plotly.react('chartOverview',traces,L,PCFG);
-  whenSized('chartOverview',()=>{try{
-    Plotly.Plots.resize('chartOverview');
-    Plotly.relayout('chartOverview',{'xaxis.autorange':true});
-  }catch(e){}});
+  drawChart('chartOverview',traces,L);
 }
 
 /* ---------- util ---------- */
+// Disegna un grafico in modo robusto. Al cambio prodotto (isin diverso dall'ultimo
+// disegnato su quel grafico) ricostruisce da zero con purge+newPlot, azzerando
+// ogni stato/zoom precedente. Per aggiornamenti dello stesso prodotto (es. cambio
+// timeframe) usa react, più fluido. Risolve il mancato reset della scala.
+const _lastDrawn={};
+function drawChart(id,traces,layout){
+  const gd=document.getElementById(id);if(!gd)return;
+  const key=(current&&current.isin)||'none';
+  whenSized(id,()=>{try{
+    if(_lastDrawn[id]!==key){
+      Plotly.purge(gd);
+      Plotly.newPlot(gd,traces,layout,PCFG);
+      _lastDrawn[id]=key;
+    }else{
+      Plotly.react(gd,traces,layout,PCFG);
+    }
+  }catch(e){}});
+}
 function lastNum(a){if(!a)return null;for(let i=a.length-1;i>=0;i--){if(a[i]!=null&&!Number.isNaN(a[i]))return a[i];}return null;}
 function fmtPct(v){return (v>0?'+':'')+v.toFixed(2)+'%';}
 function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
@@ -1364,7 +1379,7 @@ function renderScatterCometa(r,win){
 
 function applyWindow(){if(!current)return;const w=sliceByWindow(current,win);renderStats(w);
   // Disegno i grafici markup SOLO se la scheda markup è attualmente visibile
-  if(subv==='markup'){renderMarkup(w);renderPrice(w);resetMarkupScale();}}
+  if(subv==='markup'){renderMarkup(w);renderPrice(w);}}
 
 // Attende che il container abbia dimensioni reali, poi esegue cb.
 // Risolve il disegno su div nascosti/non dimensionati (causa scala rotta e tagli).
@@ -1379,16 +1394,7 @@ function whenSized(id,cb,tries){
 }
 
 // Reset scala dei grafici markup (X automatica; Y del costo implicito resta col clamp)
-function resetMarkupScale(){
-  whenSized('chartMarkup',()=>{try{
-    Plotly.Plots.resize('chartMarkup');
-    Plotly.relayout('chartMarkup',{'xaxis.autorange':true});
-  }catch(e){}});
-  whenSized('chartPrice',()=>{try{
-    Plotly.Plots.resize('chartPrice');
-    Plotly.relayout('chartPrice',{'xaxis.autorange':true,'yaxis.autorange':true});
-  }catch(e){}});
-}
+// — rimossa: drawChart gestisce già scala e reset al cambio prodotto/timeframe.
 
 function selectIsin(isin){current=DATA.find(x=>x.isin===isin)||current;if(!current)return;
   document.getElementById('mTitle').textContent=current.isin;
@@ -1412,7 +1418,7 @@ function drawTab(t){
     renderOverviewChart();
   }else if(t==='markup'){
     const w=sliceByWindow(current,win);
-    renderMarkup(w);renderPrice(w);resetMarkupScale();
+    renderMarkup(w);renderPrice(w);
   }else if(t==='rendimento'){
     loadRendimento(current);
   }
