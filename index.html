@@ -31,7 +31,7 @@
   body{background:radial-gradient(1100px 520px at 82% -12%,rgba(184,151,90,.05),transparent 62%),
        radial-gradient(900px 480px at 8% 110%,rgba(91,191,155,.03),transparent 60%),var(--ink);
        color:var(--txt);font-family:"Inter",system-ui,sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh}
-  .wrap{max-width:1240px;margin:0 auto;padding:26px 24px 70px}
+  .wrap{max-width:1240px;margin:0 auto;padding:26px 24px 70px;overflow-x:clip}
   .rise{opacity:0;transform:translateY(14px);animation:rise .5s cubic-bezier(.2,.7,.2,1) forwards;animation-delay:var(--d,0s)}
   @keyframes rise{to{opacity:1;transform:none}}
   @keyframes fadein{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
@@ -167,10 +167,11 @@
   .mtable th{background:var(--panel-2);text-align:left;font-family:"IBM Plex Mono",monospace;font-weight:600;font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);padding:11px 13px;cursor:pointer;white-space:nowrap;user-select:none;transition:color .12s}
   .mtable th:hover{color:var(--muted)}
   .mtable th.num{text-align:right}
-  .mtable td{padding:10px 13px;border-bottom:1px solid var(--hair-soft);white-space:nowrap;color:var(--txt)}
+  .mtable td{padding:10px 13px;border-bottom:1px solid var(--hair-soft);color:var(--txt);white-space:nowrap}
+  .mtable td.dim,.mtable td.clip{max-width:220px;overflow:hidden;text-overflow:ellipsis}
+  .mtable td.dim{color:var(--muted)}
   .mtable td.num{text-align:right;font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums}
   .mtable td.isincell{font-family:"IBM Plex Mono",monospace}
-  .mtable td.dim{color:var(--muted);max-width:200px;overflow:hidden;text-overflow:ellipsis}
   .mtable tbody tr{cursor:pointer;transition:background .12s}
   .mtable tbody tr:hover{background:var(--panel-2)}
   .mtable tbody tr:last-child td{border-bottom:0}
@@ -326,10 +327,11 @@
   @media (max-width:760px){
     body{padding:0}
     .wrap{padding:14px}
-    /* margini sticky allineati al padding mobile */
-    .topbar-sticky{margin:0 -14px;padding:12px 14px 0}
-    .toolbar-sticky{margin:0 -14px;padding:12px 14px}
-    .subtabs-sticky{margin:0 -14px;padding:10px 14px}
+    /* Mobile: niente sticky, le barre scorrono normalmente (come prima) */
+    .topbar-sticky{position:static;margin:0;padding:0;backdrop-filter:none;-webkit-backdrop-filter:none;background:transparent;border-bottom:0;box-shadow:none}
+    .toolbar-sticky{position:static;margin:0;padding:0;background:transparent;box-shadow:none}
+    .subtabs-sticky{position:static;margin:0;padding:0;backdrop-filter:none;-webkit-backdrop-filter:none;background:transparent;border-bottom:0;box-shadow:none}
+    .mtable thead th{position:static;box-shadow:none}
     /* Header compatto */
     header.top{flex-direction:row;align-items:center;gap:12px}
     .bt{font-size:19px!important}
@@ -593,17 +595,7 @@
 
     <!-- sotto-vista: OVERVIEW -->
     <div class="subview" id="sv-overview">
-      <div class="grid-top">
-        <div class="card hero">
-          <div class="k">Costo implicito</div>
-          <div class="val" id="heroVal">—</div>
-          <span class="tag pos" id="heroTag"><span class="dot"></span><span id="heroTagTxt">—</span></span>
-          <div class="sub" id="heroSub"></div>
-          <div class="scale"><div class="track"><div class="zero"></div><div class="marker" id="marker" style="left:50%;background:var(--muted)"></div></div>
-            <div class="ends"><span>− premio</span><span>fair value</span><span>sconto +</span></div></div>
-        </div>
-        <div class="card meta"><h2>Scheda strumento</h2><div id="metaRows"></div></div>
-      </div>
+      <div class="card meta"><h2>Scheda strumento</h2><div id="metaRows"></div></div>
       <div class="card chart-card">
         <div class="chart-head"><div class="t">Calendario cedole e autocall</div><div class="h">date di osservazione</div></div>
         <div id="calWrap" class="caltable-wrap"></div>
@@ -935,8 +927,8 @@ function matches(r){
 /* ---------- MONITOR ---------- */
 const COLS=[
   {key:'isin',label:'ISIN',cls:'isincell',get:r=>esc(r.isin),sort:r=>r.isin||'',num:false},
-  {key:'emittente',label:'Emittente',cls:'',get:r=>esc(r.emittente||'—'),sort:r=>r.emittente||'',num:false},
-  {key:'struttura',label:'Struttura',cls:'',get:r=>esc(r.struttura||'—'),sort:r=>r.struttura||'',num:false},
+  {key:'emittente',label:'Emittente',cls:'clip',get:r=>esc(r.emittente||'—'),sort:r=>r.emittente||'',num:false},
+  {key:'struttura',label:'Struttura',cls:'clip',get:r=>esc(r.struttura||'—'),sort:r=>r.struttura||'',num:false},
   {key:'sottostanti',label:'Sottostanti',cls:'dim',get:r=>esc((r.sottostanti||[]).join(', ')||'—'),tip:r=>(r.sottostanti||[]).map(nameOf).join(', '),sort:r=>(r.sottostanti||[]).join(','),num:false},
   {key:'scadenza',label:'Scadenza',cls:'',get:r=>esc(r.scadenza||'—'),sort:r=>r.scadenza||'',num:false},
   {key:'cedola',label:'Cedola',cls:'num',get:r=>fmtCedola(r.cedola),sort:r=>cedolaNum(r.cedola),num:true},
@@ -995,8 +987,10 @@ function sortBy(key){
 }
 
 /* ---------- PRODOTTO ---------- */
-function renderHero(r){const cp=lastNum(r.cost_premium),isPos=cp!=null&&cp>=0;
-  document.getElementById('heroVal').textContent=cp==null?'n/d':fmtPct(cp);
+function renderHero(r){
+  const hv=document.getElementById('heroVal');if(!hv)return;  // hero rimosso dalla Overview
+  const cp=lastNum(r.cost_premium),isPos=cp!=null&&cp>=0;
+  hv.textContent=cp==null?'n/d':fmtPct(cp);
   const tag=document.getElementById('heroTag');tag.className='tag '+(isPos?'pos':'neg');
   document.getElementById('heroTagTxt').textContent=cp==null?'—':(isPos?'a sconto':'a premio');
   document.getElementById('heroSub').textContent=cp==null?'Dato non disponibile.':(isPos?'Prezzo di mercato sotto il fair value di modello.':'Prezzo di mercato sopra il fair value di modello.');
