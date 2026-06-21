@@ -217,6 +217,9 @@
   .row .v{font-family:"IBM Plex Mono",monospace;font-size:13.5px;color:var(--txt);text-align:right;font-variant-numeric:tabular-nums}
   .chips{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}
   .chip{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--brass);background:var(--brass-soft);border:1px solid rgba(184,151,90,.25);padding:3px 9px;border-radius:6px}
+  .chip-link{cursor:pointer;transition:background .15s,border-color .15s,transform .12s}
+  .chip-link:hover{background:rgba(184,151,90,.2);border-color:rgba(184,151,90,.5);transform:translateY(-1px)}
+  .chip-link:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
 
   .stats{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
   .stat{padding:18px 20px}
@@ -1108,7 +1111,15 @@ function renderMeta(r){const pmkt=lastNum(r.prezzo_mercato),pmod=lastNum(r.prezz
     const l=document.createElement('div');l.className='lab';l.textContent=lab;
     const v=document.createElement('div');v.className='v';
     if(val==='__chips__'){const c=document.createElement('div');c.className='chips';
-      (r.sottostanti||[]).forEach(s=>{const ch=document.createElement('span');ch.className='chip';ch.textContent=nameOf(s);ch.title=s;c.appendChild(ch);});v.appendChild(c);}
+      (r.sottostanti||[]).forEach(s=>{
+        const ch=document.createElement('span');ch.className='chip chip-link';
+        ch.textContent=nameOf(s);ch.title='Apri scheda '+(nameOf(s)||s);
+        ch.setAttribute('role','button');ch.tabIndex=0;
+        const go=()=>{location.hash='#/sott/'+encodeURIComponent(s);};
+        ch.addEventListener('click',go);
+        ch.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go();}});
+        c.appendChild(ch);});
+      v.appendChild(c);}
     else{v.textContent=val;}row.appendChild(l);row.appendChild(v);host.appendChild(row);});}
 function asPerDate(field,n){if(field==null)return new Array(n).fill(null);
   if(Array.isArray(field)){const a=field.slice(0,n);while(a.length<n)a.push(null);return a;}
@@ -1519,7 +1530,12 @@ function certificatiConSottostante(sigla){
 
 function openSottostante(sigla,fromHash){
   const s=(frontierSottostanti()||[]).find(x=>x.sigla===sigla);
-  if(!s){return;}   // dati frontier non caricati o sigla assente
+  if(!s){
+    // sottostante non presente in frontier.json: avviso e ritorno
+    console.info('Sottostante non disponibile in frontier.json:',sigla);
+    if(!fromHash)alert('Dati non disponibili per questo sottostante ('+sigla+').');
+    return;
+  }
   currentSott=s;
   document.getElementById('sTitle').textContent=nameOf(sigla)||sigla;
   document.getElementById('sSub').textContent='Sottostante · '+sigla;
