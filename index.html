@@ -6,7 +6,7 @@
 <title>Jensen — Certificate Monitor & Analytics</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&family=Cinzel:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Cinzel:wght@400;500&display=swap" rel="stylesheet">
 <script type="text/javascript">
   (function(c,l,a,r,i,t,y){
     c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
@@ -18,18 +18,20 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   :root{
-    --ink:#0C1116;--panel:#141C24;--panel-2:#192330;--hair:#26323D;--hair-soft:#1F2A34;
-    --txt:#EAEFF3;--muted:#90A2B0;--faint:#5B6E7B;
-    --pos:#4FD1A5;--neg:#F2766B;--brass:#C9A24E;
-    --pos-soft:rgba(79,209,165,.16);--neg-soft:rgba(242,118,107,.16);--brass-soft:rgba(201,162,78,.12);
-    --r:14px;
+    --ink:#0B0F13;--panel:#12181E;--panel-2:#171F27;--panel-3:#1C2530;
+    --hair:#242F3A;--hair-soft:#1C242D;
+    --txt:#E8EDF1;--muted:#8C9BA8;--faint:#56646F;
+    --pos:#5BBF9B;--neg:#D98373;--brass:#B8975A;--brass-bright:#C9A968;
+    --pos-soft:rgba(91,191,155,.14);--neg-soft:rgba(217,131,115,.14);--brass-soft:rgba(184,151,90,.10);
+    --serif:'Fraunces',Georgia,'Times New Roman',serif;
+    --r:13px;
   }
   *{box-sizing:border-box}
   html,body{margin:0;padding:0}
-  body{background:radial-gradient(1100px 520px at 82% -12%,rgba(201,162,78,.07),transparent 62%),
-       radial-gradient(900px 480px at 8% 110%,rgba(79,209,165,.04),transparent 60%),var(--ink);
+  body{background:radial-gradient(1100px 520px at 82% -12%,rgba(184,151,90,.05),transparent 62%),
+       radial-gradient(900px 480px at 8% 110%,rgba(91,191,155,.03),transparent 60%),var(--ink);
        color:var(--txt);font-family:"Inter",system-ui,sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh}
-  .wrap{max-width:1240px;margin:0 auto;padding:26px 24px 70px}
+  .wrap{max-width:1240px;margin:0 auto;padding:26px 24px 70px;overflow-x:clip}
   .rise{opacity:0;transform:translateY(14px);animation:rise .5s cubic-bezier(.2,.7,.2,1) forwards;animation-delay:var(--d,0s)}
   @keyframes rise{to{opacity:1;transform:none}}
   @keyframes fadein{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
@@ -37,9 +39,29 @@
 
   /* header */
   .top{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap}
+
+  /* ============ STICKY: solo header+nav (e subtabs prodotto) ============ */
+  /* Barra superiore (logo + identità + nav principale) appiccicata in cima */
+  .topbar-sticky{position:sticky;top:0;z-index:60;
+    background:color-mix(in srgb, var(--ink) 88%, transparent);
+    backdrop-filter:saturate(140%) blur(12px);-webkit-backdrop-filter:saturate(140%) blur(12px);
+    margin:0 -24px;padding:14px 24px 14px;
+    border-bottom:1px solid transparent;transition:border-color .3s ease, box-shadow .3s ease}
+  .topbar-sticky.scrolled{border-bottom-color:var(--hair-soft);box-shadow:0 6px 24px -12px rgba(0,0,0,.5)}
+  /* Toolbar filtri Monitor: NON sticky, scorre con la pagina */
+  /* Intestazione tabella Monitor: sticky, si aggancia sotto la topbar fissa */
+  .mtable thead th{position:sticky;top:var(--topbar-h,0px);z-index:30;
+    background:var(--panel-2);box-shadow:inset 0 -1px 0 var(--hair)}
+  /* Sotto-schede prodotto (Overview/Markup/…) appiccicate in cima */
+  .subtabs-sticky{position:sticky;z-index:50;
+    background:color-mix(in srgb, var(--ink) 90%, transparent);
+    backdrop-filter:saturate(140%) blur(10px);-webkit-backdrop-filter:saturate(140%) blur(10px);
+    margin:0 -24px;padding:12px 24px;transition:border-color .3s ease, box-shadow .3s ease;
+    border-bottom:1px solid transparent}
+  .subtabs-sticky.scrolled{border-bottom-color:var(--hair-soft);box-shadow:0 6px 24px -12px rgba(0,0,0,.5)}
   .brand{display:flex;align-items:center;gap:13px}
   .brand .logo{display:grid;place-items:center;width:42px;height:42px;border-radius:11px;background:var(--panel);border:1px solid var(--hair)}
-  .brand .bt{font-family:"Space Grotesk",sans-serif;font-weight:600;font-size:17px;letter-spacing:-.01em;line-height:1.1}
+  .brand .bt{font-family:"Inter",sans-serif;font-weight:600;font-size:16px;letter-spacing:.01em;line-height:1.1}
   .brand .bs{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--faint);margin-top:3px}
   .ident{display:flex;align-items:center;gap:14px}
   .who{text-align:right;line-height:1.25}
@@ -80,8 +102,8 @@
     .mobile-note.hide{display:none}
   }
 
-  .view{display:none}.view.active{display:block}
-  .card{background:var(--panel);border:1px solid var(--hair);border-radius:var(--r)}
+  .view{display:none;margin-top:18px}.view.active{display:block}
+  .card{background:var(--panel);border:1px solid var(--hair-soft);border-radius:var(--r);transition:border-color .2s ease,box-shadow .2s ease}
 
   /* ===== MONITOR ===== */
   .mtoolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:12px}
@@ -111,7 +133,7 @@
   .modal-overlay{display:none;position:fixed;inset:0;background:rgba(12,17,22,.75);z-index:200;align-items:center;justify-content:center}
   .modal-overlay.open{display:flex}
   .modal{background:var(--panel);border:1px solid var(--hair);border-radius:16px;padding:28px;min-width:320px;max-width:440px;width:90%}
-  .modal h3{font-family:"Space Grotesk",sans-serif;font-weight:600;font-size:16px;margin:0 0 6px}
+  .modal h3{font-family:var(--serif);font-weight:500;font-size:18px;margin:0 0 6px}
   .modal .msub{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--faint);margin-bottom:20px}
   .col-list{display:flex;flex-direction:column;gap:8px;margin-bottom:22px}
   .col-item{display:flex;align-items:center;gap:10px;cursor:pointer;padding:8px 10px;border-radius:8px;transition:background .12s}
@@ -131,15 +153,16 @@
   .pgbtn:disabled{opacity:.3;cursor:default}
   #pgSize button{font-size:10.5px;padding:4px 10px}
   .mcount{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--faint);margin:0 2px 10px}
-  .tablewrap{overflow-x:auto;border:1px solid var(--hair);border-radius:12px}
+  .tablewrap{border:1px solid var(--hair);border-radius:12px}
   table.mtable{width:100%;border-collapse:collapse;font-size:12.5px}
-  .mtable th{position:sticky;top:0;z-index:10;background:var(--panel);text-align:left;font-family:"IBM Plex Mono",monospace;font-weight:600;font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);padding:11px 13px;border-bottom:1px solid var(--hair);cursor:pointer;white-space:nowrap;user-select:none;transition:color .12s}
+  .mtable th{background:var(--panel-2);text-align:left;font-family:"IBM Plex Mono",monospace;font-weight:600;font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);padding:11px 13px;cursor:pointer;white-space:nowrap;user-select:none;transition:color .12s}
   .mtable th:hover{color:var(--muted)}
   .mtable th.num{text-align:right}
-  .mtable td{padding:10px 13px;border-bottom:1px solid var(--hair-soft);white-space:nowrap;color:var(--txt)}
+  .mtable td{padding:10px 13px;border-bottom:1px solid var(--hair-soft);color:var(--txt);white-space:nowrap}
+  .mtable td.dim,.mtable td.clip{max-width:220px;overflow:hidden;text-overflow:ellipsis}
+  .mtable td.dim{color:var(--muted)}
   .mtable td.num{text-align:right;font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums}
   .mtable td.isincell{font-family:"IBM Plex Mono",monospace}
-  .mtable td.dim{color:var(--muted);max-width:200px;overflow:hidden;text-overflow:ellipsis}
   .mtable tbody tr{cursor:pointer;transition:background .12s}
   .mtable tbody tr:hover{background:var(--panel-2)}
   .mtable tbody tr:last-child td{border-bottom:0}
@@ -153,13 +176,13 @@
   .back:hover{color:var(--txt);border-color:var(--faint)}
   .back:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
   .prodtitle{min-width:0}
-  .mtitle{font-family:"Space Grotesk",sans-serif;font-weight:600;font-size:20px;letter-spacing:-.01em}
+  .mtitle{font-family:var(--serif);font-weight:500;font-size:23px;letter-spacing:-.01em}
   .msub{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--faint);margin-top:3px}
   .stamp{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--faint);text-align:right;line-height:1.6}
   .stamp b{color:var(--muted);font-weight:500}
 
   .subtabs{display:inline-flex;background:var(--panel);border:1px solid var(--hair);border-radius:11px;padding:4px;gap:3px;margin-bottom:18px;flex-wrap:wrap}
-  .subtabs button{display:inline-flex;align-items:center;gap:7px;appearance:none;border:0;background:transparent;color:var(--muted);cursor:pointer;font-family:"Space Grotesk",sans-serif;font-weight:600;font-size:13px;padding:8px 16px;border-radius:8px;transition:background .15s,color .15s}
+  .subtabs button{display:inline-flex;align-items:center;gap:7px;appearance:none;border:0;background:transparent;color:var(--muted);cursor:pointer;font-family:"Inter",sans-serif;font-weight:600;font-size:12.5px;padding:8px 16px;border-radius:8px;transition:background .15s,color .15s}
   .subtabs button svg{width:15px;height:15px;flex-shrink:0;opacity:.7;transition:opacity .15s,color .15s}
   .subtabs button:hover{color:var(--txt)}
   .subtabs button[aria-pressed="true"]{background:var(--panel-2);color:var(--txt);box-shadow:inset 0 0 0 1px var(--hair)}
@@ -171,9 +194,11 @@
   .placeholder b{color:var(--muted)}
 
   .grid-top{display:grid;grid-template-columns:1.05fr 1fr;gap:16px}
+  .ov-top{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:stretch}
+  .ov-top .meta{overflow:auto}
   .hero{padding:26px 28px 28px;position:relative;overflow:hidden}
   .hero .k{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--faint)}
-  .hero .val{font-family:"Space Grotesk",sans-serif;font-weight:700;font-size:58px;line-height:1;letter-spacing:-.02em;margin:14px 0 6px;font-variant-numeric:tabular-nums}
+  .hero .val{font-family:var(--serif);font-weight:600;font-size:56px;line-height:1;letter-spacing:-.02em;margin:14px 0 6px;font-variant-numeric:tabular-nums}
   .tag{display:inline-flex;align-items:center;gap:8px;font-family:"IBM Plex Mono",monospace;font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:5px 12px;border-radius:999px}
   .tag.pos{color:var(--pos);background:var(--pos-soft)} .tag.neg{color:var(--neg);background:var(--neg-soft)}
   .tag .dot{width:7px;height:7px;border-radius:50%;background:currentColor}
@@ -184,18 +209,18 @@
   .scale .marker{position:absolute;top:50%;width:13px;height:13px;border-radius:50%;transform:translate(-50%,-50%);border:2px solid var(--ink);box-shadow:0 0 0 1px var(--hair);transition:left .35s cubic-bezier(.4,0,.2,1),background .2s}
   .scale .ends{display:flex;justify-content:space-between;margin-top:8px;font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--faint)}
   .meta{padding:24px 26px}
-  .meta h2{font-family:"Space Grotesk",sans-serif;font-weight:500;font-size:12.5px;letter-spacing:.06em;color:var(--muted);margin:0 0 16px;text-transform:uppercase}
+  .meta h2{font-family:var(--serif);font-weight:500;font-size:17px;letter-spacing:-.005em;color:var(--txt);margin:0 0 16px;text-transform:none}
   .row{display:flex;justify-content:space-between;align-items:baseline;gap:16px;padding:10.5px 0;border-top:1px solid var(--hair-soft)}
   .row:first-of-type{border-top:0;padding-top:0}
   .row .lab{font-size:12.5px;color:var(--faint)}
   .row .v{font-family:"IBM Plex Mono",monospace;font-size:13.5px;color:var(--txt);text-align:right;font-variant-numeric:tabular-nums}
   .chips{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}
-  .chip{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--brass);background:var(--brass-soft);border:1px solid rgba(201,162,78,.25);padding:3px 9px;border-radius:6px}
+  .chip{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--brass);background:var(--brass-soft);border:1px solid rgba(184,151,90,.25);padding:3px 9px;border-radius:6px}
 
   .stats{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
   .stat{padding:18px 20px}
   .stat .l{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--faint)}
-  .stat .n{font-family:"Space Grotesk",sans-serif;font-weight:600;font-size:27px;margin-top:10px;letter-spacing:-.01em;font-variant-numeric:tabular-nums;line-height:1}
+  .stat .n{font-family:var(--serif);font-weight:500;font-size:27px;margin-top:10px;letter-spacing:-.01em;font-variant-numeric:tabular-nums;line-height:1}
   .stat .s{font-size:11.5px;color:var(--faint);margin-top:7px}
   .pos-t{color:var(--pos)} .neg-t{color:var(--neg)}
 
@@ -207,17 +232,17 @@
   .tabs button[aria-pressed="true"]{background:var(--panel-2);color:var(--txt);box-shadow:inset 0 0 0 1px var(--hair)}
   .tabs button:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
 
-  .chart-card{padding:22px 22px 8px}
-  .chart-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:4px}
-  .chart-head .t{font-family:"Space Grotesk",sans-serif;font-weight:600;font-size:16px}
-  .chart-head .t .badge{font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.16em;color:var(--ink);background:var(--brass);padding:2px 7px;border-radius:5px;margin-left:10px;vertical-align:middle;text-transform:uppercase}
+  .chart-card{padding:24px 24px 10px}
+  .chart-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:6px}
+  .chart-head .t{font-family:var(--serif);font-weight:500;font-size:17px;letter-spacing:-.005em}
+  .chart-head .t .badge{font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:.1em;color:var(--brass);background:var(--brass-soft);border:1px solid rgba(184,151,90,.2);padding:2px 7px;border-radius:5px;margin-left:10px;vertical-align:middle;text-transform:uppercase}
   .chart-head .h{font-size:12px;color:var(--faint);font-family:"IBM Plex Mono",monospace}
   .hd-right{display:flex;align-items:center;gap:11px}
   .xlsbtn{appearance:none;border:1px solid var(--hair);background:var(--panel-2);border-radius:7px;padding:0;width:28px;height:28px;display:grid;place-items:center;cursor:pointer;transition:border-color .15s,transform .15s}
   .xlsbtn:hover{border-color:var(--faint);transform:translateY(-1px)}
   .xlsbtn:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
   .xlsbtn svg{display:block}
-  .plot{width:100%;height:380px} .plot.sm{height:300px} .plot.tall{height:520px} .plot.mk{height:300px}
+  .plot{width:100%;height:380px} .plot.sm{height:300px} .plot.tall{height:520px} .plot.mk{height:300px} .plot.ov{height:340px}
 
   /* nav principale — stile a sottolineatura, più editoriale, con icone */
   .mainnav{display:flex;gap:0;margin:8px 0 0;padding:0;border-bottom:1px solid var(--hair-soft);position:relative}
@@ -245,9 +270,9 @@
   /* slider frontier */
   .fr-slider-wrap{padding:18px 8px 6px}
   #frSlider{-webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:3px;
-    background:linear-gradient(90deg,rgba(201,162,78,.5),rgba(201,162,78,.15));outline:none;cursor:pointer}
+    background:linear-gradient(90deg,rgba(184,151,90,.5),rgba(184,151,90,.15));outline:none;cursor:pointer}
   #frSlider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:18px;height:18px;border-radius:50%;
-    background:var(--brass);border:3px solid var(--ink);box-shadow:0 0 0 1px var(--brass),0 2px 8px rgba(201,162,78,.4);cursor:pointer;transition:transform .12s}
+    background:var(--brass);border:3px solid var(--ink);box-shadow:0 0 0 1px var(--brass),0 2px 8px rgba(184,151,90,.4);cursor:pointer;transition:transform .12s}
   #frSlider::-webkit-slider-thumb:hover{transform:scale(1.15)}
   #frSlider::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:var(--brass);border:3px solid var(--ink);box-shadow:0 0 0 1px var(--brass);cursor:pointer}
   .fr-slider-ticks{display:flex;justify-content:space-between;margin-top:8px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--faint)}
@@ -268,9 +293,14 @@
   .caltable tr.next td{background:var(--brass-soft)}
   .caltable tr:last-child td{border-bottom:0}
   .caltable .nxt{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink);background:var(--brass);padding:1px 6px;border-radius:4px;margin-left:8px}
+  .cpill{display:inline-block;font-family:"Inter",sans-serif;font-size:10.5px;font-weight:600;letter-spacing:.01em;padding:3px 10px;border-radius:999px;white-space:nowrap}
+  .cpill-ok{color:var(--pos);background:var(--pos-soft);border:1px solid rgba(91,191,155,.3)}
+  .cpill-no{color:var(--neg);background:var(--neg-soft);border:1px solid rgba(217,131,115,.35)}
+  .caltable .muted-dash{color:var(--faint)}
 
   @media (max-width:900px){
     .grid-top{grid-template-columns:1fr}.hero .val{font-size:52px}
+    .ov-top{grid-template-columns:1fr}
     .ident{order:2}.who{text-align:left}
     .foot{flex-direction:column;align-items:flex-start}.foot .sign{text-align:left}
     .prodhead{align-items:flex-start}.stamp{text-align:left}
@@ -281,10 +311,9 @@
   /* Accento corsivo dorato per enfasi nei titoli */
   .accent-it{font-style:italic;color:var(--brass)}
   /* Card con micro-elevazione e hover più raffinato */
-  .card{transition:border-color .2s ease, box-shadow .2s ease}
-  .chart-card:hover{border-color:var(--hair);box-shadow:0 1px 0 rgba(201,162,78,.06), 0 8px 30px rgba(0,0,0,.18)}
+  .chart-card:hover{border-color:var(--hair);box-shadow:0 1px 0 rgba(184,151,90,.06), 0 8px 30px rgba(0,0,0,.18)}
   /* Badge più elegante */
-  .badge{display:inline-block;font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--brass);background:var(--brass-soft);border:1px solid rgba(201,162,78,.2);border-radius:5px;padding:2px 7px;vertical-align:middle;margin-left:7px}
+  .badge{display:inline-block;font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--brass);background:var(--brass-soft);border:1px solid rgba(184,151,90,.2);border-radius:5px;padding:2px 7px;vertical-align:middle;margin-left:7px}
   /* Hairline dorato sottile sopra le sezioni principali */
   .chart-head .t{position:relative}
   /* Numeri tabulari ovunque per allineamento */
@@ -296,6 +325,11 @@
   @media (max-width:760px){
     body{padding:0}
     .wrap{padding:14px}
+    /* Mobile: niente sticky, le barre scorrono normalmente (come prima) */
+    .topbar-sticky{position:static;margin:0;padding:0;backdrop-filter:none;-webkit-backdrop-filter:none;background:transparent;border-bottom:0;box-shadow:none}
+    .toolbar-sticky{position:static;margin:0;padding:0;background:transparent;box-shadow:none}
+    .subtabs-sticky{position:static;margin:0;padding:0;backdrop-filter:none;-webkit-backdrop-filter:none;background:transparent;border-bottom:0;box-shadow:none}
+    .mtable thead th{position:static;box-shadow:none}
     /* Header compatto */
     header.top{flex-direction:row;align-items:center;gap:12px}
     .bt{font-size:19px!important}
@@ -363,6 +397,7 @@
 </div>
 <div class="wrap">
 
+  <div class="topbar-sticky" id="topbarSticky">
   <header class="top rise" style="--d:.02s">
     <div class="brand">
       <span class="logo" aria-hidden="true">
@@ -377,7 +412,7 @@
       <div>
         <div class="bt" style="font-family:'Cinzel',serif;font-size:23px;font-weight:400;letter-spacing:.12em">JENSEN</div>
         <div style="display:flex;align-items:center;gap:10px;margin-top:6px">
-          <div style="height:1px;width:18px;background:#C9A24E;flex-shrink:0"></div>
+          <div style="height:1px;width:18px;background:#B8975A;flex-shrink:0"></div>
           <div style="font-family:'Cinzel',serif;font-size:11px;font-weight:400;letter-spacing:.16em;color:var(--faint)">CERTIFICATE MONITOR &amp; ANALYTICS</div>
         </div>
       </div>
@@ -392,7 +427,7 @@
 
   <div class="rule rise" style="--d:.05s"></div>
 
-  <nav class="mainnav rise" id="mainnav" style="--d:.06s;margin-bottom:22px">
+  <nav class="mainnav rise" id="mainnav" style="--d:.06s">
     <button data-nav="monitor" aria-pressed="true">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/><circle cx="7" cy="6" r="1.4" fill="currentColor" stroke="none"/><circle cx="13" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="9" cy="18" r="1.4" fill="currentColor" stroke="none"/></svg>
       <span>Monitor</span>
@@ -402,12 +437,13 @@
       <span>Efficient Frontier</span>
     </button>
   </nav>
+  </div>
 
   <div class="banner" id="banner">Dati dimostrativi. Genera <code>data.json</code> con <code>export_markup_json.m</code> e caricalo accanto a <code>index.html</code>.</div>
 
   <!-- ================= MONITOR (screener) ================= -->
   <section id="viewMonitor" class="view active">
-    <div class="mtoolbar rise" style="--d:.08s">
+    <div class="mtoolbar toolbar-sticky rise" id="monitorToolbar" style="--d:.08s">
       <div class="fld"><label>Cerca</label>
         <div style="position:relative">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--faint)"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>
@@ -530,14 +566,19 @@
       <div class="stamp" id="stamp"></div>
     </div>
 
+    <div class="subtabs-sticky" id="subtabsSticky">
     <div class="subtabs" id="subtabs" role="group" aria-label="Vista prodotto">
-      <button data-t="markup" aria-pressed="true">
+      <button data-t="overview" aria-pressed="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="1.3"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.3"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.3"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.3"/></svg>
+        <span>Overview</span>
+      </button>
+      <button data-t="markup" aria-pressed="false">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17 L9 11 L13 15 L21 7"/><path d="M16 7 L21 7 L21 12"/></svg>
         <span>Markup</span>
       </button>
       <button data-t="rendimento" aria-pressed="false">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12 Q7 4 12 12 T21 12"/></svg>
-        <span>Rendimento</span>
+        <span>Dati storici</span>
       </button>
       <button data-t="autocall" aria-pressed="false">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 A9 9 0 1 1 5.6 5.6"/><path d="M3 4 L3 9 L8 9"/><path d="M12 8 L12 12 L15 14"/></svg>
@@ -548,17 +589,14 @@
         <span>Rischio</span>
       </button>
     </div>
+    </div>
 
-    <!-- sotto-vista: MARKUP -->
-    <div class="subview" id="sv-markup">
-      <div class="grid-top">
-        <div class="card hero">
-          <div class="k">Costo implicito</div>
-          <div class="val" id="heroVal">—</div>
-          <span class="tag pos" id="heroTag"><span class="dot"></span><span id="heroTagTxt">—</span></span>
-          <div class="sub" id="heroSub"></div>
-          <div class="scale"><div class="track"><div class="zero"></div><div class="marker" id="marker" style="left:50%;background:var(--muted)"></div></div>
-            <div class="ends"><span>− premio</span><span>fair value</span><span>sconto +</span></div></div>
+    <!-- sotto-vista: OVERVIEW -->
+    <div class="subview" id="sv-overview">
+      <div class="ov-top">
+        <div class="card chart-card">
+          <div class="chart-head"><div class="t">Serie storica</div><div class="h">prezzo di mercato</div></div>
+          <div id="chartOverview" class="plot ov"></div>
         </div>
         <div class="card meta"><h2>Scheda strumento</h2><div id="metaRows"></div></div>
       </div>
@@ -566,6 +604,10 @@
         <div class="chart-head"><div class="t">Calendario cedole e autocall</div><div class="h">date di osservazione</div></div>
         <div id="calWrap" class="caltable-wrap"></div>
       </div>
+    </div>
+
+    <!-- sotto-vista: MARKUP -->
+    <div class="subview" id="sv-markup" hidden>
       <div class="stats">
         <div class="card stat"><div class="l">Markup attuale</div><div class="n" id="kpiNow">—</div><div class="s">ultimo dato</div></div>
         <div class="card stat"><div class="l">Media periodo</div><div class="n" id="kpiMean">—</div><div class="s" id="kpiMeanSub">—</div></div>
@@ -595,7 +637,7 @@
       <div class="subtabs" id="rendtabs" role="group" style="margin-bottom:14px">
         <button data-rt="mean" aria-pressed="true">Rendimento</button>
         <button data-rt="vol" aria-pressed="false">Volatilità</button>
-        <button data-rt="scatter" aria-pressed="false">Rischio / Rendimento</button>
+        <button data-rt="scatter" aria-pressed="false">Frontiera</button>
       </div>
       <div id="rv-mean">
         <div class="card chart-card">
@@ -618,7 +660,7 @@
       <div id="rv-scatter" hidden>
         <div class="card chart-card">
           <div class="chart-head">
-            <div class="t">Rischio / Rendimento</div>
+            <div class="t">Frontiera</div>
             <div class="hd-right">
               <span class="h">traiettoria rolling · dorato = certificato</span>
               <div class="tabs" id="scatterWin" role="group" style="padding:2px;gap:1px;margin-left:10px">
@@ -713,7 +755,22 @@ function makeDemo(isin,emit,str,sott,base,drift,amp){
     mkt.push(+px.toFixed(3));mod.push(+(px*(1+markup/100)).toFixed(3));
     mk.push(+markup.toFixed(3));mka.push(+ann.toFixed(3));cp.push(+(Math.abs(ann)<Math.abs(markup)?ann:markup).toFixed(3));
     d.setDate(d.getDate()+4);}
+  // date di pagamento demo: alcune passate, alcune future; flussi cassa coerenti
+  const payDates=[],flussi=[];
+  let pdate=new Date(2024,1,15);
+  const oggi=new Date();
+  for(let k=0;k<10;k++){
+    const yy=pdate.getFullYear(),mm=String(pdate.getMonth()+1).padStart(2,'0'),dd=String(pdate.getDate()).padStart(2,'0');
+    payDates.push(`${yy}-${mm}-${dd}`);
+    // storiche: per lo più pagate (>0), qualcuna no (0); future: valore qualsiasi (ignorato)
+    if(pdate<oggi){flussi.push(Math.random()<0.78?+(2+Math.random()*5).toFixed(2):0);}
+    else{flussi.push(0);}
+    pdate=new Date(pdate);pdate.setMonth(pdate.getMonth()+3);
+  }
+  const ultimaTt=dates.length?dates[dates.length-1]:'';
   return {isin,emittente:emit,struttura:str,scadenza:'2026-06-19',sottostanti:sott,aggiornamento:'demo',
+          data_emissione:dates.length?dates[0]:'',data_settlement:'2024-01-31',ultima_data_tt:ultimaTt,
+          payments_date:payDates,flussi_cassa:flussi,
           cedola:+(2+Math.random()*7).toFixed(2),dates,prezzo_mercato:mkt,prezzo_modello:mod,markup:mk,markup_ann:mka,cost_premium:cp};
 }
 const DEMO=[
@@ -744,16 +801,16 @@ function baseLayout(){return{
   xaxis:{showgrid:false,zeroline:false,showline:false,ticks:'outside',ticklen:4,tickcolor:'transparent',
     tickfont:{size:11,color:C.faint,family:'Inter, system-ui, sans-serif'},nticks:7,
     showspikes:true,spikemode:'across',spikethickness:1,spikedash:'solid',
-    spikecolor:'rgba(201,162,78,.35)'},
+    spikecolor:'rgba(184,151,90,.35)'},
   yaxis:{showgrid:true,gridcolor:'rgba(255,255,255,.04)',gridwidth:1,zeroline:false,
     showline:false,ticks:'',tickfont:{size:11,color:C.faint,family:'Inter, system-ui, sans-serif'},
     nticks:6,tickformat:'.2f'},
-  hoverlabel:{bgcolor:'rgba(18,24,32,.97)',bordercolor:'rgba(201,162,78,.5)',
-    font:{family:'Inter, system-ui, sans-serif',size:12.5,color:'#EAEFF3'},
+  hoverlabel:{bgcolor:'rgba(18,24,32,.97)',bordercolor:'rgba(184,151,90,.5)',
+    font:{family:'Inter, system-ui, sans-serif',size:12.5,color:'#E8EDF1'},
     align:'left',namelength:-1},
   hovermode:'x unified',showlegend:false,
   shapes:[],
-  uirevision:(current&&current.isin)||'none',
+  uirevision:((current&&current.isin)||'none')+'|'+win+'|'+subv,
   transition:{duration:200,easing:'cubic-in-out'}
 };}
 const PCFG={responsive:true,displayModeBar:false,scrollZoom:false};
@@ -798,13 +855,13 @@ function renderMarkup(r){const x=r.dates;
   const neg=vals.map(v=>v==null?null:(v<0?v:0));
   const traces=[
     {x,y:pos,type:'scatter',mode:'none',fill:'tozeroy',
-     fillcolor:'rgba(79,209,165,.05)',
+     fillcolor:'rgba(91,191,155,.05)',
      line:{width:0},hoverinfo:'skip',connectgaps:false},
     {x,y:neg,type:'scatter',mode:'none',fill:'tozeroy',
-     fillcolor:'rgba(242,118,107,.05)',
+     fillcolor:'rgba(217,131,115,.05)',
      line:{width:0},hoverinfo:'skip',connectgaps:false},
     {x,y:vals,type:'scatter',mode:'lines',
-     line:{color:'rgba(201,162,78,.95)',width:1.8,shape:'linear'},
+     line:{color:'rgba(184,151,90,.95)',width:1.8,shape:'linear'},
      connectgaps:false,
      hovertemplate:'<b>%{x|%d %b %Y}</b><br>Costo implicito&nbsp;&nbsp;<b>%{y:+.2f}%</b><extra></extra>'}
   ];
@@ -823,16 +880,16 @@ function renderMarkup(r){const x=r.dates;
   }
   L.yaxis.range=[yMin,yMax];L.yaxis.autorange=false;
   L.xaxis.autorange=true;
-  Plotly.react('chartMarkup',traces,L,PCFG);forceRedraw('chartMarkup',false);}
+  drawChart('chartMarkup',traces,L);}
 
 function renderPrice(r){const x=r.dates;
   const traces=[
     {x,y:r.prezzo_mercato,type:'scatter',mode:'lines',name:'Mercato',
-     line:{color:'rgba(201,162,78,.95)',width:1.8,shape:'linear'},
+     line:{color:'rgba(184,151,90,.95)',width:1.8,shape:'linear'},
      connectgaps:false,
      hovertemplate:'Mercato&nbsp;&nbsp;<b>%{y:.2f}</b><extra></extra>'},
     {x,y:r.prezzo_modello,type:'scatter',mode:'lines',name:'Modello',
-     line:{color:'rgba(79,209,165,.8)',width:1.5,shape:'linear',dash:'dot'},
+     line:{color:'rgba(91,191,155,.8)',width:1.5,shape:'linear',dash:'dot'},
      connectgaps:false,
      hovertemplate:'Modello&nbsp;&nbsp;<b>%{y:.2f}</b><extra></extra>'}
   ];
@@ -843,9 +900,49 @@ function renderPrice(r){const x=r.dates;
     bgcolor:'rgba(0,0,0,0)',borderwidth:0};
   L.margin.t=28;
   L.xaxis.autorange=true;L.yaxis.autorange=true;
-  Plotly.react('chartPrice',traces,L,PCFG);forceRedraw('chartPrice',true);}
+  drawChart('chartPrice',traces,L);}
+
+// Serie storica del prezzo di mercato (scheda Overview).
+function renderOverviewChart(){
+  if(!current||!document.getElementById('chartOverview'))return;
+  const x=current.dates||[];
+  const y=current.prezzo_mercato||[];
+  const traces=[{x,y,type:'scatter',mode:'lines',name:'Mercato',
+    line:{color:'rgba(184,151,90,.95)',width:1.8,shape:'linear'},
+    connectgaps:false,fill:'tozeroy',fillcolor:'rgba(184,151,90,.05)',
+    hovertemplate:'<b>%{x|%d %b %Y}</b><br>Prezzo&nbsp;&nbsp;<b>%{y:.2f}</b><extra></extra>'}];
+  const L=baseLayout();
+  L.xaxis.autorange=true;
+  // Scala Y: poco sotto il minimo, poco sopra il massimo
+  const fin=y.filter(v=>v!=null&&isFinite(v));
+  if(fin.length){
+    const dMin=Math.min(...fin),dMax=Math.max(...fin);
+    const pad=Math.max(1,(dMax-dMin)*0.08);
+    L.yaxis.range=[dMin-pad,dMax+pad];
+    L.yaxis.autorange=false;
+  }else{L.yaxis.autorange=true;}
+  drawChart('chartOverview',traces,L);
+}
 
 /* ---------- util ---------- */
+// Disegna un grafico in modo robusto. Al cambio prodotto (isin diverso dall'ultimo
+// disegnato su quel grafico) ricostruisce da zero con purge+newPlot, azzerando
+// ogni stato/zoom precedente. Per aggiornamenti dello stesso prodotto (es. cambio
+// timeframe) usa react, più fluido. Risolve il mancato reset della scala.
+const _lastDrawn={};
+function drawChart(id,traces,layout){
+  const gd=document.getElementById(id);if(!gd)return;
+  const key=(current&&current.isin)||'none';
+  whenSized(id,()=>{try{
+    if(_lastDrawn[id]!==key){
+      Plotly.purge(gd);
+      Plotly.newPlot(gd,traces,layout,PCFG);
+      _lastDrawn[id]=key;
+    }else{
+      Plotly.react(gd,traces,layout,PCFG);
+    }
+  }catch(e){}});
+}
 function lastNum(a){if(!a)return null;for(let i=a.length-1;i>=0;i--){if(a[i]!=null&&!Number.isNaN(a[i]))return a[i];}return null;}
 function fmtPct(v){return (v>0?'+':'')+v.toFixed(2)+'%';}
 function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
@@ -889,8 +986,8 @@ function matches(r){
 /* ---------- MONITOR ---------- */
 const COLS=[
   {key:'isin',label:'ISIN',cls:'isincell',get:r=>esc(r.isin),sort:r=>r.isin||'',num:false},
-  {key:'emittente',label:'Emittente',cls:'',get:r=>esc(r.emittente||'—'),sort:r=>r.emittente||'',num:false},
-  {key:'struttura',label:'Struttura',cls:'',get:r=>esc(r.struttura||'—'),sort:r=>r.struttura||'',num:false},
+  {key:'emittente',label:'Emittente',cls:'clip',get:r=>esc(r.emittente||'—'),sort:r=>r.emittente||'',num:false},
+  {key:'struttura',label:'Struttura',cls:'clip',get:r=>esc(r.struttura||'—'),sort:r=>r.struttura||'',num:false},
   {key:'sottostanti',label:'Sottostanti',cls:'dim',get:r=>esc((r.sottostanti||[]).join(', ')||'—'),tip:r=>(r.sottostanti||[]).map(nameOf).join(', '),sort:r=>(r.sottostanti||[]).join(','),num:false},
   {key:'scadenza',label:'Scadenza',cls:'',get:r=>esc(r.scadenza||'—'),sort:r=>r.scadenza||'',num:false},
   {key:'cedola',label:'Cedola',cls:'num',get:r=>fmtCedola(r.cedola),sort:r=>cedolaNum(r.cedola),num:true},
@@ -922,6 +1019,7 @@ function renderMonitor(){
   const from=(currentPage-1)*pageSize+1,to=Math.min(currentPage*pageSize,total);
   document.getElementById('mcount').textContent=total?`${from}–${to} di ${total} strument${total===1?'o':'i'}`:`0 strumenti`;
   renderPagination(pages);
+  if(window._stickyMeasure)window._stickyMeasure();
 }
 
 function renderPagination(pages){
@@ -948,15 +1046,19 @@ function sortBy(key){
 }
 
 /* ---------- PRODOTTO ---------- */
-function renderHero(r){const cp=lastNum(r.cost_premium),isPos=cp!=null&&cp>=0;
-  document.getElementById('heroVal').textContent=cp==null?'n/d':fmtPct(cp);
+function renderHero(r){
+  const hv=document.getElementById('heroVal');if(!hv)return;  // hero rimosso dalla Overview
+  const cp=lastNum(r.cost_premium),isPos=cp!=null&&cp>=0;
+  hv.textContent=cp==null?'n/d':fmtPct(cp);
   const tag=document.getElementById('heroTag');tag.className='tag '+(isPos?'pos':'neg');
   document.getElementById('heroTagTxt').textContent=cp==null?'—':(isPos?'a sconto':'a premio');
   document.getElementById('heroSub').textContent=cp==null?'Dato non disponibile.':(isPos?'Prezzo di mercato sotto il fair value di modello.':'Prezzo di mercato sopra il fair value di modello.');
   const dom=15,cl=Math.max(-dom,Math.min(dom,cp==null?0:cp));const mk=document.getElementById('marker');
   mk.style.left=(50+(cl/dom)*50)+'%';mk.style.background=cp==null?C.muted:(isPos?C.pos:C.neg);}
 function renderMeta(r){const pmkt=lastNum(r.prezzo_mercato),pmod=lastNum(r.prezzo_modello);
-  const rows=[['ISIN',r.isin],['Emittente',r.emittente||'—'],['Struttura',r.struttura||'—'],['Scadenza',r.scadenza||'—'],
+  const fmtD=s=>{if(!s)return '—';const d=new Date(s);return isNaN(d)?esc(String(s)):d.toLocaleDateString('it-IT',{day:'2-digit',month:'short',year:'numeric'});};
+  const rows=[['ISIN',r.isin],['Emittente',r.emittente||'—'],['Struttura',r.struttura||'—'],
+    ['Data emissione',fmtD(r.data_emissione)],['Valutazione iniziale',fmtD(r.data_settlement)],['Scadenza',fmtD(r.scadenza)],
     ['Cedola',fmtCedola(r.cedola)],['Frequenza',freqOf(r)],['Sottostanti','__chips__'],['Prezzo mercato',pmkt==null?'n/d':pmkt.toFixed(2)],['Prezzo modello',pmod==null?'n/d':pmod.toFixed(2)]];
   const host=document.getElementById('metaRows');host.innerHTML='';
   rows.forEach(([lab,val])=>{const row=document.createElement('div');row.className='row';
@@ -975,15 +1077,29 @@ function renderCalendar(r){const host=document.getElementById('calWrap');
   const pd=Array.isArray(r.payments_date)?r.payments_date:[];
   if(!pd.length){host.innerHTML='<div class="empty">Nessuna data di pagamento disponibile.</div>';return;}
   const n=pd.length,ced=asPerDate(r.cedola,n),sog=asPerDate(r.soglia_cedola,n),ac=asPerDate(r.livelli_autocall,n);
+  const flussi=Array.isArray(r.flussi_cassa)?r.flussi_cassa:[];
+  // soglia storico/futuro: l'ultima data disponibile nella serie tt
+  const ultimaTt=r.ultima_data_tt?new Date(r.ultima_data_tt):null;
   const today=new Date();today.setHours(0,0,0,0);
   const nextIdx=pd.findIndex(d=>new Date(d)>=today);
-  let html='<table class="caltable"><thead><tr><th>Data</th><th class="num">Cedola</th><th class="num">Livello cedola</th><th class="num">Livello autocall</th></tr></thead><tbody>';
+  // stato cedola per la riga i
+  function statoCedola(i){
+    const dataPag=new Date(pd[i]);
+    // solo per date storiche (<= ultima data di tt)
+    if(!ultimaTt||dataPag>ultimaTt)return '<span class="muted-dash">—</span>';
+    const f=flussi[i];
+    if(f==null)return '<span class="muted-dash">—</span>';
+    if(f>0)return '<span class="cpill cpill-ok">Cedola pagata</span>';
+    return '<span class="cpill cpill-no">Cedola non pagata</span>';
+  }
+  let html='<table class="caltable"><thead><tr><th>Data</th><th class="num">Cedola</th><th class="num">Livello cedola</th><th class="num">Livello autocall</th><th>Stato</th></tr></thead><tbody>';
   for(let i=0;i<n;i++){const past=new Date(pd[i])<today;const cls=((i===nextIdx?'next':'')+(past?' past':'')).trim();
     html+=`<tr class="${cls}">`
       +'<td>'+fmtCalDate(pd[i])+(i===nextIdx?' <span class="nxt">prossima</span>':'')+'</td>'
       +'<td class="num">'+(ced[i]==null?'—':(+ced[i]).toFixed(2))+'</td>'
       +'<td class="num">'+fmtLevel(sog[i])+'</td>'
       +'<td class="num">'+fmtLevel(ac[i])+'</td>'
+      +'<td>'+statoCedola(i)+'</td>'
       +'</tr>';}
   html+='</tbody></table>';host.innerHTML=html;}
 /* ---- searchable dropdown ---- */
@@ -1094,12 +1210,12 @@ function renderRendimento(r){
   const isCert=l=>l==='Certificato'||l.toLowerCase().includes('cert');
   const isEq=l=>l==='Assett_equipesati';
 
-  const palette=['rgba(79,209,165,.85)','rgba(242,118,107,.85)',
+  const palette=['rgba(91,191,155,.85)','rgba(217,131,115,.85)',
     'rgba(90,176,232,.85)','rgba(180,130,220,.85)','rgba(255,180,80,.85)',
     'rgba(100,200,180,.85)','rgba(220,100,100,.85)','rgba(160,200,100,.85)'];
 
   function colorOf(lb,i){
-    if(isCert(lb))return 'rgba(201,162,78,1)';
+    if(isCert(lb))return 'rgba(184,151,90,1)';
     if(lb==='Indice')return 'rgba(144,162,176,.7)';
     if(isEq(lb))return 'rgba(255,255,255,.5)';
     return palette[i%palette.length];}
@@ -1150,10 +1266,11 @@ function setRendTab(t){rendTab=t;
   document.querySelectorAll('#rendtabs button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.rt===t?'true':'false'));
   if(!current)return;
   const rd=rendCache[current.isin];   // dati rendimento (non l'oggetto prodotto!)
-  // delay per dare tempo al browser di applicare hidden=false prima del resize
+  // rolling mean/vol: scala automatica. scatter: mantiene il suo range calcolato (solo resize).
+  const doAuto=id=>setTimeout(()=>{try{Plotly.Plots.resize(id);Plotly.relayout(id,{'xaxis.autorange':true,'yaxis.autorange':true});}catch(e){}},60);
   const doResize=id=>setTimeout(()=>{try{Plotly.Plots.resize(id);}catch(e){}},60);
-  if(t==='mean')doResize('chartRollMean');
-  if(t==='vol')doResize('chartRollVol');
+  if(t==='mean')doAuto('chartRollMean');
+  if(t==='vol')doAuto('chartRollVol');
   if(t==='scatter'){if(rd)renderScatterCometa(rd,scatterWin);doResize('chartScatter');}}
 
 let rendCache={};
@@ -1190,10 +1307,10 @@ function renderScatterCometa(r,win){
   const vols=r.rendimento_vol||[];
   if(!labels.length||!document.getElementById('chartScatter'))return;
   const isCert=l=>l==='Certificato'||l.toLowerCase().includes('cert');
-  const palette=['rgba(79,209,165,.9)','rgba(242,118,107,.9)','rgba(90,176,232,.9)',
+  const palette=['rgba(91,191,155,.9)','rgba(217,131,115,.9)','rgba(90,176,232,.9)',
     'rgba(180,130,220,.9)','rgba(255,180,80,.9)','rgba(100,200,180,.9)'];
   function colorOf(lb,i){
-    if(isCert(lb))return 'rgba(201,162,78,1)';
+    if(isCert(lb))return 'rgba(184,151,90,1)';
     if(lb==='Indice')return 'rgba(144,162,176,.8)';
     if(lb==='Assett_equipesati')return 'rgba(255,255,255,.6)';
     return palette[i%palette.length];}
@@ -1218,7 +1335,7 @@ function renderScatterCometa(r,win){
     traces.push({x:[vs[n-1]],y:[ms[n-1]],mode:'markers+text',type:'scatter',
       name:labelOf(lb),text:[labelOf(lb)],
       textposition:ms[n-1]>0?'top center':'bottom center',
-      textfont:{size:10.5,color:isc?'rgba(201,162,78,1)':C.muted,family:'Inter, system-ui, sans-serif'},
+      textfont:{size:10.5,color:isc?'rgba(184,151,90,1)':C.muted,family:'Inter, system-ui, sans-serif'},
       marker:{size:isc?13:9,color:col,symbol:'circle',line:{color:'rgba(20,28,36,.7)',width:1.5}},
       hovertemplate:`<b>${labelOf(lb)}</b><br>Vol: %{x:.1%}<br>Rend: %{y:+.1%}<extra></extra>`});
     // Coda (punto di partenza, sbiadito)
@@ -1247,37 +1364,69 @@ function renderScatterCometa(r,win){
   Ls.xaxis.showgrid=true;Ls.xaxis.gridcolor='rgba(255,255,255,.04)';
   Ls.yaxis.showgrid=true;Ls.yaxis.gridcolor='rgba(255,255,255,.04)';
   // Asse = zeroline (dorata, marcata). Vol parte da 0 → coincide col bordo sinistro.
-  Ls.xaxis.zeroline=true;Ls.xaxis.zerolinecolor='rgba(201,162,78,.6)';Ls.xaxis.zerolinewidth=2;
-  Ls.yaxis.zeroline=true;Ls.yaxis.zerolinecolor='rgba(201,162,78,.6)';Ls.yaxis.zerolinewidth=2;
+  Ls.xaxis.zeroline=true;Ls.xaxis.zerolinecolor='rgba(184,151,90,.6)';Ls.xaxis.zerolinewidth=2;
+  Ls.yaxis.zeroline=true;Ls.yaxis.zerolinecolor='rgba(184,151,90,.6)';Ls.yaxis.zerolinewidth=2;
   // Frecce a fine asse
   Ls.annotations=[
     {xref:'paper',yref:'paper',x:1,y:0,ax:-18,ay:0,xanchor:'left',yanchor:'middle',
-     text:'',showarrow:true,arrowhead:2,arrowsize:1.4,arrowwidth:1.5,arrowcolor:'rgba(201,162,78,.6)'},
+     text:'',showarrow:true,arrowhead:2,arrowsize:1.4,arrowwidth:1.5,arrowcolor:'rgba(184,151,90,.6)'},
     {xref:'paper',yref:'paper',x:0,y:1,ax:0,ay:18,xanchor:'center',yanchor:'bottom',
-     text:'',showarrow:true,arrowhead:2,arrowsize:1.4,arrowwidth:1.5,arrowcolor:'rgba(201,162,78,.6)'}
+     text:'',showarrow:true,arrowhead:2,arrowsize:1.4,arrowwidth:1.5,arrowcolor:'rgba(184,151,90,.6)'}
   ];
   Ls.shapes=[];
   Ls.margin={l:70,r:30,t:24,b:60};Ls.showlegend=false;
   Plotly.react('chartScatter',traces,Ls,PCFG);fadeIn('chartScatter');forceRedraw('chartScatter');}
 
-function applyWindow(){if(!current)return;const w=sliceByWindow(current,win);renderStats(w);renderMarkup(w);renderPrice(w);}
+function applyWindow(){if(!current)return;const w=sliceByWindow(current,win);renderStats(w);
+  // Disegno i grafici markup SOLO se la scheda markup è attualmente visibile
+  if(subv==='markup'){renderMarkup(w);renderPrice(w);}}
+
+// Attende che il container abbia dimensioni reali, poi esegue cb.
+// Risolve il disegno su div nascosti/non dimensionati (causa scala rotta e tagli).
+function whenSized(id,cb,tries){
+  tries=tries==null?30:tries;
+  const el=document.getElementById(id);
+  if(!el){return;}
+  const r=el.getBoundingClientRect();
+  if(r.width>20&&r.height>20){cb();return;}
+  if(tries<=0){cb();return;}  // fallback: provo comunque
+  requestAnimationFrame(()=>whenSized(id,cb,tries-1));
+}
+
+// Reset scala dei grafici markup (X automatica; Y del costo implicito resta col clamp)
+// — rimossa: drawChart gestisce già scala e reset al cambio prodotto/timeframe.
+
 function selectIsin(isin){current=DATA.find(x=>x.isin===isin)||current;if(!current)return;
   document.getElementById('mTitle').textContent=current.isin;
   document.getElementById('mSub').textContent=[current.emittente,current.struttura].filter(Boolean).join(' · ');
   const upd=(current.aggiornamento&&current.aggiornamento!=='demo')?current.aggiornamento:'—';
   document.getElementById('stamp').innerHTML=`aggiornato &nbsp;<b>${esc(upd)}</b>`;
-  renderHero(current);renderMeta(current);renderCalendar(current);applyWindow();}
+  // Solo dati comuni a tutte le schede. I grafici li disegna la scheda quando si apre.
+  renderHero(current);renderMeta(current);renderCalendar(current);}
 
 function setSubview(t){subv=t;
-  ['markup','rendimento','autocall','rischio'].forEach(k=>{const el=document.getElementById('sv-'+k);if(el)el.hidden=(k!==t);});
+  ['overview','markup','rendimento','autocall','rischio'].forEach(k=>{const el=document.getElementById('sv-'+k);if(el)el.hidden=(k!==t);});
   document.querySelectorAll('#subtabs button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.t===t?'true':'false'));
   if(current){const h='#/'+encodeURIComponent(current.isin)+'/'+t;if(location.hash!==h)location.hash=h;}
-  if(t==='markup'){try{Plotly.Plots.resize('chartMarkup');Plotly.Plots.resize('chartPrice');}catch(e){}}
-  if(t==='rendimento'&&current){loadRendimento(current);}}
+  // Disegno i grafici della scheda appena resa visibile (timing corretto: div ora dimensionato)
+  drawTab(t);}
+
+// Disegna i grafici della scheda t, ora che è visibile e dimensionata.
+function drawTab(t){
+  if(!current)return;
+  if(t==='overview'){
+    renderOverviewChart();
+  }else if(t==='markup'){
+    const w=sliceByWindow(current,win);
+    renderMarkup(w);renderPrice(w);
+  }else if(t==='rendimento'){
+    loadRendimento(current);
+  }
+}
 function openProduct(isin,fromHash,tab){
   const changed=!current||current.isin!==isin;
   if(changed)rendTab='mean';  // reset sotto-scheda rendimento sul nuovo prodotto
-  const t=tab||'markup';
+  const t=tab||'overview';
   showView('product');   // mostro il contenitore PRIMA di disegnare i grafici
   selectIsin(isin);      // ora Plotly disegna con dimensioni reali
   setSubview(t);
@@ -1290,7 +1439,7 @@ function applyHash(){
   if(raw==='frontier'){showView('frontier');return;}
   const parts=raw.split('/');
   const isin=decodeURIComponent(parts[0]);
-  const tab=parts[1]||'markup';
+  const tab=parts[1]||'overview';
   if(DATA.some(x=>x.isin===isin)){openProduct(isin,true,tab);return;}
   showView('monitor');
 }
@@ -1409,7 +1558,7 @@ function renderFrontier(){
   document.getElementById('frDateLabel').textContent=dateStr?fmtDate(dateStr):'—';
 
   // Colorazione certificati: selezionati ROSSI, resto BLU. Mai arcobaleno.
-  const SEL='rgba(242,118,107,.92)';
+  const SEL='rgba(217,131,115,.92)';
   const BASE='rgba(90,130,170,.55)';
   function isSel(p){
     if(!frColorBy.field)return false;
@@ -1433,13 +1582,13 @@ function renderFrontier(){
     soX.push(pt.v);soY.push(pt.m);soCd.push([nameOf(s.sigla)||s.sigla,s.sigla]);});
 
   const HOVER_C='<b>%{customdata[0]}</b><br>'+
-    '<span style="color:#C9A24E">%{customdata[1]}</span><br>'+
+    '<span style="color:#B8975A">%{customdata[1]}</span><br>'+
     '%{customdata[2]}<br>'+
-    '<span style="color:#90A2B0">%{customdata[3]}</span><extra></extra>';
+    '<span style="color:#8C9BA8">%{customdata[3]}</span><extra></extra>';
   const HOVER_S='<b>%{customdata[0]}</b><br>'+
-    '<span style="color:#90A2B0">Sottostante · %{customdata[1]}</span><extra></extra>';
-  const HL={bgcolor:'rgba(18,24,32,.97)',bordercolor:'rgba(201,162,78,.5)',
-      font:{family:'Inter, system-ui, sans-serif',size:12,color:'#EAEFF3'},align:'left'};
+    '<span style="color:#8C9BA8">Sottostante · %{customdata[1]}</span><extra></extra>';
+  const HL={bgcolor:'rgba(18,24,32,.97)',bordercolor:'rgba(184,151,90,.5)',
+      font:{family:'Inter, system-ui, sans-serif',size:12,color:'#E8EDF1'},align:'left'};
 
   const mkC=(x,y,cd,col,sz)=>({x,y,customdata:cd,mode:'markers',type:'scatter',
     marker:{size:sz,color:col,line:{color:'rgba(20,28,36,.6)',width:1},opacity:.9},
@@ -1466,14 +1615,14 @@ function renderFrontier(){
   L.xaxis.showline=false;L.yaxis.showline=false;
   L.xaxis.showgrid=true;L.xaxis.gridcolor='rgba(255,255,255,.04)';
   L.yaxis.showgrid=true;L.yaxis.gridcolor='rgba(255,255,255,.04)';
-  L.xaxis.zeroline=true;L.xaxis.zerolinecolor='rgba(201,162,78,.6)';L.xaxis.zerolinewidth=2;
-  L.yaxis.zeroline=true;L.yaxis.zerolinecolor='rgba(201,162,78,.6)';L.yaxis.zerolinewidth=2;
+  L.xaxis.zeroline=true;L.xaxis.zerolinecolor='rgba(184,151,90,.6)';L.xaxis.zerolinewidth=2;
+  L.yaxis.zeroline=true;L.yaxis.zerolinecolor='rgba(184,151,90,.6)';L.yaxis.zerolinewidth=2;
   L.yaxis.range=[-0.70,0.70];L.yaxis.autorange=false;
   L.xaxis.range=[0,0.70];L.xaxis.autorange=false;
   L.hovermode='closest';   // tooltip sul punto, non righe verticali/orizzontali
   L.annotations=[
-    {xref:'paper',yref:'paper',x:1,y:0,ax:-18,ay:0,xanchor:'left',yanchor:'middle',text:'',showarrow:true,arrowhead:2,arrowsize:1.4,arrowwidth:1.5,arrowcolor:'rgba(201,162,78,.6)'},
-    {xref:'paper',yref:'paper',x:0,y:1,ax:0,ay:18,xanchor:'center',yanchor:'bottom',text:'',showarrow:true,arrowhead:2,arrowsize:1.4,arrowwidth:1.5,arrowcolor:'rgba(201,162,78,.6)'}];
+    {xref:'paper',yref:'paper',x:1,y:0,ax:-18,ay:0,xanchor:'left',yanchor:'middle',text:'',showarrow:true,arrowhead:2,arrowsize:1.4,arrowwidth:1.5,arrowcolor:'rgba(184,151,90,.6)'},
+    {xref:'paper',yref:'paper',x:0,y:1,ax:0,ay:18,xanchor:'center',yanchor:'bottom',text:'',showarrow:true,arrowhead:2,arrowsize:1.4,arrowwidth:1.5,arrowcolor:'rgba(184,151,90,.6)'}];
   L.margin={l:70,r:30,t:20,b:60};L.showlegend=false;
   Plotly.react('chartFrontier',traces,L,PCFG);forceRedraw('chartFrontier');
 
@@ -1626,7 +1775,42 @@ function init(){
   const _missing=[...new Set(DATA.flatMap(r=>r.sottostanti||[]))].filter(t=>!SOTTOSTANTI[t]);
   if(_missing.length)console.info('Sottostanti senza nome esteso ('+_missing.length+'): '+_missing.join(', '));
   window.addEventListener('hashchange',applyHash);
+
+  // ---- Sticky: posizionamento dinamico e ombra graduale allo scroll ----
+  setupSticky();
+
   applyHash();
+}
+
+function setupSticky(){
+  const topbar=document.getElementById('topbarSticky');
+  const subSticky=document.getElementById('subtabsSticky');
+  const root=document.documentElement;
+
+  // Posiziono i subtabs prodotto subito sotto la topbar fissa
+  function measure(){
+    const h=topbar?topbar.getBoundingClientRect().height:0;
+    root.style.setProperty('--topbar-h',h+'px');
+    if(subSticky)subSticky.style.top=h+'px';
+  }
+  measure();
+  window.addEventListener('resize',measure);
+  window.addEventListener('hashchange',()=>setTimeout(measure,60));
+
+  // Ombra/bordo graduale quando si scrolla
+  let ticking=false;
+  function onScroll(){
+    if(ticking)return;ticking=true;
+    requestAnimationFrame(()=>{
+      const y=window.scrollY||window.pageYOffset;
+      if(topbar)topbar.classList.toggle('scrolled',y>6);
+      if(subSticky)subSticky.classList.toggle('scrolled',y>6);
+      ticking=false;
+    });
+  }
+  window.addEventListener('scroll',onScroll,{passive:true});
+  onScroll();
+  window._stickyMeasure=measure;
 }
 
 fetch('data.json')
