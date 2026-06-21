@@ -14,6 +14,14 @@
     y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
   })(window, document, "clarity", "script", "x7x5wv9tij");
 </script>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-MMH700D9B2"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-MMH700D9B2');
+</script>
 <script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -777,7 +785,8 @@ const CONFIG = {
   nome:        "Matteo Polo",
   ruolo:       "",
   linkedin:    "https://www.linkedin.com/in/matteo-polo/",
-  clarity:     "x7x5wv9tij"  // già caricato nell'head
+  clarity:     "x7x5wv9tij",  // già caricato nell'head
+  ga4:         "G-MMH700D9B2"  // Google Analytics, già caricato nell'head
 };
 /* ===================================================================== */
 
@@ -1937,11 +1946,13 @@ function renderFrontier(){
         let sigle;try{sigle=JSON.parse(sigleJson);}catch(e){sigle=[];}
         const isin=pt.customdata[0];
         const cert=_frHover.certByIsin[isin];
+        // periodo del certificato: dalla data di settlement (se disponibile)
+        const dFrom=(cert&&cert.data_settlement)?cert.data_settlement:null;
         // cometa del certificato (oro pieno, linea più spessa)
-        if(cert)extra.push(...cometaTraces(cert,dateLimit,GOLD,isin,true));
-        // comete dei sottostanti (oro tenue)
+        if(cert)extra.push(...cometaTraces(cert,dateLimit,GOLD,isin,true,dFrom));
+        // comete dei sottostanti (oro tenue) — LIMITATE al periodo del certificato
         sigle.forEach(sig=>{const s=_frHover.sottBySigla[sig];
-          if(s)extra.push(...cometaTraces(s,dateLimit,GOLD_SOFT,sig,false));});
+          if(s)extra.push(...cometaTraces(s,dateLimit,GOLD_SOFT,sig,false,dFrom));});
         // asterischi con sigla sui sottostanti (etichette)
         const xs=[],ys=[],cd=[];
         sigle.forEach(sig=>{const o=_frHover.sottPos[sig];if(!o)return;
@@ -1986,11 +1997,15 @@ function fmtDate(s){const[y,m,d]=s.split('-');return d+'/'+m+'/'+y;}
 // Costruisce le tracce "cometa" (scia a opacità crescente + testa) per una serie
 // rischio/rendimento, considerando solo i punti FINO alla data limite (slider).
 // rgbHead es. 'rgba(184,151,90,1)'. Ritorna un array di tracce Plotly.
-function cometaTraces(serie,dateLimit,rgbHead,label,isCert){
+function cometaTraces(serie,dateLimit,rgbHead,label,isCert,dateFrom){
   const allDates=asArr(serie.dates),allV=asArr(serie.vol),allM=asArr(serie.mean);
-  // indici fino alla data dello slider (inclusa)
+  // indici nella finestra [dateFrom, dateLimit] (dateFrom opzionale)
   const idx=[];
-  for(let i=0;i<allDates.length;i++){if(allDates[i]<=dateLimit)idx.push(i);}
+  for(let i=0;i<allDates.length;i++){
+    if(allDates[i]>dateLimit)continue;
+    if(dateFrom&&allDates[i]<dateFrom)continue;
+    idx.push(i);
+  }
   if(idx.length<2)return [];   // serve almeno un breve tratto per la scia
   const vs=idx.map(i=>allV[i]).filter(x=>x!=null&&isFinite(x));
   const ms=idx.map(i=>allM[i]).filter(x=>x!=null&&isFinite(x));
