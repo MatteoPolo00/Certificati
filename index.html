@@ -1623,13 +1623,18 @@ function renderFrontier(){
     if(selX.length)traces.push(mkC(selX,selY,selCd,SEL,10));
   }
   if(showSott)traces.push(mkS(soX,soY,soCd));
-  // numero di tracce "permanenti": l'hover ne aggiunge una temporanea in coda
+  // numero di tracce "permanenti": l'hover ne aggiunge altre temporanee in coda
   const nBaseTraces=traces.length;
-  // dati per l'hover: indice customdata delle sigle e mappa posizioni
+  // dati per l'hover (posizioni puntuali + serie complete per le comete)
   _frHover.sottPos=sottPos;
   _frHover.nBase=nBaseTraces;
   _frHover.sottLight=sottLight;
   _frHover.showSott=showSott;
+  _frHover.dateStr=dateStr;
+  _frHover.frShow=frShow;
+  // mappa serie complete: certificati per ISIN, sottostanti per sigla
+  _frHover.certByIsin={};vis.forEach(p=>{_frHover.certByIsin[p.isin]=p;});
+  _frHover.sottBySigla={};frontierSottostanti().forEach(s=>{_frHover.sottBySigla[s.sigla]=s;});
 
   const L=baseLayout();
   L.xaxis.title={text:'Volatilità annualizzata',font:{size:12.5,color:C.muted,family:'Inter, system-ui, sans-serif'}};
@@ -1656,49 +1661,105 @@ function renderFrontier(){
       const pt=ev.points&&ev.points[0];if(!pt||!pt.customdata)return;
       const isin=pt.customdata[0];
       if(DATA.some(x=>x.isin===isin))location.hash='#/'+encodeURIComponent(isin)+'/overview';});
-    // Hover su un CERTIFICATO → compaiono i suoi sottostanti, ben visibili
+    // Hover → comete (scia storica) del prodotto sotto il mouse.
+    // Su un certificato: cometa del certificato + comete dei suoi sottostanti + sigle.
+    // Su un sottostante (vista sottostanti): cometa di quel sottostante.
     gd.on('plotly_hover',ev=>{
       const pt=ev.points&&ev.points[0];if(!pt||!pt.customdata)return;
-      // se sto passando sopra la traccia hover temporanea (sottostanti), non rifare nulla
+      // ignoro se sto già sopra una traccia temporanea di hover
       if(gd.data.length>_frHover.nBase && pt.curveNumber>=_frHover.nBase)return;
-      // i certificati hanno 5 campi customdata (il 5° è il JSON delle sigle)
-      const sigleJson=pt.customdata[4];if(!sigleJson){
-        // non è un certificato (es. sottostante permanente): rimuovo eventuale hover
-        if(gd.data.length>_frHover.nBase)Plotly.deleteTraces(gd,gd.data.length-1).catch(()=>{});
-        return;}
-      let sigle;try{sigle=JSON.parse(sigleJson);}catch(e){return;}
-      if(!sigle||!sigle.length)return;
-      const xs=[],ys=[],cd=[];
-      sigle.forEach(sig=>{const o=_frHover.sottPos[sig];if(!o)return;
-        xs.push(o.v);ys.push(o.m);cd.push([o.nome,sig]);});
-      if(!xs.length)return;
+      const dateLimit=_frHover.dateStr||'';
+      const extra=[];   // tracce temporanee da aggiungere
+      const GOLD='rgba(184,151,90,1)';
+      const GOLD_SOFT='rgba(184,151,90,.55)';
       const HL2={bgcolor:'rgba(18,24,32,.97)',bordercolor:'rgba(184,151,90,.5)',
         font:{family:'Inter, system-ui, sans-serif',size:12,color:'#E8EDF1'},align:'left'};
-      const hoverTrace={x:xs,y:ys,customdata:cd,mode:'markers+text',type:'scatter',
-        text:xs.map((_,i)=>cd[i][1]),textposition:'top center',
-        textfont:{size:10,color:'rgba(184,151,90,1)',family:'Inter, system-ui, sans-serif'},
-        marker:{size:13,symbol:'asterisk-open',color:'rgba(184,151,90,1)',
-          line:{color:'rgba(184,151,90,1)',width:2}},
-        hovertemplate:'<b>%{customdata[0]}</b><br><span style="color:#8C9BA8">Sottostante · %{customdata[1]}</span><extra></extra>',
-        hoverlabel:HL2,showlegend:false};
-      // se c'è già una traccia hover la sostituisco, altrimenti la aggiungo
-      if(gd.data.length>_frHover.nBase){
-        Plotly.deleteTraces(gd,gd.data.length-1).then(()=>Plotly.addTraces(gd,hoverTrace)).catch(()=>{});
+
+      const sigleJson=pt.customdata[4];
+      if(sigleJson){
+        // --- CERTIFICATO ---
+        let sigle;try{sigle=JSON.parse(sigleJson);}catch(e){sigle=[];}
+        const isin=pt.customdata[0];
+        const cert=_frHover.certByIsin[isin];
+        // cometa del certificato (oro pieno, linea più spessa)
+        if(cert)extra.push(...cometaTraces(cert,dateLimit,GOLD,isin,true));
+        // comete dei sottostanti (oro tenue)
+        sigle.forEach(sig=>{const s=_frHover.sottBySigla[sig];
+          if(s)extra.push(...cometaTraces(s,dateLimit,GOLD_SOFT,sig,false));});
+        // asterischi con sigla sui sottostanti (etichette)
+        const xs=[],ys=[],cd=[];
+        sigle.forEach(sig=>{const o=_frHover.sottPos[sig];if(!o)return;
+          xs.push(o.v);ys.push(o.m);cd.push([o.nome,sig]);});
+        if(xs.length){extra.push({x:xs,y:ys,customdata:cd,mode:'markers+text',type:'scatter',
+          text:xs.map((_,i)=>cd[i][1]),textposition:'top center',
+          textfont:{size:10,color:GOLD,family:'Inter, system-ui, sans-serif'},
+          marker:{size:13,symbol:'asterisk-open',color:GOLD,line:{color:GOLD,width:2}},
+          hovertemplate:'<b>%{customdata[0]}</b><br><span style="color:#8C9BA8">Sottostante · %{customdata[1]}</span><extra></extra>',
+          hoverlabel:HL2,showlegend:false});}
       }else{
-        Plotly.addTraces(gd,hoverTrace).catch(()=>{});
+        // --- SOTTOSTANTE (vista sottostanti) ---
+        const sig=pt.customdata[1];
+        const s=_frHover.sottBySigla[sig];
+        if(s)extra.push(...cometaTraces(s,dateLimit,GOLD,sig,false));
       }
+
+      if(!extra.length)return;
+      // serializzo le operazioni per evitare race su movimenti rapidi del mouse
+      _frHover.pending=(_frHover.pending||Promise.resolve()).then(()=>{
+        const surplus=gd.data.length-_frHover.nBase;
+        let p=Promise.resolve();
+        if(surplus>0){const idxs=[];for(let i=0;i<surplus;i++)idxs.push(_frHover.nBase+i);
+          p=Plotly.deleteTraces(gd,idxs);}
+        return p.then(()=>Plotly.addTraces(gd,extra));
+      }).catch(()=>{});
     });
     gd.on('plotly_unhover',()=>{
-      // rimuovo la traccia hover temporanea (se presente)
-      if(gd.data.length>_frHover.nBase){
-        Plotly.deleteTraces(gd,gd.data.length-1).catch(()=>{});
-      }
+      _frHover.pending=(_frHover.pending||Promise.resolve()).then(()=>{
+        const surplus=gd.data.length-_frHover.nBase;
+        if(surplus>0){const idxs=[];for(let i=0;i<surplus;i++)idxs.push(_frHover.nBase+i);
+          return Plotly.deleteTraces(gd,idxs);}
+        return Promise.resolve();
+      }).catch(()=>{});
     });
     gd._frClickBound=true;
   }
 }
 
 function fmtDate(s){const[y,m,d]=s.split('-');return d+'/'+m+'/'+y;}
+
+// Costruisce le tracce "cometa" (scia a opacità crescente + testa) per una serie
+// rischio/rendimento, considerando solo i punti FINO alla data limite (slider).
+// rgbHead es. 'rgba(184,151,90,1)'. Ritorna un array di tracce Plotly.
+function cometaTraces(serie,dateLimit,rgbHead,label,isCert){
+  const allDates=asArr(serie.dates),allV=asArr(serie.vol),allM=asArr(serie.mean);
+  // indici fino alla data dello slider (inclusa)
+  const idx=[];
+  for(let i=0;i<allDates.length;i++){if(allDates[i]<=dateLimit)idx.push(i);}
+  if(idx.length<2)return [];   // serve almeno un breve tratto per la scia
+  const vs=idx.map(i=>allV[i]).filter(x=>x!=null&&isFinite(x));
+  const ms=idx.map(i=>allM[i]).filter(x=>x!=null&&isFinite(x));
+  const n=Math.min(vs.length,ms.length);
+  if(n<2)return [];
+  const out=[];
+  // estraggo r,g,b dall'head per modulare l'opacità della scia
+  const m3=rgbHead.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+  const rgb=m3?`${m3[1]},${m3[2]},${m3[3]}`:'184,151,90';
+  const steps=Math.min(n-1,36);
+  for(let s=0;s<steps;s++){
+    const a=Math.round(s*(n-1)/steps),b=Math.round((s+1)*(n-1)/steps);
+    if(b<=a)continue;
+    const alpha=(0.06+0.5*(s/steps)).toFixed(2);
+    out.push({x:vs.slice(a,b+1),y:ms.slice(a,b+1),mode:'lines',type:'scatter',
+      showlegend:false,hoverinfo:'skip',
+      line:{color:`rgba(${rgb},${alpha})`,width:isCert?2.4:1.4,shape:'spline',smoothing:0.3}});
+  }
+  // testa = punto attuale (alla data dello slider)
+  out.push({x:[vs[n-1]],y:[ms[n-1]],mode:'markers',type:'scatter',
+    showlegend:false,hoverinfo:'skip',
+    marker:{size:isCert?12:8,color:rgbHead,symbol:isCert?'circle':'asterisk-open',
+      line:{color:rgbHead,width:isCert?1.5:2}}});
+  return out;
+}
 
 function initFrontierSlider(){
   const sl=document.getElementById('frSlider');if(!sl)return;
