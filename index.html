@@ -1615,8 +1615,36 @@ function renderSottCertList(sigla){
       +`<span class="scr-arrow">→</span></button>`;});
   html+='</div>';
   host.innerHTML=html;
-  host.querySelectorAll('.sottcert-row').forEach(b=>b.addEventListener('click',()=>{
-    location.hash='#/'+encodeURIComponent(b.dataset.isin)+'/overview';}));
+  host.querySelectorAll('.sottcert-row').forEach(b=>{
+    const cert=DATA.find(x=>x.isin===b.dataset.isin);
+    b.addEventListener('click',()=>{location.hash='#/'+encodeURIComponent(b.dataset.isin)+'/overview';});
+    // hover: evidenzia nel grafico il periodo tra settlement e scadenza del certificato
+    b.addEventListener('mouseenter',()=>highlightCertPeriod(cert));
+    b.addEventListener('mouseleave',()=>highlightCertPeriod(null));
+  });
+}
+
+// Evidenzia nel grafico del sottostante il periodo del certificato (settlement→scadenza),
+// oscurando con un velo grigio scuro le porzioni esterne (ma lasciandole visibili).
+function highlightCertPeriod(cert){
+  const gd=document.getElementById('chartSott');if(!gd||!gd.layout)return;
+  if(!cert||!cert.data_settlement||!cert.scadenza){
+    Plotly.relayout(gd,{shapes:[]}).catch(()=>{});
+    return;
+  }
+  const x0=cert.data_settlement,x1=cert.scadenza;
+  const veil='rgba(8,11,15,.62)';   // velo grigio scuro semi-trasparente
+  // Due rettangoli che oscurano fuori dall'intervallo [settlement, scadenza].
+  // Uso date molto fuori range, clampate ai limiti dell'asse.
+  const farPast='1990-01-01',farFut='2100-01-01';
+  const veilShapes=[
+    {type:'rect',xref:'x',yref:'paper',x0:farPast,x1:x0,y0:0,y1:1,fillcolor:veil,line:{width:0},layer:'above'},
+    {type:'rect',xref:'x',yref:'paper',x0:x1,x1:farFut,y0:0,y1:1,fillcolor:veil,line:{width:0},layer:'above'},
+    // linee di confine sottili dorate per marcare l'intervallo
+    {type:'line',xref:'x',yref:'paper',x0:x0,x1:x0,y0:0,y1:1,line:{color:'rgba(184,151,90,.6)',width:1,dash:'dot'}},
+    {type:'line',xref:'x',yref:'paper',x0:x1,x1:x1,y0:0,y1:1,line:{color:'rgba(184,151,90,.6)',width:1,dash:'dot'}}
+  ];
+  Plotly.relayout(gd,{shapes:veilShapes}).catch(()=>{});
 }
 
 /* ================= EFFICIENT FRONTIER ================= */
