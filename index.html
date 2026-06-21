@@ -756,7 +756,8 @@ function makeDemo(isin,emit,str,sott,base,drift,amp){
     mk.push(+markup.toFixed(3));mka.push(+ann.toFixed(3));cp.push(+(Math.abs(ann)<Math.abs(markup)?ann:markup).toFixed(3));
     d.setDate(d.getDate()+4);}
   // date di pagamento demo: alcune passate, alcune future; flussi cassa coerenti
-  const payDates=[],flussi=[];
+  const payDates=[];
+  const flussi=[null];   // prima colonna (da scartare nell'allineamento, come nel dato reale)
   let pdate=new Date(2024,1,15);
   const oggi=new Date();
   for(let k=0;k<10;k++){
@@ -1082,24 +1083,25 @@ function renderCalendar(r){const host=document.getElementById('calWrap');
   const ultimaTt=r.ultima_data_tt?new Date(r.ultima_data_tt):null;
   const today=new Date();today.setHours(0,0,0,0);
   const nextIdx=pd.findIndex(d=>new Date(d)>=today);
-  // stato cedola per la riga i
+  // stato cedola per la riga i.
+  // ALLINEAMENTO: si scarta la prima colonna della riga 201, quindi la prima
+  // payments_date corrisponde a flussi[1], la seconda a flussi[2], ... → flussi[i+1].
   function statoCedola(i){
     const dataPag=new Date(pd[i]);
-    // solo per date storiche (<= ultima data di tt)
-    if(!ultimaTt||dataPag>ultimaTt)return '<span class="muted-dash">—</span>';
-    const f=flussi[i];
+    if(!ultimaTt||dataPag>ultimaTt)return '<span class="muted-dash">—</span>';  // future
+    const f=flussi[i+1];
     if(f==null)return '<span class="muted-dash">—</span>';
     if(f>0)return '<span class="cpill cpill-ok">Cedola pagata</span>';
     return '<span class="cpill cpill-no">Cedola non pagata</span>';
   }
-  let html='<table class="caltable"><thead><tr><th>Data</th><th class="num">Cedola</th><th class="num">Livello cedola</th><th class="num">Livello autocall</th><th>Stato</th></tr></thead><tbody>';
+  let html='<table class="caltable"><thead><tr><th>Data</th><th></th><th class="num">Cedola</th><th class="num">Livello cedola</th><th class="num">Livello autocall</th></tr></thead><tbody>';
   for(let i=0;i<n;i++){const past=new Date(pd[i])<today;const cls=((i===nextIdx?'next':'')+(past?' past':'')).trim();
     html+=`<tr class="${cls}">`
       +'<td>'+fmtCalDate(pd[i])+(i===nextIdx?' <span class="nxt">prossima</span>':'')+'</td>'
+      +'<td>'+statoCedola(i)+'</td>'
       +'<td class="num">'+(ced[i]==null?'—':(+ced[i]).toFixed(2))+'</td>'
       +'<td class="num">'+fmtLevel(sog[i])+'</td>'
       +'<td class="num">'+fmtLevel(ac[i])+'</td>'
-      +'<td>'+statoCedola(i)+'</td>'
       +'</tr>';}
   html+='</tbody></table>';host.innerHTML=html;}
 /* ---- searchable dropdown ---- */
@@ -1632,7 +1634,7 @@ function renderFrontier(){
     gd.on('plotly_click',ev=>{
       const pt=ev.points&&ev.points[0];if(!pt||!pt.customdata)return;
       const isin=pt.customdata[0];
-      if(DATA.some(x=>x.isin===isin))location.hash='#/'+encodeURIComponent(isin)+'/markup';});
+      if(DATA.some(x=>x.isin===isin))location.hash='#/'+encodeURIComponent(isin)+'/overview';});
     gd._frClickBound=true;
   }
 }
