@@ -196,6 +196,12 @@
 
   .grid-top{display:grid;grid-template-columns:1.05fr 1fr;gap:16px}
   .ov-top{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:stretch}
+  /* scheda sottostante: card certificati alta come il grafico, lista che scorre dentro */
+  .sott-certs-card{display:flex;flex-direction:column;min-height:0}
+  .sott-certs-scroll{flex:1;overflow-y:auto;min-height:0;padding-right:4px}
+  .sott-certs-scroll::-webkit-scrollbar{width:8px}
+  .sott-certs-scroll::-webkit-scrollbar-thumb{background:var(--hair);border-radius:4px}
+  .sott-certs-scroll::-webkit-scrollbar-track{background:transparent}
   .ov-top .meta{overflow:auto}
   .hero{padding:26px 28px 28px;position:relative;overflow:hidden}
   .hero .k{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--faint)}
@@ -246,7 +252,7 @@
   .xlsbtn:hover{border-color:var(--faint);transform:translateY(-1px)}
   .xlsbtn:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
   .xlsbtn svg{display:block}
-  .plot{width:100%;height:380px} .plot.sm{height:300px} .plot.tall{height:520px} .plot.mk{height:300px} .plot.ov{height:340px}
+  .plot{width:100%;height:380px} .plot.sm{height:300px} .plot.tall{height:520px} .plot.mk{height:300px} .plot.ov{height:340px} .plot.ov-tall{height:400px}
 
   /* nav principale — stile a sottolineatura, più editoriale, con icone */
   .mainnav{display:flex;gap:0;margin:8px 0 0;padding:0;border-bottom:1px solid var(--hair-soft);position:relative}
@@ -312,6 +318,7 @@
   @media (max-width:900px){
     .grid-top{grid-template-columns:1fr}.hero .val{font-size:52px}
     .ov-top{grid-template-columns:1fr}
+    .sott-certs-scroll{overflow-y:visible;max-height:none}
     .ident{order:2}.who{text-align:left}
     .foot{flex-direction:column;align-items:flex-start}.foot .sign{text-align:left}
     .prodhead{align-items:flex-start}.stamp{text-align:left}
@@ -711,14 +718,14 @@
     </div>
     </div>
 
-    <div class="ov-top">
+    <div class="ov-top ov-sott">
       <div class="card chart-card">
         <div class="chart-head"><div class="t" id="sChartTitle">Prezzo storico</div><div class="h" id="sChartSub"></div></div>
-        <div id="chartSott" class="plot ov"></div>
+        <div id="chartSott" class="plot ov-tall"></div>
       </div>
-      <div class="card meta">
+      <div class="card meta sott-certs-card">
         <h2>Certificati collegati</h2>
-        <div id="sottCertList"></div>
+        <div id="sottCertList" class="sott-certs-scroll"></div>
       </div>
     </div>
   </section>
@@ -1568,10 +1575,10 @@ function renderSottChart(){
   if(sottTab==='prezzo'){
     // serie prezzo completa con le sue date proprie (da AssetTT.mat)
     x=asArr(currentSott.prezzo_dates).length?asArr(currentSott.prezzo_dates):asArr(currentSott.dates);
-    y=asArr(currentSott.prezzo);titolo='Prezzo storico';sub='serie storica completa';
+    y=asArr(currentSott.prezzo);titolo='Prezzo storico';sub='';
   }else{
     x=asArr(currentSott.dates);
-    y=asArr(currentSott.mean);titolo='Rendimento rolling';sub='annualizzato (252g) · periodo del certificato';
+    y=asArr(currentSott.mean);titolo='Rendimento rolling';sub='';
   }
   const isPct=sottTab==='rendimento';
   const traces=[{x,y:isPct?y.map(v=>v==null?null:v*100):y,type:'scatter',mode:'lines',
