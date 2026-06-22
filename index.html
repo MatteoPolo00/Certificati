@@ -258,6 +258,19 @@
   .chart-head .t .badge{font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:.1em;color:var(--brass);background:var(--brass-soft);border:1px solid rgba(184,151,90,.2);padding:2px 7px;border-radius:5px;margin-left:10px;vertical-align:middle;text-transform:uppercase}
   .chart-head .h{font-size:12px;color:var(--faint);font-family:"IBM Plex Mono",monospace}
   .hd-right{display:flex;align-items:center;gap:11px}
+  /* controlli stagionalità */
+  .stag-corr{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--muted);white-space:nowrap}
+  .stag-corr b{color:var(--txt)}
+  .stag-corr-5 b{color:var(--pos)}
+  .stag-toggle{display:inline-flex;align-items:center;gap:8px;appearance:none;cursor:pointer;
+    background:var(--panel-2);border:1px solid var(--hair);border-radius:999px;padding:5px 12px 5px 6px;
+    font-family:"Inter",sans-serif;font-size:11.5px;color:var(--muted);transition:border-color .15s,color .15s}
+  .stag-toggle:hover{color:var(--txt);border-color:var(--brass-soft)}
+  .stag-toggle .stag-knob{width:30px;height:16px;border-radius:999px;background:var(--hair);position:relative;transition:background .2s;flex-shrink:0}
+  .stag-toggle .stag-knob::after{content:'';position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:var(--faint);transition:transform .2s,background .2s}
+  .stag-toggle.on{color:var(--txt);border-color:rgba(184,151,90,.4)}
+  .stag-toggle.on .stag-knob{background:var(--brass-soft)}
+  .stag-toggle.on .stag-knob::after{transform:translateX(14px);background:var(--brass)}
   .xlsbtn{appearance:none;border:1px solid var(--hair);background:var(--panel-2);border-radius:7px;padding:0;width:28px;height:28px;display:grid;place-items:center;cursor:pointer;transition:border-color .15s,transform .15s}
   .xlsbtn:hover{border-color:var(--faint);transform:translateY(-1px)}
   .xlsbtn:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
@@ -725,18 +738,39 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12 Q7 4 12 12 T21 12"/></svg>
         <span>Rendimento</span>
       </button>
+      <button data-st="stagionalita" aria-pressed="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 18 Q6 6 9 12 T15 9 T21 14"/><line x1="3" y1="21" x2="21" y2="21" opacity="0.4"/></svg>
+        <span>Stagionalità</span>
+      </button>
+      <button data-st="sharpe" aria-pressed="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 L12 21"/><path d="M5 10 L12 3 L19 10"/></svg>
+        <span>Sharpe Ratio</span>
+      </button>
+      <button data-st="sentiment" aria-pressed="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 14 Q12 17 16 14"/><circle cx="9" cy="10" r="0.6" fill="currentColor"/><circle cx="15" cy="10" r="0.6" fill="currentColor"/></svg>
+        <span>Sentiment</span>
+      </button>
     </div>
     </div>
 
-    <div class="ov-top ov-sott">
+    <!-- vista grafici standard (Prezzo/Rendimento/Stagionalità) -->
+    <div class="ov-top ov-sott" id="sottChartRow">
       <div class="card chart-card">
-        <div class="chart-head"><div class="t" id="sChartTitle">Prezzo storico</div><div class="h" id="sChartSub"></div></div>
+        <div class="chart-head">
+          <div class="t" id="sChartTitle">Prezzo storico</div>
+          <div class="hd-right" id="sChartControls"></div>
+        </div>
         <div id="chartSott" class="plot ov-tall"></div>
       </div>
       <div class="card meta sott-certs-card">
         <h2>Certificati collegati</h2>
         <div id="sottCertList" class="sott-certs-scroll"></div>
       </div>
+    </div>
+
+    <!-- viste segnaposto (Sharpe / Sentiment) -->
+    <div id="sottPlaceholder" hidden>
+      <div class="card placeholder" id="sottPlaceholderText">Vista in arrivo.</div>
     </div>
   </section>
 <!-- pop-up benvenuto -->
@@ -1595,12 +1629,27 @@ function setSottTab(t){
   if(t==='prezzo'&&currentSott&&!asArr(currentSott.prezzo).length)t='rendimento';
   sottTab=t;
   document.querySelectorAll('#sottSubtabs button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.st===t?'true':'false'));
+  const chartRow=document.getElementById('sottChartRow');
+  const ph=document.getElementById('sottPlaceholder');
+  const placeholderTabs={sharpe:'Sharpe Ratio',sentiment:'Sentiment'};
+  if(placeholderTabs[t]){
+    // vista segnaposto "in arrivo"
+    if(chartRow)chartRow.hidden=true;
+    if(ph){ph.hidden=false;
+      document.getElementById('sottPlaceholderText').innerHTML='Vista <b>'+placeholderTabs[t]+'</b> — in arrivo.';}
+    return;
+  }
+  if(chartRow)chartRow.hidden=false;
+  if(ph)ph.hidden=true;
   renderSottChart();
   syncSottHeights();
 }
 
 function renderSottChart(){
   if(!currentSott)return;
+  // svuoto i controlli dell'header (lo slider stagionalità li popola se serve)
+  const ctrl=document.getElementById('sChartControls');if(ctrl)ctrl.innerHTML='';
+  if(sottTab==='stagionalita'){renderStagionalita();return;}
   let x,y,titolo,sub;
   if(sottTab==='prezzo'){
     // serie prezzo completa con le sue date proprie (da AssetTT.mat)
@@ -1669,6 +1718,129 @@ function drawChartSott(id,traces,layout){
       gd._sottClickBound=true;
     }
   }catch(e){}});
+}
+
+/* ===== STAGIONALITÀ ===== */
+let stag5y=false;   // slider "ultimi 5 anni" attivo?
+
+// Raggruppa la serie prezzo per anno e calcola il prezzo normalizzato a 100
+// al primo giorno di borsa di ciascun anno. Ritorna {byYear:{anno:[{doy,val}]}, years:[...]}
+function buildSeasonal(){
+  const dates=asArr(currentSott.prezzo_dates).length?asArr(currentSott.prezzo_dates):asArr(currentSott.dates);
+  const px=asArr(currentSott.prezzo);
+  const byYear={};
+  for(let i=0;i<dates.length;i++){
+    const v=px[i];if(v==null||!isFinite(v))continue;
+    const d=new Date(dates[i]);if(isNaN(d))continue;
+    const yr=d.getFullYear();
+    // giorno dell'anno (1..366)
+    const doy=Math.floor((d-new Date(yr,0,0))/86400000);
+    (byYear[yr]=byYear[yr]||[]).push({doy,val:v});
+  }
+  // normalizzo ogni anno a 100 sul primo valore disponibile
+  const out={};
+  Object.keys(byYear).forEach(yr=>{
+    const arr=byYear[yr].sort((a,b)=>a.doy-b.doy);
+    if(!arr.length)return;
+    const base=arr[0].val;
+    out[yr]=arr.map(p=>({doy:p.doy,val:base?100*p.val/base:null}));
+  });
+  const years=Object.keys(out).map(Number).sort((a,b)=>a-b);
+  return {byYear:out,years};
+}
+
+// Media (per giorno dell'anno) di un insieme di anni. Ritorna [{doy,val}] su griglia 1..366.
+function seasonalMean(byYear,years){
+  const sum={},cnt={};
+  years.forEach(yr=>{(byYear[yr]||[]).forEach(p=>{
+    if(p.val==null)return;sum[p.doy]=(sum[p.doy]||0)+p.val;cnt[p.doy]=(cnt[p.doy]||0)+1;});});
+  const out=[];
+  for(let d=1;d<=366;d++){if(cnt[d])out.push({doy:d,val:sum[d]/cnt[d]});}
+  return out;
+}
+
+// Correlazione tra anno corrente e una serie media, sul tratto comune (fino a dove
+// arriva l'anno corrente). Allinea per giorno dell'anno.
+function seasonalCorr(curr,meanSerie){
+  if(!curr||!curr.length||!meanSerie||!meanSerie.length)return null;
+  const maxDoy=curr[curr.length-1].doy;
+  const mMap={};meanSerie.forEach(p=>mMap[p.doy]=p.val);
+  const xs=[],ys=[];
+  curr.forEach(p=>{if(p.doy<=maxDoy&&mMap[p.doy]!=null&&p.val!=null){xs.push(p.val);ys.push(mMap[p.doy]);}});
+  const n=xs.length;if(n<3)return null;
+  const mx=xs.reduce((a,b)=>a+b,0)/n,my=ys.reduce((a,b)=>a+b,0)/n;
+  let sxy=0,sxx=0,syy=0;
+  for(let i=0;i<n;i++){const dx=xs[i]-mx,dy=ys[i]-my;sxy+=dx*dy;sxx+=dx*dx;syy+=dy*dy;}
+  if(sxx===0||syy===0)return null;
+  return sxy/Math.sqrt(sxx*syy);
+}
+
+function renderStagionalita(){
+  const {byYear,years}=buildSeasonal();
+  if(years.length<2){
+    document.getElementById('sChartTitle').textContent='Stagionalità';
+    drawChartSott('chartSott',[{x:[],y:[]}],baseLayout());
+    return;
+  }
+  const currYear=years[years.length-1];
+  const prevYears=years.slice(0,-1);                 // tutti tranne il corrente
+  const last5=prevYears.slice(-5);                   // ultimi 5 anni completi
+  const curr=byYear[currYear]||[];
+  const meanAll=seasonalMean(byYear,prevYears);
+  const mean5=seasonalMean(byYear,last5);
+
+  const toXY=arr=>({x:arr.map(p=>p.doy),y:arr.map(p=>p.val)});
+  const cXY=toXY(curr),mAllXY=toXY(meanAll),m5XY=toXY(mean5);
+
+  const traces=[
+    // media storica completa
+    {...mAllXY,mode:'lines',name:'Media '+prevYears.length+' anni',
+      line:{color:'rgba(140,155,168,.7)',width:1.6,shape:'spline',smoothing:0.4},
+      hovertemplate:'Media storica<br>giorno %{x}<br><b>%{y:.1f}</b><extra></extra>'},
+    // anno corrente in evidenza (ottone)
+    {...cXY,mode:'lines',name:String(currYear),
+      line:{color:'rgba(184,151,90,.95)',width:2.4,shape:'spline',smoothing:0.3},
+      hovertemplate:String(currYear)+'<br>giorno %{x}<br><b>%{y:.1f}</b><extra></extra>'}
+  ];
+  // linea media 5 anni: solo se lo slider è attivo
+  if(stag5y){
+    traces.splice(1,0,{...m5XY,mode:'lines',name:'Media 5 anni',
+      line:{color:'rgba(91,191,155,.8)',width:1.6,shape:'spline',smoothing:0.4,dash:'dot'},
+      hovertemplate:'Media 5 anni<br>giorno %{x}<br><b>%{y:.1f}</b><extra></extra>'});
+  }
+
+  // correlazioni
+  const corrAll=seasonalCorr(curr,meanAll);
+  const corr5=stag5y?seasonalCorr(curr,mean5):null;
+
+  document.getElementById('sChartTitle').textContent='Stagionalità';
+  renderStagControls(corrAll,corr5,prevYears.length);
+
+  const L=baseLayout();
+  L.xaxis.title={text:'Giorno dell\u2019anno',font:{size:12,color:C.muted,family:'Inter, system-ui, sans-serif'}};
+  // tick mensili approssimativi
+  L.xaxis.tickmode='array';
+  L.xaxis.tickvals=[1,32,60,91,121,152,182,213,244,274,305,335];
+  L.xaxis.ticktext=['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
+  L.xaxis.autorange=true;
+  L.yaxis.autorange=true;L.yaxis.ticksuffix='';
+  L.shapes=[{type:'line',xref:'paper',x0:0,x1:1,y0:100,y1:100,
+    line:{color:'rgba(144,162,176,.25)',width:1,dash:'dot'}}];
+  drawChartSott('chartSott',traces,L);
+}
+
+// Pulsante slider 5 anni + correlazioni, nell'header del grafico
+function renderStagControls(corrAll,corr5,nAll){
+  const host=document.getElementById('sChartControls');if(!host)return;
+  const fmtC=c=>c==null?'n/d':c.toFixed(2);
+  host.innerHTML=
+    '<span class="stag-corr" title="Correlazione anno corrente vs media '+nAll+' anni">'
+    +'ρ media: <b>'+fmtC(corrAll)+'</b></span>'
+    +(stag5y?'<span class="stag-corr stag-corr-5" title="Correlazione anno corrente vs media 5 anni">ρ 5a: <b>'+fmtC(corr5)+'</b></span>':'')
+    +'<button class="stag-toggle'+(stag5y?' on':'')+'" id="stag5btn">'
+    +'<span class="stag-knob"></span><span class="stag-lbl">Media 5 anni</span></button>';
+  const btn=document.getElementById('stag5btn');
+  if(btn)btn.addEventListener('click',()=>{stag5y=!stag5y;renderStagionalita();});
 }
 
 function renderSottCertList(sigla){
@@ -1946,13 +2118,18 @@ function renderFrontier(){
         let sigle;try{sigle=JSON.parse(sigleJson);}catch(e){sigle=[];}
         const isin=pt.customdata[0];
         const cert=_frHover.certByIsin[isin];
-        // periodo del certificato: dalla data di settlement (se disponibile)
-        const dFrom=(cert&&cert.data_settlement)?cert.data_settlement:null;
+        // periodo del certificato dai dati completi (DATA ha settlement e scadenza)
+        const full=DATA.find(x=>x.isin===isin);
+        const dFrom=full&&full.data_settlement?full.data_settlement
+                   :(full&&full.data_emissione?full.data_emissione:null);
+        const dTo=full&&full.scadenza?full.scadenza:dateLimit;
+        // il limite superiore è il minore tra scadenza del certificato e data slider
+        const dUpper=(dTo&&dTo<dateLimit)?dTo:dateLimit;
         // cometa del certificato (oro pieno, linea più spessa)
-        if(cert)extra.push(...cometaTraces(cert,dateLimit,GOLD,isin,true,dFrom));
+        if(cert)extra.push(...cometaTraces(cert,dUpper,GOLD,isin,true,dFrom));
         // comete dei sottostanti (oro tenue) — LIMITATE al periodo del certificato
         sigle.forEach(sig=>{const s=_frHover.sottBySigla[sig];
-          if(s)extra.push(...cometaTraces(s,dateLimit,GOLD_SOFT,sig,false,dFrom));});
+          if(s)extra.push(...cometaTraces(s,dUpper,GOLD_SOFT,sig,false,dFrom));});
         // asterischi con sigla sui sottostanti (etichette)
         const xs=[],ys=[],cd=[];
         sigle.forEach(sig=>{const o=_frHover.sottPos[sig];if(!o)return;
