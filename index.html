@@ -1946,18 +1946,13 @@ function renderFrontier(){
         let sigle;try{sigle=JSON.parse(sigleJson);}catch(e){sigle=[];}
         const isin=pt.customdata[0];
         const cert=_frHover.certByIsin[isin];
-        // periodo del certificato dai dati completi (DATA ha settlement e scadenza)
-        const full=DATA.find(x=>x.isin===isin);
-        const dFrom=full&&full.data_settlement?full.data_settlement
-                   :(full&&full.data_emissione?full.data_emissione:null);
-        const dTo=full&&full.scadenza?full.scadenza:dateLimit;
-        // il limite superiore è il minore tra scadenza del certificato e data slider
-        const dUpper=(dTo&&dTo<dateLimit)?dTo:dateLimit;
+        // periodo del certificato: dalla data di settlement (se disponibile)
+        const dFrom=(cert&&cert.data_settlement)?cert.data_settlement:null;
         // cometa del certificato (oro pieno, linea più spessa)
-        if(cert)extra.push(...cometaTraces(cert,dUpper,GOLD,isin,true,dFrom));
+        if(cert)extra.push(...cometaTraces(cert,dateLimit,GOLD,isin,true,dFrom));
         // comete dei sottostanti (oro tenue) — LIMITATE al periodo del certificato
         sigle.forEach(sig=>{const s=_frHover.sottBySigla[sig];
-          if(s)extra.push(...cometaTraces(s,dUpper,GOLD_SOFT,sig,false,dFrom));});
+          if(s)extra.push(...cometaTraces(s,dateLimit,GOLD_SOFT,sig,false,dFrom));});
         // asterischi con sigla sui sottostanti (etichette)
         const xs=[],ys=[],cd=[];
         sigle.forEach(sig=>{const o=_frHover.sottPos[sig];if(!o)return;
