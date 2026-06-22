@@ -1758,39 +1758,59 @@ function drawChartAnalysis(traces,layout){
 /* ===== STAGIONALITÀ ===== */
 let stag5y=false;   // slider "ultimi 5 anni" attivo?
 
-// Raggruppa la serie prezzo per anno e calcola il prezzo normalizzato a 100
-// al primo giorno di borsa di ciascun anno. Ritorna {byYear:{anno:[{doy,val}]}, years:[...]}
+// Per ogni anno costruisce una serie CONTINUA su griglia doy 1..365, normalizzata a 100
+// al primo giorno disponibile, riempiendo i giorni mancanti col valore precedente
+// (forward-fill). Questo evita i "denti di sega" causati da giorni mancanti nella media.
+// Ritorna {byYear:{anno:[val per doy 1..365]}, years:[...]}  (val = null prima del primo dato)
 function buildSeasonal(){
   const dates=asArr(currentSott.prezzo_dates).length?asArr(currentSott.prezzo_dates):asArr(currentSott.dates);
   const px=asArr(currentSott.prezzo);
-  const byYear={};
+  const GRID=365;
+  // raccolgo, per anno, prezzo per doy (ultimo valore del giorno se duplicati)
+  const raw={};
   for(let i=0;i<dates.length;i++){
     const v=px[i];if(v==null||!isFinite(v))continue;
     const d=new Date(dates[i]);if(isNaN(d))continue;
     const yr=d.getFullYear();
-    // giorno dell'anno (1..366)
-    const doy=Math.floor((d-new Date(yr,0,0))/86400000);
-    (byYear[yr]=byYear[yr]||[]).push({doy,val:v});
+    let doy=Math.floor((d-new Date(yr,0,0))/86400000);   // 1..366
+    if(doy<1)doy=1;if(doy>GRID)doy=GRID;                  // comprimo il 366° nel 365
+    (raw[yr]=raw[yr]||{})[doy]=v;
   }
-  // normalizzo ogni anno a 100 sul primo valore disponibile
+  // per ogni anno: forward-fill su griglia 1..365, poi normalizzo a 100 sul primo valore
   const out={};
-  Object.keys(byYear).forEach(yr=>{
-    const arr=byYear[yr].sort((a,b)=>a.doy-b.doy);
-    if(!arr.length)return;
-    const base=arr[0].val;
-    out[yr]=arr.map(p=>({doy:p.doy,val:base?100*p.val/base:null}));
+  Object.keys(raw).forEach(yr=>{
+    const dayMap=raw[yr];
+    const filled=new Array(GRID+1).fill(null);
+    let last=null,base=null;
+    for(let doy=1;doy<=GRID;doy++){
+      if(dayMap[doy]!=null)last=dayMap[doy];
+      if(last!=null){
+        if(base==null)base=last;          // base = primo prezzo disponibile dell'anno
+        filled[doy]=base?100*last/base:null;
+      }
+    }
+    out[yr]=filled;   // indice = doy (1..365), valore normalizzato o null
   });
   const years=Object.keys(out).map(Number).sort((a,b)=>a-b);
   return {byYear:out,years};
 }
 
-// Media (per giorno dell'anno) di un insieme di anni. Ritorna [{doy,val}] su griglia 1..366.
+// Media per doy su un insieme di anni: su ogni doy media SOLO gli anni che hanno un
+// valore non-null lì. Le serie sono continue (forward-fill), quindi niente buchi/denti.
 function seasonalMean(byYear,years){
-  const sum={},cnt={};
-  years.forEach(yr=>{(byYear[yr]||[]).forEach(p=>{
-    if(p.val==null)return;sum[p.doy]=(sum[p.doy]||0)+p.val;cnt[p.doy]=(cnt[p.doy]||0)+1;});});
-  const out=[];
-  for(let d=1;d<=366;d++){if(cnt[d])out.push({doy:d,val:sum[d]/cnt[d]});}
+  const GRID=365;const out=[];
+  for(let doy=1;doy<=GRID;doy++){
+    let s=0,n=0;
+    years.forEach(yr=>{const v=byYear[yr]&&byYear[yr][doy];if(v!=null&&isFinite(v)){s+=v;n++;}});
+    if(n>0)out.push({doy,val:s/n});
+  }
+  return out;
+}
+
+// Serie {doy,val} dell'anno indicato (salta i null iniziali).
+function seasonalYear(byYear,yr){
+  const arr=byYear[yr]||[];const out=[];
+  for(let doy=1;doy<arr.length;doy++){if(arr[doy]!=null)out.push({doy,val:arr[doy]});}
   return out;
 }
 
@@ -1820,7 +1840,7 @@ function renderStagionalita(){
   const currYear=years[years.length-1];
   const prevYears=years.slice(0,-1);                 // tutti tranne il corrente
   const last5=prevYears.slice(-5);                   // ultimi 5 anni completi
-  const curr=byYear[currYear]||[];
+  const curr=seasonalYear(byYear,currYear);          // [{doy,val}] dell'anno corrente
   const meanAll=seasonalMean(byYear,prevYears);
   const mean5=seasonalMean(byYear,last5);
 
