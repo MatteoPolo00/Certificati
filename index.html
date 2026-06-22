@@ -300,6 +300,9 @@
   .seg button[aria-pressed="true"]{background:var(--brass);color:var(--ink);font-weight:600}
   .seg button:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
   .sent-empty{font-family:"Inter",sans-serif;font-size:11.5px;color:var(--muted);font-style:italic;margin-right:4px}
+  .sott-analysis{margin-top:26px;padding-top:22px;border-top:1px solid var(--hair-soft)}
+  .sott-analysis .subtabs{margin-bottom:14px}
+  #sottAnalysisCard .plot{height:380px}
 
   /* slider frontier */
   .fr-slider-wrap{padding:18px 8px 6px}
@@ -729,8 +732,9 @@
       </div>
     </div>
 
+    <!-- ZONA ALTA: sotto-schede Prezzo / Rendimento -->
     <div class="subtabs-sticky" id="sottSubtabsSticky">
-    <div class="subtabs" id="sottSubtabs" role="group" aria-label="Vista sottostante">
+    <div class="subtabs" id="sottSubtabs" role="group" aria-label="Serie storica sottostante">
       <button data-st="prezzo" aria-pressed="true">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17 L9 11 L13 15 L21 7"/><path d="M16 7 L21 7 L21 12"/></svg>
         <span>Prezzo</span>
@@ -739,22 +743,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12 Q7 4 12 12 T21 12"/></svg>
         <span>Rendimento</span>
       </button>
-      <button data-st="stagionalita" aria-pressed="false">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 18 Q6 6 9 12 T15 9 T21 14"/><line x1="3" y1="21" x2="21" y2="21" opacity="0.4"/></svg>
-        <span>Stagionalità</span>
-      </button>
-      <button data-st="sharpe" aria-pressed="false">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 L12 21"/><path d="M5 10 L12 3 L19 10"/></svg>
-        <span>Sharpe Ratio</span>
-      </button>
-      <button data-st="sentiment" aria-pressed="false">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 14 Q12 17 16 14"/><circle cx="9" cy="10" r="0.6" fill="currentColor"/><circle cx="15" cy="10" r="0.6" fill="currentColor"/></svg>
-        <span>Sentiment</span>
-      </button>
     </div>
     </div>
 
-    <!-- vista grafici standard (Prezzo/Rendimento/Stagionalità) -->
+    <!-- serie storica (sinistra) + certificati collegati (destra) -->
     <div class="ov-top ov-sott" id="sottChartRow">
       <div class="card chart-card">
         <div class="chart-head">
@@ -769,9 +761,33 @@
       </div>
     </div>
 
-    <!-- viste segnaposto (Sharpe / Sentiment) -->
-    <div id="sottPlaceholder" hidden>
-      <div class="card placeholder" id="sottPlaceholderText">Vista in arrivo.</div>
+    <!-- ZONA BASSA: altre analisi, a tutta larghezza, una vista per volta -->
+    <div class="sott-analysis">
+      <div class="subtabs" id="sottAnalysisTabs" role="group" aria-label="Analisi sottostante">
+        <button data-an="stagionalita" aria-pressed="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 18 Q6 6 9 12 T15 9 T21 14"/><line x1="3" y1="21" x2="21" y2="21" opacity="0.4"/></svg>
+          <span>Stagionalità</span>
+        </button>
+        <button data-an="sharpe" aria-pressed="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 L12 21"/><path d="M5 10 L12 3 L19 10"/></svg>
+          <span>Sharpe Ratio</span>
+        </button>
+        <button data-an="sentiment" aria-pressed="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 14 Q12 17 16 14"/><circle cx="9" cy="10" r="0.6" fill="currentColor"/><circle cx="15" cy="10" r="0.6" fill="currentColor"/></svg>
+          <span>Sentiment</span>
+        </button>
+      </div>
+
+      <!-- grafico analisi a tutta larghezza -->
+      <div class="card chart-card" id="sottAnalysisCard">
+        <div class="chart-head">
+          <div class="t" id="anChartTitle">Stagionalità</div>
+          <div class="hd-right" id="anChartControls"></div>
+        </div>
+        <div id="chartAnalysis" class="plot ov-tall"></div>
+      </div>
+      <!-- segnaposto per analisi non ancora pronte -->
+      <div class="card placeholder" id="anPlaceholder" hidden>Vista in arrivo.</div>
     </div>
   </section>
 <!-- pop-up benvenuto -->
@@ -1604,8 +1620,30 @@ function openSottostante(sigla,fromHash){
   }
   // se il prezzo non c'è, parto dal rendimento
   setSottTab(hasPrezzo?(sottTab||'prezzo'):'rendimento');
+  // zona bassa: inizializzo l'analisi attiva
+  setAnTab(anTab||'stagionalita');
   syncSottHeights();
   if(!fromHash){const h='#/sott/'+encodeURIComponent(sigla);if(location.hash!==h)location.hash=h;}
+}
+
+// ---- ZONA BASSA: analisi (Stagionalità / Sharpe / Sentiment) ----
+let anTab='stagionalita';
+function setAnTab(t){
+  anTab=t;
+  document.querySelectorAll('#sottAnalysisTabs button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.an===t?'true':'false'));
+  const card=document.getElementById('sottAnalysisCard');
+  const ph=document.getElementById('anPlaceholder');
+  const ctrl=document.getElementById('anChartControls');if(ctrl)ctrl.innerHTML='';
+  // Sharpe è ancora un segnaposto
+  if(t==='sharpe'){
+    if(card)card.hidden=true;
+    if(ph){ph.hidden=false;ph.innerHTML='Vista <b>Sharpe Ratio</b> — in arrivo.';}
+    return;
+  }
+  if(card)card.hidden=false;
+  if(ph)ph.hidden=true;
+  if(t==='sentiment'){loadSentiment().then(()=>renderSentiment());return;}
+  if(t==='stagionalita'){renderStagionalita();return;}
 }
 
 // Vincola l'altezza della card "Certificati collegati" a quella della card grafico,
@@ -1626,36 +1664,16 @@ function syncSottHeights(){
 }
 
 function setSottTab(t){
-  // se il prezzo non è disponibile, resto sul rendimento
+  // zona alta: solo prezzo / rendimento
   if(t==='prezzo'&&currentSott&&!asArr(currentSott.prezzo).length)t='rendimento';
   sottTab=t;
   document.querySelectorAll('#sottSubtabs button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.st===t?'true':'false'));
-  const chartRow=document.getElementById('sottChartRow');
-  const ph=document.getElementById('sottPlaceholder');
-  // solo Sharpe resta segnaposto; Sentiment è una vista che usa il grafico
-  if(t==='sharpe'){
-    if(chartRow)chartRow.hidden=true;
-    if(ph){ph.hidden=false;
-      document.getElementById('sottPlaceholderText').innerHTML='Vista <b>Sharpe Ratio</b> — in arrivo.';}
-    return;
-  }
-  if(chartRow)chartRow.hidden=false;
-  if(ph)ph.hidden=true;
-  if(t==='sentiment'){
-    // carico i dati Trends (una volta) poi disegno
-    loadSentiment().then(()=>{renderSottChart();syncSottHeights();});
-    return;
-  }
   renderSottChart();
   syncSottHeights();
 }
 
 function renderSottChart(){
   if(!currentSott)return;
-  // svuoto i controlli dell'header (lo slider stagionalità li popola se serve)
-  const ctrl=document.getElementById('sChartControls');if(ctrl)ctrl.innerHTML='';
-  if(sottTab==='stagionalita'){renderStagionalita();return;}
-  if(sottTab==='sentiment'){renderSentiment();return;}
   let x,y,titolo,sub;
   if(sottTab==='prezzo'){
     // serie prezzo completa con le sue date proprie (da AssetTT.mat)
@@ -1707,11 +1725,11 @@ function renderSottChart(){
   drawChartSott('chartSott',traces,L);
 }
 
-// drawChart dedicato che resetta al cambio sottostante
+// drawChart per la SERIE STORICA (zona alta): resetta al cambio sottostante/scheda
 let _lastSottDrawn=null;
 function drawChartSott(id,traces,layout){
   const gd=document.getElementById(id);if(!gd)return;
-  const key=(currentSott&&currentSott.sigla||'none')+'|'+sottTab+'|'+sentRange+'|'+(stag5y?'5':'0');
+  const key=(currentSott&&currentSott.sigla||'none')+'|'+sottTab;
   whenSized(id,()=>{try{
     if(_lastSottDrawn!==key){Plotly.purge(gd);Plotly.newPlot(gd,traces,layout,PCFG);_lastSottDrawn=key;}
     else Plotly.react(gd,traces,layout,PCFG);
@@ -1723,6 +1741,17 @@ function drawChartSott(id,traces,layout){
           if(DATA.some(x=>x.isin===isin))location.hash='#/'+encodeURIComponent(isin)+'/overview';}});
       gd._sottClickBound=true;
     }
+  }catch(e){}});
+}
+
+// drawChart per le ANALISI (zona bassa): key che include analisi + suoi parametri
+let _lastAnDrawn=null;
+function drawChartAnalysis(traces,layout){
+  const gd=document.getElementById('chartAnalysis');if(!gd)return;
+  const key=(currentSott&&currentSott.sigla||'none')+'|'+anTab+'|'+sentRange+'|'+(stag5y?'5':'0');
+  whenSized('chartAnalysis',()=>{try{
+    if(_lastAnDrawn!==key){Plotly.purge(gd);Plotly.newPlot(gd,traces,layout,PCFG);_lastAnDrawn=key;}
+    else Plotly.react(gd,traces,layout,PCFG);
   }catch(e){}});
 }
 
@@ -1784,8 +1813,8 @@ function seasonalCorr(curr,meanSerie){
 function renderStagionalita(){
   const {byYear,years}=buildSeasonal();
   if(years.length<2){
-    document.getElementById('sChartTitle').textContent='Stagionalità';
-    drawChartSott('chartSott',[{x:[],y:[]}],baseLayout());
+    document.getElementById('anChartTitle').textContent='Stagionalità';
+    drawChartAnalysis([{x:[],y:[]}],baseLayout());
     return;
   }
   const currYear=years[years.length-1];
@@ -1819,7 +1848,7 @@ function renderStagionalita(){
   const corrAll=seasonalCorr(curr,meanAll);
   const corr5=stag5y?seasonalCorr(curr,mean5):null;
 
-  document.getElementById('sChartTitle').textContent='Stagionalità';
+  document.getElementById('anChartTitle').textContent='Stagionalità';
   renderStagControls(corrAll,corr5,prevYears.length);
 
   const L=baseLayout();
@@ -1832,12 +1861,12 @@ function renderStagionalita(){
   L.yaxis.autorange=true;L.yaxis.ticksuffix='';
   L.shapes=[{type:'line',xref:'paper',x0:0,x1:1,y0:100,y1:100,
     line:{color:'rgba(144,162,176,.25)',width:1,dash:'dot'}}];
-  drawChartSott('chartSott',traces,L);
+  drawChartAnalysis(traces,L);
 }
 
 // Pulsante slider 5 anni + correlazioni, nell'header del grafico
 function renderStagControls(corrAll,corr5,nAll){
-  const host=document.getElementById('sChartControls');if(!host)return;
+  const host=document.getElementById('anChartControls');if(!host)return;
   const fmtC=c=>c==null?'n/d':c.toFixed(2);
   host.innerHTML=
     '<span class="stag-corr" title="Correlazione anno corrente vs media '+nAll+' anni">'
@@ -1853,9 +1882,9 @@ function renderStagControls(corrAll,corr5,nAll){
 function renderSentiment(){
   const sig=currentSott.sigla;
   const rec=(SENTIMENT&&SENTIMENT[sig])||null;
-  const titleEl=document.getElementById('sChartTitle');
+  const titleEl=document.getElementById('anChartTitle');
   // selettore 5 anni / storico nell'header
-  const host=document.getElementById('sChartControls');
+  const host=document.getElementById('anChartControls');
   if(host){
     host.innerHTML=
       '<div class="seg sent-seg" role="group" aria-label="Periodo sentiment">'
@@ -1873,7 +1902,7 @@ function renderSentiment(){
   const vals=serie?asArr(serie.values):[];
   if(!dates.length){
     const L0=baseLayout();L0.xaxis.autorange=true;L0.yaxis.autorange=true;
-    drawChartSott('chartSott',[{x:[],y:[]}],L0);
+    drawChartAnalysis([{x:[],y:[]}],L0);
     // messaggio sotto il titolo
     if(host)host.insertAdjacentHTML('afterbegin',
       '<span class="sent-empty">Dati non disponibili per questo sottostante</span>');
@@ -1889,7 +1918,7 @@ function renderSentiment(){
   L.xaxis.autorange=true;
   L.yaxis.range=[0,105];L.yaxis.autorange=false;
   L.yaxis.ticksuffix='';
-  drawChartSott('chartSott',traces,L);
+  drawChartAnalysis(traces,L);
 }
 
 function renderSottCertList(sigla){
@@ -2396,6 +2425,7 @@ function init(){
   const backSott=document.getElementById('backBtnSott');
   if(backSott)backSott.addEventListener('click',()=>{location.hash='#/frontier';});
   document.querySelectorAll('#sottSubtabs button').forEach(b=>b.addEventListener('click',()=>setSottTab(b.dataset.st)));
+  document.querySelectorAll('#sottAnalysisTabs button').forEach(b=>b.addEventListener('click',()=>setAnTab(b.dataset.an)));
   document.querySelectorAll('#tabs button').forEach(b=>b.addEventListener('click',()=>{
     win=b.dataset.w;document.querySelectorAll('#tabs button').forEach(x=>x.setAttribute('aria-pressed',x===b?'true':'false'));applyWindow();}));
 
