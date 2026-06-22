@@ -776,6 +776,10 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 14 Q12 17 16 14"/><circle cx="9" cy="10" r="0.6" fill="currentColor"/><circle cx="15" cy="10" r="0.6" fill="currentColor"/></svg>
           <span>Sentiment</span>
         </button>
+        <button data-an="zscore" aria-pressed="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12 L8 12 L11 5 L14 19 L17 12 L21 12"/></svg>
+          <span>Z-score</span>
+        </button>
       </div>
 
       <!-- grafico analisi a tutta larghezza -->
@@ -1643,6 +1647,7 @@ function setAnTab(t){
   if(card)card.hidden=false;
   if(ph)ph.hidden=true;
   if(t==='sentiment'){loadSentiment().then(()=>renderSentiment());return;}
+  if(t==='zscore'){loadSentiment().then(()=>renderZScore());return;}
   if(t==='stagionalita'){renderStagionalita();return;}
 }
 
@@ -1777,22 +1782,23 @@ function buildSeasonal(){
     (raw[yr]=raw[yr]||{})[doy]=v;
   }
   // per ogni anno: forward-fill su griglia 1..365, poi normalizzo a 100 sul primo valore
-  const out={};
+  const out={};const lastReal={};
   Object.keys(raw).forEach(yr=>{
     const dayMap=raw[yr];
     const filled=new Array(GRID+1).fill(null);
-    let last=null,base=null;
+    let last=null,base=null,maxRealDoy=0;
     for(let doy=1;doy<=GRID;doy++){
-      if(dayMap[doy]!=null)last=dayMap[doy];
+      if(dayMap[doy]!=null){last=dayMap[doy];maxRealDoy=doy;}   // ultimo giorno con dato VERO
       if(last!=null){
         if(base==null)base=last;          // base = primo prezzo disponibile dell'anno
         filled[doy]=base?100*last/base:null;
       }
     }
-    out[yr]=filled;   // indice = doy (1..365), valore normalizzato o null
+    out[yr]=filled;          // indice = doy (1..365), valore normalizzato o null
+    lastReal[yr]=maxRealDoy;  // ultimo doy con dato reale (oltre = forward-fill)
   });
   const years=Object.keys(out).map(Number).sort((a,b)=>a-b);
-  return {byYear:out,years};
+  return {byYear:out,years,lastReal};
 }
 
 // Media per doy su un insieme di anni: su ogni doy media SOLO gli anni che hanno un
@@ -1807,10 +1813,12 @@ function seasonalMean(byYear,years){
   return out;
 }
 
-// Serie {doy,val} dell'anno indicato (salta i null iniziali).
-function seasonalYear(byYear,yr){
+// Serie {doy,val} dell'anno indicato, troncata all'ultimo giorno REALE (niente coda
+// piatta da forward-fill, importante per l'anno corrente ancora in corso).
+function seasonalYear(byYear,yr,lastReal){
   const arr=byYear[yr]||[];const out=[];
-  for(let doy=1;doy<arr.length;doy++){if(arr[doy]!=null)out.push({doy,val:arr[doy]});}
+  const limit=(lastReal&&lastReal[yr])?lastReal[yr]:arr.length-1;
+  for(let doy=1;doy<=limit&&doy<arr.length;doy++){if(arr[doy]!=null)out.push({doy,val:arr[doy]});}
   return out;
 }
 
@@ -1831,7 +1839,7 @@ function seasonalCorr(curr,meanSerie){
 }
 
 function renderStagionalita(){
-  const {byYear,years}=buildSeasonal();
+  const {byYear,years,lastReal}=buildSeasonal();
   if(years.length<2){
     document.getElementById('anChartTitle').textContent='Stagionalità';
     drawChartAnalysis([{x:[],y:[]}],baseLayout());
@@ -1840,7 +1848,7 @@ function renderStagionalita(){
   const currYear=years[years.length-1];
   const prevYears=years.slice(0,-1);                 // tutti tranne il corrente
   const last5=prevYears.slice(-5);                   // ultimi 5 anni completi
-  const curr=seasonalYear(byYear,currYear);          // [{doy,val}] dell'anno corrente
+  const curr=seasonalYear(byYear,currYear,lastReal); // [{doy,val}] troncato all'ultimo dato reale
   const meanAll=seasonalMean(byYear,prevYears);
   const mean5=seasonalMean(byYear,last5);
 
@@ -1938,6 +1946,83 @@ function renderSentiment(){
   L.xaxis.autorange=true;
   L.yaxis.range=[0,105];L.yaxis.autorange=false;
   L.yaxis.ticksuffix='';
+  drawChartAnalysis(traces,L);
+}
+
+/* ===== Z-SCORE del sentiment rispetto alla media mobile ===== */
+function renderZScore(){
+  const sig=currentSott.sigla;
+  const rec=(SENTIMENT&&SENTIMENT[sig])||null;
+  // selettore 5 anni / storico (riuso lo stesso di sentiment)
+  const host=document.getElementById('anChartControls');
+  if(host){
+    host.innerHTML=
+      '<div class="seg sent-seg" role="group" aria-label="Periodo z-score">'
+      +'<button data-sr="w5y"'+(sentRange==='w5y'?' aria-pressed="true"':'')+'>5 anni</button>'
+      +'<button data-sr="max"'+(sentRange==='max'?' aria-pressed="true"':'')+'>Storico</button>'
+      +'</div>';
+    host.querySelectorAll('.sent-seg button').forEach(b=>b.addEventListener('click',()=>{
+      sentRange=b.dataset.sr;renderZScore();}));
+  }
+  document.getElementById('anChartTitle').textContent='Z-score interesse · vs media mobile';
+
+  const serie=rec?rec[sentRange]:null;
+  const dates=serie?asArr(serie.dates):[];
+  const vals=serie?asArr(serie.values):[];
+  if(dates.length<8){
+    const L0=baseLayout();L0.xaxis.autorange=true;L0.yaxis.autorange=true;
+    drawChartAnalysis([{x:[],y:[]}],L0);
+    if(host)host.insertAdjacentHTML('afterbegin','<span class="sent-empty">Dati non disponibili</span>');
+    return;
+  }
+
+  // finestra media mobile: 12 punti (≈3 mesi su settimanale; ≈1 anno su mensile)
+  const win=sentRange==='w5y'?12:12;
+  const z=new Array(vals.length).fill(null);
+  for(let i=0;i<vals.length;i++){
+    if(i<win-1)continue;
+    let s=0,s2=0,n=0;
+    for(let j=i-win+1;j<=i;j++){const v=vals[j];if(v!=null&&isFinite(v)){s+=v;s2+=v*v;n++;}}
+    if(n<3)continue;
+    const m=s/n,va=s2/n-m*m,sd=Math.sqrt(Math.max(va,0));
+    z[i]=sd>0?(vals[i]-m)/sd:0;
+  }
+
+  // linea base ottone (tutto lo z-score)
+  const traces=[{x:dates,y:z,type:'scatter',mode:'lines',connectgaps:false,
+    line:{color:'rgba(184,151,90,.85)',width:1.6,shape:'linear'},
+    hovertemplate:'<b>%{x|%d %b %Y}</b><br>Z-score&nbsp;&nbsp;<b>%{y:+.2f}σ</b><extra></extra>'}];
+
+  // overlay ROSSO graduale dove |z|>3: opacità cresce con |z| (3σ→0, 5σ→pieno)
+  // costruisco segmenti contigui sopra soglia, ciascuno con la sua opacità media
+  const TH=3;
+  let seg=null;
+  const pushSeg=()=>{if(seg&&seg.x.length>=2){
+    const avgAbs=seg.absSum/seg.x.length;
+    const op=Math.min(1,(avgAbs-TH)/2);            // 3σ→0 ... 5σ→1
+    traces.push({x:seg.x.slice(),y:seg.y.slice(),type:'scatter',mode:'lines',
+      line:{color:'rgba(217,131,115,'+(0.45+0.55*op).toFixed(2)+')',width:3,shape:'linear'},
+      hoverinfo:'skip',showlegend:false});}
+    seg=null;};
+  for(let i=0;i<z.length;i++){
+    if(z[i]!=null&&Math.abs(z[i])>TH){
+      if(!seg)seg={x:[],y:[],absSum:0};
+      // includo il punto precedente per continuità visiva del segmento
+      if(seg.x.length===0&&i>0&&z[i-1]!=null){seg.x.push(dates[i-1]);seg.y.push(z[i-1]);seg.absSum+=Math.abs(z[i-1]);}
+      seg.x.push(dates[i]);seg.y.push(z[i]);seg.absSum+=Math.abs(z[i]);
+    }else{pushSeg();}
+  }
+  pushSeg();
+
+  const L=baseLayout();
+  L.xaxis.autorange=true;
+  L.yaxis.autorange=true;L.yaxis.ticksuffix='σ';
+  L.yaxis.zeroline=true;L.yaxis.zerolinecolor='rgba(144,162,176,.25)';L.yaxis.zerolinewidth=1;
+  // bande di riferimento ±3σ
+  L.shapes=[
+    {type:'line',xref:'paper',x0:0,x1:1,y0:3,y1:3,line:{color:'rgba(217,131,115,.35)',width:1,dash:'dot'}},
+    {type:'line',xref:'paper',x0:0,x1:1,y0:-3,y1:-3,line:{color:'rgba(217,131,115,.35)',width:1,dash:'dot'}}
+  ];
   drawChartAnalysis(traces,L);
 }
 
