@@ -304,6 +304,45 @@
   .seg button[aria-pressed="true"]{background:var(--brass);color:var(--ink);font-weight:600}
   .seg button:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
   .sent-empty{font-family:"Inter",sans-serif;font-size:11.5px;color:var(--muted);font-style:italic;margin-right:4px}
+  /* ===== HUB SOTTOSTANTI ===== */
+  .hub-top{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;margin-top:4px}
+  .hub-card{display:flex;flex-direction:column;max-height:640px;overflow:hidden}
+  .hub-head{margin-bottom:14px}
+  .hub-head h2{margin:0 0 3px;font-family:var(--serif);font-size:17px;font-weight:600;color:var(--txt)}
+  .hub-sub{font-size:11.5px;color:var(--muted)}
+  .hub-scroll{flex:1;overflow-y:auto;min-height:0;padding-right:6px;display:flex;flex-direction:column;gap:5px}
+  .hub-scroll::-webkit-scrollbar{width:8px}
+  .hub-scroll::-webkit-scrollbar-thumb{background:var(--hair);border-radius:4px}
+  .hub-scroll::-webkit-scrollbar-track{background:transparent}
+  .hub-row{display:flex;align-items:center;gap:11px;width:100%;text-align:left;appearance:none;cursor:pointer;
+    background:var(--panel-2);border:1px solid var(--hair-soft);border-radius:9px;padding:9px 13px;transition:border-color .15s,background .15s,transform .12s}
+  .hub-row:hover{border-color:var(--hair);background:var(--panel-3);transform:translateX(2px)}
+  .hub-rank{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--faint);width:22px;flex-shrink:0;text-align:right}
+  .hub-name{flex:1;font-size:13px;color:var(--txt);display:flex;flex-direction:column;gap:1px;min-width:0}
+  .hub-name .hub-sigla{font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--muted)}
+  .hub-bar{flex:1.2;height:6px;background:var(--panel-3);border-radius:3px;overflow:hidden;max-width:140px}
+  .hub-bar-fill{display:block;height:100%;background:linear-gradient(90deg,var(--brass-soft),var(--brass));border-radius:3px}
+  .hub-count{font-family:"IBM Plex Mono",monospace;font-size:13px;color:var(--brass);font-weight:600;width:32px;text-align:right;flex-shrink:0}
+  .hub-z{font-family:"IBM Plex Mono",monospace;font-size:12.5px;color:var(--muted);font-weight:600;flex-shrink:0}
+  .hub-z.hub-z-warm{color:var(--brass)}
+  .hub-z.hub-z-hot{color:var(--neg)}
+  /* podio */
+  .hub-podium{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;align-items:end;margin-bottom:16px}
+  .podium-slot{display:flex;flex-direction:column;align-items:center;gap:4px;appearance:none;cursor:pointer;
+    border:1px solid var(--hair);border-radius:11px;padding:14px 8px 12px;transition:border-color .15s,transform .12s;text-align:center}
+  .podium-slot:hover{transform:translateY(-2px)}
+  .podium-1{background:linear-gradient(180deg,rgba(184,151,90,.16),var(--panel-2));border-color:rgba(184,151,90,.45);padding-top:22px}
+  .podium-2{background:linear-gradient(180deg,rgba(170,180,190,.1),var(--panel-2));border-color:rgba(170,180,190,.3)}
+  .podium-3{background:linear-gradient(180deg,rgba(190,140,100,.1),var(--panel-2));border-color:rgba(190,140,100,.3)}
+  .podium-medal{font-family:"IBM Plex Mono",monospace;font-size:13px;font-weight:700;width:24px;height:24px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;color:var(--ink)}
+  .podium-1 .podium-medal{background:var(--brass)}
+  .podium-2 .podium-medal{background:#AAB4BE}
+  .podium-3 .podium-medal{background:#BE8C64}
+  .podium-name{font-size:12.5px;color:var(--txt);font-weight:600;line-height:1.2}
+  .podium-sigla{font-family:"IBM Plex Mono",monospace;font-size:9.5px;color:var(--muted)}
+  .podium-z{font-family:"IBM Plex Mono",monospace;font-size:13px;color:var(--neg);font-weight:700;margin-top:2px}
+  .podium-1 .podium-z{color:var(--brass)}
   .sott-analysis{margin-top:26px;padding-top:22px;border-top:1px solid var(--hair-soft)}
   .sott-analysis .subtabs{margin-bottom:14px}
   #sottAnalysisCard .plot{height:380px}
@@ -349,6 +388,8 @@
   @media (max-width:900px){
     .grid-top{grid-template-columns:1fr}.hero .val{font-size:52px}
     .ov-top{grid-template-columns:1fr}
+    .hub-top{grid-template-columns:1fr}
+    .hub-card{max-height:none}
     .sott-certs-scroll{overflow-y:visible;max-height:none}
     .ident{order:2}.who{text-align:left}
     .foot{flex-direction:column;align-items:flex-start}.foot .sign{text-align:left}
@@ -481,6 +522,10 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/><circle cx="7" cy="6" r="1.4" fill="currentColor" stroke="none"/><circle cx="13" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="9" cy="18" r="1.4" fill="currentColor" stroke="none"/></svg>
       <span>Monitor</span>
     </button>
+    <button data-nav="sottostanti" aria-pressed="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.2"/><path d="M5 20 C5 16 8 14.5 12 14.5 C16 14.5 19 16 19 20"/><circle cx="19" cy="6" r="1.3" fill="currentColor" stroke="none"/><circle cx="5" cy="6" r="1.3" fill="currentColor" stroke="none"/></svg>
+      <span>Sottostanti</span>
+    </button>
     <button data-nav="frontier" aria-pressed="false">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20 L4 4"/><path d="M4 20 L20 20"/><path d="M5 16 Q10 8 20 6" stroke-dasharray="0.1 3.2"/><circle cx="8" cy="13" r="1.5" fill="currentColor" stroke="none"/><circle cx="13" cy="9.5" r="1.5" fill="currentColor" stroke="none"/><circle cx="17.5" cy="7" r="1.5" fill="currentColor" stroke="none"/></svg>
       <span>Efficient Frontier</span>
@@ -541,6 +586,29 @@
         <button data-n="25" aria-pressed="false">25</button>
         <button data-n="50" aria-pressed="true">50</button>
         <button data-n="100" aria-pressed="false">100</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= SOTTOSTANTI (hub) ================= -->
+  <section id="viewSottostantiHub" class="view">
+    <div class="hub-top">
+      <!-- sinistra: classifica per numero di certificati -->
+      <div class="card hub-card">
+        <div class="hub-head">
+          <h2>Più presenti nei certificati</h2>
+          <div class="hub-sub">sottostanti ordinati per numero di prodotti collegati</div>
+        </div>
+        <div id="hubByCount" class="hub-scroll"></div>
+      </div>
+      <!-- destra: temi del momento (podio sentiment) -->
+      <div class="card hub-card">
+        <div class="hub-head">
+          <h2>Temi del momento</h2>
+          <div class="hub-sub">picco di attenzione attuale · z-score interesse</div>
+        </div>
+        <div id="hubPodium" class="hub-podium"></div>
+        <div id="hubBySent" class="hub-scroll hub-scroll-sent"></div>
       </div>
     </div>
   </section>
@@ -1565,6 +1633,7 @@ function applyHash(){
   const raw=location.hash.replace(/^#\/?/,'');
   if(!raw){showView('monitor');return;}
   if(raw==='frontier'){showView('frontier');return;}
+  if(raw==='sottostanti'){showView('sottostantihub');return;}
   const parts=raw.split('/');
   // rotta sottostante: #/sott/SIGLA
   if(parts[0]==='sott'&&parts[1]){
@@ -1585,12 +1654,127 @@ function showView(v){
   document.getElementById('viewProduct').classList.toggle('active',v==='product');
   const vf=document.getElementById('viewFrontier');if(vf)vf.classList.toggle('active',v==='frontier');
   const vs=document.getElementById('viewSottostante');if(vs)vs.classList.toggle('active',v==='sottostante');
-  // nav: Monitor attivo per monitor+product, Frontier per frontier+sottostante
+  const vh=document.getElementById('viewSottostantiHub');if(vh)vh.classList.toggle('active',v==='sottostantihub');
+  // nav: Monitor per monitor+product; Sottostanti per hub+scheda sottostante; Frontier per frontier
   document.querySelectorAll('#mainnav button').forEach(b=>{
-    const on=(b.dataset.nav==='frontier')?(v==='frontier'||v==='sottostante'):(v==='monitor'||v==='product');
+    let on=false;
+    if(b.dataset.nav==='frontier')on=(v==='frontier');
+    else if(b.dataset.nav==='sottostanti')on=(v==='sottostantihub'||v==='sottostante');
+    else on=(v==='monitor'||v==='product');
     b.setAttribute('aria-pressed',on?'true':'false');});
   if(v==='frontier')openFrontier();
+  if(v==='sottostantihub')openSottostantiHub();
   window.scrollTo({top:0,behavior:'instant'in document.documentElement.style?'instant':'auto'});
+}
+
+/* ================= HUB SOTTOSTANTI ================= */
+// z-score "attuale" dell'interesse (ultimo punto) sulla serie 5 anni, per il podio.
+function sentZScoreNow(sigla){
+  const rec=SENTIMENT&&SENTIMENT[sigla];if(!rec)return null;
+  const serie=rec.w5y;if(!serie)return null;
+  const vals=asArr(serie.values);const n=vals.length;if(n<16)return null;
+  // stessa logica "via di mezzo" del grafico: media intermedia, deviazione lunga
+  const winMean=Math.min(26,Math.max(10,Math.floor(n/6)));
+  const i=n-1;
+  let sm=0,nm=0;
+  for(let j=Math.max(0,i-winMean+1);j<=i;j++){const v=vals[j];if(v!=null&&isFinite(v)){sm+=v;nm++;}}
+  if(nm<5)return null;
+  const mean=sm/nm;
+  let sumv=0,ns=0;const winSd=Math.min(104,Math.max(26,Math.floor(n/2)));
+  const a=Math.max(0,i-winSd+1);
+  for(let j=a;j<=i;j++){const v=vals[j];if(v!=null&&isFinite(v)){sumv+=v;ns++;}}
+  if(ns<8)return null;
+  const mLong=sumv/ns;let ss=0;
+  for(let j=a;j<=i;j++){const v=vals[j];if(v!=null&&isFinite(v)){ss+=(v-mLong)*(v-mLong);}}
+  const sd=Math.sqrt(ss/ns);
+  return sd>0?(vals[i]-mean)/sd:0;
+}
+
+function openSottostantiHub(){
+  // assicuro che frontier (sottostanti) e sentiment siano caricati
+  Promise.all([loadFrontier(),loadSentiment()]).then(()=>{
+    renderHubByCount();
+    renderHubSentiment();
+  });
+}
+
+// SINISTRA: sottostanti ordinati per numero di certificati collegati
+function renderHubByCount(){
+  const host=document.getElementById('hubByCount');if(!host)return;
+  // conto i certificati per sigla
+  const count={};
+  DATA.forEach(c=>asArr(c.sottostanti).forEach(s=>{count[s]=(count[s]||0)+1;}));
+  const rows=Object.keys(count).map(sig=>({sig,n:count[sig]}))
+    .filter(r=>r.n>0).sort((a,b)=>b.n-a.n);
+  if(!rows.length){host.innerHTML='<div class="empty">Nessun sottostante in archivio.</div>';return;}
+  const maxN=rows[0].n;
+  let html='';
+  rows.forEach((r,i)=>{
+    const nome=nameOf(r.sig)||r.sig;
+    const pct=Math.round(100*r.n/maxN);
+    html+=`<button class="hub-row" data-sig="${esc(r.sig)}">`
+      +`<span class="hub-rank">${i+1}</span>`
+      +`<span class="hub-name">${esc(nome)}<span class="hub-sigla">${esc(r.sig)}</span></span>`
+      +`<span class="hub-bar"><span class="hub-bar-fill" style="width:${pct}%"></span></span>`
+      +`<span class="hub-count">${r.n}</span></button>`;
+  });
+  host.innerHTML=html;
+  host.querySelectorAll('.hub-row').forEach(b=>b.addEventListener('click',()=>{
+    location.hash='#/sott/'+encodeURIComponent(b.dataset.sig);}));
+}
+
+// DESTRA: podio dei 3 con z-score attuale più alto + lista scorrevole
+function renderHubSentiment(){
+  const podium=document.getElementById('hubPodium');
+  const list=document.getElementById('hubBySent');
+  if(!podium||!list)return;
+  // calcolo z-score attuale per ogni sottostante che ha dati sentiment
+  const sigle=frontierSottostanti().map(s=>s.sigla);
+  const seen=new Set();const rows=[];
+  // includo anche le sigle dei certificati (potrebbero non essere tutte in frontier)
+  DATA.forEach(c=>asArr(c.sottostanti).forEach(s=>{if(!sigle.includes(s))sigle.push(s);}));
+  sigle.forEach(sig=>{
+    if(seen.has(sig))return;seen.add(sig);
+    const z=sentZScoreNow(sig);
+    if(z!=null&&isFinite(z))rows.push({sig,z});
+  });
+  rows.sort((a,b)=>b.z-a.z);
+  if(!rows.length){
+    podium.innerHTML='';
+    list.innerHTML='<div class="empty">Dati sentiment non disponibili. Genera <code>sentiment.json</code>.</div>';
+    return;
+  }
+  // podio (primi 3): ordine visivo 2-1-3
+  const top3=rows.slice(0,3);
+  const order=[1,0,2];   // posizioni visive: argento, oro (centro), bronzo
+  let ph='';
+  order.forEach(idx=>{
+    if(!top3[idx])return;
+    const r=top3[idx];const nome=nameOf(r.sig)||r.sig;
+    const rank=idx+1;
+    ph+=`<button class="podium-slot podium-${rank}" data-sig="${esc(r.sig)}">`
+      +`<span class="podium-medal">${rank}</span>`
+      +`<span class="podium-name">${esc(nome)}</span>`
+      +`<span class="podium-sigla">${esc(r.sig)}</span>`
+      +`<span class="podium-z">${r.z>=0?'+':''}${r.z.toFixed(2)}σ</span>`
+      +`</button>`;
+  });
+  podium.innerHTML=ph;
+  podium.querySelectorAll('.podium-slot').forEach(b=>b.addEventListener('click',()=>{
+    location.hash='#/sott/'+encodeURIComponent(b.dataset.sig);}));
+  // lista scorrevole (dal 4° in poi)
+  let lh='';
+  rows.slice(3).forEach((r,i)=>{
+    const nome=nameOf(r.sig)||r.sig;
+    const cls=r.z>=3?'hub-z-hot':(r.z>=1.5?'hub-z-warm':'');
+    lh+=`<button class="hub-row hub-row-sent" data-sig="${esc(r.sig)}">`
+      +`<span class="hub-rank">${i+4}</span>`
+      +`<span class="hub-name">${esc(nome)}<span class="hub-sigla">${esc(r.sig)}</span></span>`
+      +`<span class="hub-z ${cls}">${r.z>=0?'+':''}${r.z.toFixed(2)}σ</span></button>`;
+  });
+  list.innerHTML=lh||'<div class="empty" style="padding:12px">Solo i primi tre disponibili.</div>';
+  list.querySelectorAll('.hub-row').forEach(b=>b.addEventListener('click',()=>{
+    location.hash='#/sott/'+encodeURIComponent(b.dataset.sig);}));
 }
 
 /* ================= SCHEDA SOTTOSTANTE ================= */
@@ -1918,7 +2102,7 @@ function renderSentiment(){
       +'<button data-sr="max"'+(sentRange==='max'?' aria-pressed="true"':'')+'>Storico</button>'
       +'</div>'
       +'<div class="seg sent-seg" role="group" aria-label="Modalita">'
-      +'<button data-sm="interesse"'+(sentMode==='interesse'?' aria-pressed="true"':'')+'>Interesse</button>'
+      +'<button data-sm="interesse"'+(sentMode==='interesse'?' aria-pressed="true"':'')+'>Serie storica</button>'
       +'<button data-sm="zscore"'+(sentMode==='zscore'?' aria-pressed="true"':'')+'>Z-score</button>'
       +'</div>';
     host.querySelectorAll('[data-sr]').forEach(b=>b.addEventListener('click',()=>{
@@ -2527,6 +2711,7 @@ function init(){
   document.querySelectorAll('#mainnav button').forEach(b=>b.addEventListener('click',()=>{
     const nav=b.dataset.nav;
     if(nav==='frontier'){location.hash='#/frontier';}
+    else if(nav==='sottostanti'){location.hash='#/sottostanti';}
     else{location.hash='';}}));
 
   renderMonitor();
