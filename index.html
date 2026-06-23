@@ -204,6 +204,10 @@
 
   .grid-top{display:grid;grid-template-columns:1.05fr 1fr;gap:16px}
   .ov-top{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+  /* overview certificato: le due card alte uguali, il grafico riempie l'altezza */
+  .ov-cert{align-items:stretch}
+  .ov-cert .chart-card{display:flex;flex-direction:column}
+  .ov-cert .chart-card .plot{flex:1;min-height:340px}
   /* scheda sottostante: card certificati alta come il grafico, lista che scorre dentro */
   .ov-sott{align-items:stretch}
   .ov-sott .chart-card{display:flex;flex-direction:column}
@@ -638,7 +642,7 @@
 
     <!-- sotto-vista: OVERVIEW -->
     <div class="subview" id="sv-overview">
-      <div class="ov-top">
+      <div class="ov-top ov-cert">
         <div class="card chart-card">
           <div class="chart-head"><div class="t">Serie storica</div><div class="h">prezzo di mercato</div></div>
           <div id="chartOverview" class="plot ov"></div>
@@ -773,12 +777,8 @@
           <span>Sharpe Ratio</span>
         </button>
         <button data-an="sentiment" aria-pressed="false">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 14 Q12 17 16 14"/><circle cx="9" cy="10" r="0.6" fill="currentColor"/><circle cx="15" cy="10" r="0.6" fill="currentColor"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2 C12 6 8 7 8 11 C8 12 8.5 13 9 13.5 C9 11 11 10 11 8 C13 10 15 12 15 14.5 C15 17 13 19 12 19 C13 17 12 16 11.5 15.5 C11 17 9 17 9 19 C7.5 17.5 6 15.5 6 13 C6 8 12 7 12 2 Z" fill="currentColor" stroke="none" opacity="0.9"/></svg>
           <span>Sentiment</span>
-        </button>
-        <button data-an="zscore" aria-pressed="false">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12 L8 12 L11 5 L14 19 L17 12 L21 12"/></svg>
-          <span>Z-score</span>
         </button>
       </div>
 
@@ -1647,7 +1647,6 @@ function setAnTab(t){
   if(card)card.hidden=false;
   if(ph)ph.hidden=true;
   if(t==='sentiment'){loadSentiment().then(()=>renderSentiment());return;}
-  if(t==='zscore'){loadSentiment().then(()=>renderZScore());return;}
   if(t==='stagionalita'){renderStagionalita();return;}
 }
 
@@ -1711,7 +1710,6 @@ function renderSottChart(){
   }
 
   document.getElementById('sChartTitle').textContent=titolo;
-  document.getElementById('sChartSub').textContent=sub;
   const L=baseLayout();
   L.xaxis.autorange=true;
   if(isPct){L.yaxis.ticksuffix='%';L.yaxis.autorange=true;}
@@ -1753,7 +1751,7 @@ function drawChartSott(id,traces,layout){
 let _lastAnDrawn=null;
 function drawChartAnalysis(traces,layout){
   const gd=document.getElementById('chartAnalysis');if(!gd)return;
-  const key=(currentSott&&currentSott.sigla||'none')+'|'+anTab+'|'+sentRange+'|'+(stag5y?'5':'0');
+  const key=(currentSott&&currentSott.sigla||'none')+'|'+anTab+'|'+sentRange+'|'+sentMode+'|'+(stag5y?'5':'0');
   whenSized('chartAnalysis',()=>{try{
     if(_lastAnDrawn!==key){Plotly.purge(gd);Plotly.newPlot(gd,traces,layout,PCFG);_lastAnDrawn=key;}
     else Plotly.react(gd,traces,layout,PCFG);
@@ -1911,95 +1909,73 @@ function renderSentiment(){
   const sig=currentSott.sigla;
   const rec=(SENTIMENT&&SENTIMENT[sig])||null;
   const titleEl=document.getElementById('anChartTitle');
-  // selettore 5 anni / storico nell'header
+  // selettore: periodo (5 anni / Storico) + modalita' (Interesse / Z-score)
   const host=document.getElementById('anChartControls');
   if(host){
     host.innerHTML=
-      '<div class="seg sent-seg" role="group" aria-label="Periodo sentiment">'
+      '<div class="seg sent-seg" role="group" aria-label="Periodo">'
       +'<button data-sr="w5y"'+(sentRange==='w5y'?' aria-pressed="true"':'')+'>5 anni</button>'
       +'<button data-sr="max"'+(sentRange==='max'?' aria-pressed="true"':'')+'>Storico</button>'
+      +'</div>'
+      +'<div class="seg sent-seg" role="group" aria-label="Modalita">'
+      +'<button data-sm="interesse"'+(sentMode==='interesse'?' aria-pressed="true"':'')+'>Interesse</button>'
+      +'<button data-sm="zscore"'+(sentMode==='zscore'?' aria-pressed="true"':'')+'>Z-score</button>'
       +'</div>';
-    host.querySelectorAll('.sent-seg button').forEach(b=>b.addEventListener('click',()=>{
+    host.querySelectorAll('[data-sr]').forEach(b=>b.addEventListener('click',()=>{
       sentRange=b.dataset.sr;renderSentiment();}));
+    host.querySelectorAll('[data-sm]').forEach(b=>b.addEventListener('click',()=>{
+      sentMode=b.dataset.sm;renderSentiment();}));
   }
-  titleEl.textContent='Interesse di ricerca · Google Trends';
-
-  // nessun dato per questo sottostante
-  const serie=rec?rec[sentRange]:null;
-  const dates=serie?asArr(serie.dates):[];
-  const vals=serie?asArr(serie.values):[];
-  if(!dates.length){
-    const L0=baseLayout();L0.xaxis.autorange=true;L0.yaxis.autorange=true;
-    drawChartAnalysis([{x:[],y:[]}],L0);
-    // messaggio sotto il titolo
-    if(host)host.insertAdjacentHTML('afterbegin',
-      '<span class="sent-empty">Dati non disponibili per questo sottostante</span>');
-    return;
-  }
-
-  const traces=[{x:dates,y:vals,type:'scatter',mode:'lines',
-    line:{color:'rgba(184,151,90,.95)',width:1.8,shape:'spline',smoothing:0.3},
-    fill:'tozeroy',fillcolor:'rgba(184,151,90,.06)',
-    hovertemplate:'<b>%{x|%d %b %Y}</b><br>Interesse&nbsp;&nbsp;<b>%{y:.0f}</b>/100<extra></extra>'}];
-
-  const L=baseLayout();
-  L.xaxis.autorange=true;
-  L.yaxis.range=[0,105];L.yaxis.autorange=false;
-  L.yaxis.ticksuffix='';
-  drawChartAnalysis(traces,L);
-}
-
-/* ===== Z-SCORE del sentiment rispetto alla media mobile ===== */
-function renderZScore(){
-  const sig=currentSott.sigla;
-  const rec=(SENTIMENT&&SENTIMENT[sig])||null;
-  // selettore 5 anni / storico (riuso lo stesso di sentiment)
-  const host=document.getElementById('anChartControls');
-  if(host){
-    host.innerHTML=
-      '<div class="seg sent-seg" role="group" aria-label="Periodo z-score">'
-      +'<button data-sr="w5y"'+(sentRange==='w5y'?' aria-pressed="true"':'')+'>5 anni</button>'
-      +'<button data-sr="max"'+(sentRange==='max'?' aria-pressed="true"':'')+'>Storico</button>'
-      +'</div>';
-    host.querySelectorAll('.sent-seg button').forEach(b=>b.addEventListener('click',()=>{
-      sentRange=b.dataset.sr;renderZScore();}));
-  }
-  document.getElementById('anChartTitle').textContent='Z-score interesse · vs media mobile';
 
   const serie=rec?rec[sentRange]:null;
   const dates=serie?asArr(serie.dates):[];
   const vals=serie?asArr(serie.values):[];
   if(dates.length<8){
+    titleEl.textContent=(sentMode==='zscore'?'Z-score interesse':'Interesse di ricerca')+' \u00b7 Google Trends';
     const L0=baseLayout();L0.xaxis.autorange=true;L0.yaxis.autorange=true;
     drawChartAnalysis([{x:[],y:[]}],L0);
     if(host)host.insertAdjacentHTML('afterbegin','<span class="sent-empty">Dati non disponibili</span>');
     return;
   }
 
-  // finestra media mobile: 12 punti (≈3 mesi su settimanale; ≈1 anno su mensile)
-  const win=sentRange==='w5y'?12:12;
+  if(sentMode==='zscore'){ renderSentZScore(dates,vals); return; }
+
+  // --- modalita' INTERESSE ---
+  titleEl.textContent='Interesse di ricerca \u00b7 Google Trends';
+  const traces=[{x:dates,y:vals,type:'scatter',mode:'lines',
+    line:{color:'rgba(184,151,90,.95)',width:1.8,shape:'spline',smoothing:0.3},
+    fill:'tozeroy',fillcolor:'rgba(184,151,90,.06)',
+    hovertemplate:'<b>%{x|%d %b %Y}</b><br>Interesse&nbsp;&nbsp;<b>%{y:.0f}</b>/100<extra></extra>'}];
+  const L=baseLayout();
+  L.xaxis.autorange=true;
+  L.yaxis.range=[0,105];L.yaxis.autorange=false;L.yaxis.ticksuffix='';
+  drawChartAnalysis(traces,L);
+}
+
+/* Z-score dell'interesse rispetto a media/deviazione su finestra LUNGA (statistica
+   stabile), cosi' i picchi anomali non vengono "assorbiti". Rosso graduale oltre 3 sigma. */
+function renderSentZScore(dates,vals){
+  document.getElementById('anChartTitle').textContent='Z-score interesse \u00b7 vs media mobile';
+  // finestra di base lunga: media e deviazione su ~52 punti (1 anno sett.; lungo su mensile).
+  // Una finestra lunga NON si adatta ai picchi, quindi li fa emergere come z alti.
+  const win=Math.min(52,Math.max(16,Math.floor(vals.length/4)));
   const z=new Array(vals.length).fill(null);
   for(let i=0;i<vals.length;i++){
     if(i<win-1)continue;
     let s=0,s2=0,n=0;
     for(let j=i-win+1;j<=i;j++){const v=vals[j];if(v!=null&&isFinite(v)){s+=v;s2+=v*v;n++;}}
-    if(n<3)continue;
+    if(n<8)continue;
     const m=s/n,va=s2/n-m*m,sd=Math.sqrt(Math.max(va,0));
     z[i]=sd>0?(vals[i]-m)/sd:0;
   }
-
-  // linea base ottone (tutto lo z-score)
+  // linea base ottone
   const traces=[{x:dates,y:z,type:'scatter',mode:'lines',connectgaps:false,
     line:{color:'rgba(184,151,90,.85)',width:1.6,shape:'linear'},
-    hovertemplate:'<b>%{x|%d %b %Y}</b><br>Z-score&nbsp;&nbsp;<b>%{y:+.2f}σ</b><extra></extra>'}];
-
-  // overlay ROSSO graduale dove |z|>3: opacità cresce con |z| (3σ→0, 5σ→pieno)
-  // costruisco segmenti contigui sopra soglia, ciascuno con la sua opacità media
-  const TH=3;
-  let seg=null;
+    hovertemplate:'<b>%{x|%d %b %Y}</b><br>Z-score&nbsp;&nbsp;<b>%{y:+.2f}\u03c3</b><extra></extra>'}];
+  // overlay rosso graduale dove |z|>3
+  const TH=3;let seg=null;
   const pushSeg=()=>{if(seg&&seg.x.length>=2){
-    const avgAbs=seg.absSum/seg.x.length;
-    const op=Math.min(1,(avgAbs-TH)/2);            // 3σ→0 ... 5σ→1
+    const avgAbs=seg.absSum/seg.x.length;const op=Math.min(1,(avgAbs-TH)/2);
     traces.push({x:seg.x.slice(),y:seg.y.slice(),type:'scatter',mode:'lines',
       line:{color:'rgba(217,131,115,'+(0.45+0.55*op).toFixed(2)+')',width:3,shape:'linear'},
       hoverinfo:'skip',showlegend:false});}
@@ -2007,24 +1983,21 @@ function renderZScore(){
   for(let i=0;i<z.length;i++){
     if(z[i]!=null&&Math.abs(z[i])>TH){
       if(!seg)seg={x:[],y:[],absSum:0};
-      // includo il punto precedente per continuità visiva del segmento
       if(seg.x.length===0&&i>0&&z[i-1]!=null){seg.x.push(dates[i-1]);seg.y.push(z[i-1]);seg.absSum+=Math.abs(z[i-1]);}
       seg.x.push(dates[i]);seg.y.push(z[i]);seg.absSum+=Math.abs(z[i]);
     }else{pushSeg();}
   }
   pushSeg();
-
   const L=baseLayout();
-  L.xaxis.autorange=true;
-  L.yaxis.autorange=true;L.yaxis.ticksuffix='σ';
+  L.xaxis.autorange=true;L.yaxis.autorange=true;L.yaxis.ticksuffix='\u03c3';
   L.yaxis.zeroline=true;L.yaxis.zerolinecolor='rgba(144,162,176,.25)';L.yaxis.zerolinewidth=1;
-  // bande di riferimento ±3σ
   L.shapes=[
     {type:'line',xref:'paper',x0:0,x1:1,y0:3,y1:3,line:{color:'rgba(217,131,115,.35)',width:1,dash:'dot'}},
     {type:'line',xref:'paper',x0:0,x1:1,y0:-3,y1:-3,line:{color:'rgba(217,131,115,.35)',width:1,dash:'dot'}}
   ];
   drawChartAnalysis(traces,L);
 }
+
 
 function renderSottCertList(sigla){
   const host=document.getElementById('sottCertList');if(!host)return;
@@ -2090,6 +2063,7 @@ function loadFrontier(){
 // ---- Sentiment (Google Trends) ----
 let SENTIMENT=null;          // mappa sigla -> {w5y, max, ...}
 let sentRange='w5y';         // sub-vista attiva: 'w5y' (5 anni) | 'max' (storico)
+let sentMode='interesse';    // modalità sentiment: 'interesse' | 'zscore'
 function loadSentiment(){
   if(SENTIMENT)return Promise.resolve(SENTIMENT);
   return fetch('sentiment.json')
@@ -2314,10 +2288,16 @@ function renderFrontier(){
         const cert=_frHover.certByIsin[isin];
         // periodo del certificato dai dati completi (DATA ha settlement e scadenza)
         const full=DATA.find(x=>x.isin===isin);
-        const dFrom=full&&full.data_settlement?full.data_settlement
-                   :(full&&full.data_emissione?full.data_emissione:null);
-        const dTo=full&&full.scadenza?full.scadenza:dateLimit;
-        // il limite superiore è il minore tra scadenza del certificato e data slider
+        // limite inferiore: settlement/emissione; in mancanza, la prima data della
+        // SERIE del certificato in frontiera (che copre solo la vita del certificato).
+        const certDates=cert?asArr(cert.dates):[];
+        let dFrom=full&&full.data_settlement?full.data_settlement
+                 :(full&&full.data_emissione?full.data_emissione:null);
+        if(!dFrom&&certDates.length)dFrom=certDates[0];
+        // limite superiore: scadenza, oppure l'ultima data della serie certificato,
+        // comunque non oltre la data dello slider
+        let dTo=full&&full.scadenza?full.scadenza:null;
+        if(!dTo&&certDates.length)dTo=certDates[certDates.length-1];
         const dUpper=(dTo&&dTo<dateLimit)?dTo:dateLimit;
         // cometa del certificato (oro pieno, linea più spessa)
         if(cert)extra.push(...cometaTraces(cert,dUpper,GOLD,isin,true,dFrom));
