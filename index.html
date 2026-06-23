@@ -283,12 +283,12 @@
 
   /* nav principale — stile a sottolineatura, più editoriale, con icone */
   .mainnav{display:flex;gap:0;margin:8px 0 0;padding:0;border-bottom:1px solid var(--hair-soft);position:relative}
-  .mainnav button{display:inline-flex;align-items:center;gap:9px;appearance:none;background:transparent;border:none;border-radius:0;
-    color:var(--faint);cursor:pointer;font-family:'Cinzel',serif;font-size:15px;letter-spacing:.04em;
-    padding:2px 26px 15px;position:relative;transition:color .2s ease}
+  .mainnav button{display:inline-flex;align-items:center;gap:10px;appearance:none;background:transparent;border:none;border-radius:0;
+    color:var(--faint);cursor:pointer;font-family:'Cinzel',serif;font-size:17px;letter-spacing:.04em;
+    padding:2px 28px 15px;position:relative;transition:color .2s ease}
   /* divisore verticale tra le sezioni */
   .mainnav button:not(:last-child)::before{content:'';position:absolute;right:0;top:2px;bottom:14px;width:1px;background:var(--hair-soft)}
-  .mainnav button svg{width:17px;height:17px;flex-shrink:0;opacity:.75;transition:opacity .2s ease}
+  .mainnav button svg{width:20px;height:20px;flex-shrink:0;opacity:.75;transition:opacity .2s ease}
   .mainnav button::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--brass);
     transform:scaleX(0);transform-origin:left;transition:transform .25s cubic-bezier(.2,.7,.2,1)}
   .mainnav button[aria-pressed="true"]{color:var(--txt)}
@@ -450,7 +450,7 @@
   <header class="top rise" style="--d:.02s">
     <div class="brand">
       <span class="logo" aria-hidden="true">
-        <svg width="26" height="26" viewBox="0 0 26 26">
+        <svg width="32" height="32" viewBox="0 0 26 26">
           <line x1="2" y1="13" x2="24" y2="13" stroke="var(--hair)" stroke-width="1"/>
           <rect x="4" y="6" width="3" height="7" rx="1" fill="var(--brass)"/>
           <rect x="9" y="13" width="3" height="6" rx="1" fill="var(--neg)"/>
@@ -459,10 +459,10 @@
         </svg>
       </span>
       <div>
-        <div class="bt" style="font-family:'Cinzel',serif;font-size:23px;font-weight:400;letter-spacing:.12em">JENSEN</div>
-        <div style="display:flex;align-items:center;gap:10px;margin-top:6px">
-          <div style="height:1px;width:18px;background:#B8975A;flex-shrink:0"></div>
-          <div style="font-family:'Cinzel',serif;font-size:11px;font-weight:400;letter-spacing:.16em;color:var(--faint)">CERTIFICATE MONITOR &amp; ANALYTICS</div>
+        <div class="bt" style="font-family:'Cinzel',serif;font-size:28px;font-weight:400;letter-spacing:.12em">JENSEN</div>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:7px">
+          <div style="height:1px;width:22px;background:#B8975A;flex-shrink:0"></div>
+          <div style="font-family:'Cinzel',serif;font-size:13px;font-weight:400;letter-spacing:.16em;color:var(--faint)">CERTIFICATE MONITOR &amp; ANALYTICS</div>
         </div>
       </div>
     </div>
@@ -777,7 +777,7 @@
           <span>Sharpe Ratio</span>
         </button>
         <button data-an="sentiment" aria-pressed="false">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2 C12 6 8 7 8 11 C8 12 8.5 13 9 13.5 C9 11 11 10 11 8 C13 10 15 12 15 14.5 C15 17 13 19 12 19 C13 17 12 16 11.5 15.5 C11 17 9 17 9 19 C7.5 17.5 6 15.5 6 13 C6 8 12 7 12 2 Z" fill="currentColor" stroke="none" opacity="0.9"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22 C8 22 5.5 19 5.5 15.5 C5.5 12 8 10.5 8.5 7 C11 9 11.5 11 11 13 C11 13 13 11.5 13 9 C13 7 12 5 14 2.5 C14.5 6 18.5 8.5 18.5 14.5 C18.5 18.5 16 22 12 22 Z"/><path d="M12 22 C10 22 8.5 20.5 8.5 18.5 C8.5 16.5 10 15.5 10.5 14 C12 15.5 13.5 16.5 13.5 18.5 C13.5 20.5 14 22 12 22 Z" fill="currentColor" stroke="none" opacity="0.55"/></svg>
           <span>Sentiment</span>
         </button>
       </div>
@@ -1956,17 +1956,28 @@ function renderSentiment(){
    stabile), cosi' i picchi anomali non vengono "assorbiti". Rosso graduale oltre 3 sigma. */
 function renderSentZScore(dates,vals){
   document.getElementById('anChartTitle').textContent='Z-score interesse \u00b7 vs media mobile';
-  // finestra di base lunga: media e deviazione su ~52 punti (1 anno sett.; lungo su mensile).
-  // Una finestra lunga NON si adatta ai picchi, quindi li fa emergere come z alti.
-  const win=Math.min(52,Math.max(16,Math.floor(vals.length/4)));
-  const z=new Array(vals.length).fill(null);
-  for(let i=0;i<vals.length;i++){
-    if(i<win-1)continue;
-    let s=0,s2=0,n=0;
-    for(let j=i-win+1;j<=i;j++){const v=vals[j];if(v!=null&&isFinite(v)){s+=v;s2+=v*v;n++;}}
-    if(n<8)continue;
-    const m=s/n,va=s2/n-m*m,sd=Math.sqrt(Math.max(va,0));
-    z[i]=sd>0?(vals[i]-m)/sd:0;
+  // Via di mezzo: la MEDIA segue una finestra intermedia (~26 punti, 6 mesi),
+  // così smorza la somiglianza con la serie pura; la DEVIAZIONE invece è calcolata
+  // su una finestra LUNGA (metà serie), così resta stabile e i picchi emergono.
+  const n=vals.length;
+  const winMean=Math.min(26,Math.max(10,Math.floor(n/6)));
+  const winSd=Math.min(104,Math.max(26,Math.floor(n/2)));
+  const z=new Array(n).fill(null);
+  for(let i=0;i<n;i++){
+    // media mobile breve-intermedia
+    let sm=0,nm=0;
+    for(let j=Math.max(0,i-winMean+1);j<=i;j++){const v=vals[j];if(v!=null&&isFinite(v)){sm+=v;nm++;}}
+    if(nm<5)continue;
+    const mean=sm/nm;
+    // deviazione su finestra lunga centrata (stabile)
+    let ss=0,ns=0,sumv=0;
+    const a=Math.max(0,i-Math.floor(winSd/2)),b=Math.min(n-1,i+Math.floor(winSd/2));
+    for(let j=a;j<=b;j++){const v=vals[j];if(v!=null&&isFinite(v)){sumv+=v;ns++;}}
+    if(ns<8)continue;
+    const mLong=sumv/ns;
+    for(let j=a;j<=b;j++){const v=vals[j];if(v!=null&&isFinite(v)){ss+=(v-mLong)*(v-mLong);}}
+    const sd=Math.sqrt(ss/ns);
+    z[i]=sd>0?(vals[i]-mean)/sd:0;
   }
   // linea base ottone
   const traces=[{x:dates,y:z,type:'scatter',mode:'lines',connectgaps:false,
@@ -2089,9 +2100,13 @@ function demoFrontier(){
     // assegno 2-3 sottostanti reali (tra le sigle) così l'hover ha corrispondenze
     const ns=2+(k%2),start_s=k%sigle.length,sott=[];
     for(let j=0;j<ns;j++)sott.push(sigle[(start_s+j)%sigle.length]);
+    // settlement variabile (alcune settimane dopo l'inizio) per testare il limite cometa
+    const settleIdx=Math.min(dates.length-2,4+(k%6)*4);
     products.push({isin:'DEMO'+String(k).padStart(4,'0'),emittente:emit[k%emit.length],
       struttura:strutt[k%strutt.length],frequenza:['Mensile','Trimestrale','Semestrale'][k%3],
-      sottostanti:sott,scadenza:'2027-12-31',dates,mean,vol});}
+      sottostanti:sott,scadenza:'2027-12-31',
+      data_settlement:dates[settleIdx],data_emissione:dates[settleIdx],
+      dates,mean,vol});}
   // sottostanti demo
   const sottostanti=[];
   for(let k=0;k<sigle.length;k++){
@@ -2286,18 +2301,12 @@ function renderFrontier(){
         let sigle;try{sigle=JSON.parse(sigleJson);}catch(e){sigle=[];}
         const isin=pt.customdata[0];
         const cert=_frHover.certByIsin[isin];
-        // periodo del certificato dai dati completi (DATA ha settlement e scadenza)
+        // periodo del certificato: settlement→scadenza, ora presenti nel prodotto
+        // frontiera stesso (cert). In subordine i dati completi di DATA.
         const full=DATA.find(x=>x.isin===isin);
-        // limite inferiore: settlement/emissione; in mancanza, la prima data della
-        // SERIE del certificato in frontiera (che copre solo la vita del certificato).
-        const certDates=cert?asArr(cert.dates):[];
-        let dFrom=full&&full.data_settlement?full.data_settlement
-                 :(full&&full.data_emissione?full.data_emissione:null);
-        if(!dFrom&&certDates.length)dFrom=certDates[0];
-        // limite superiore: scadenza, oppure l'ultima data della serie certificato,
-        // comunque non oltre la data dello slider
-        let dTo=full&&full.scadenza?full.scadenza:null;
-        if(!dTo&&certDates.length)dTo=certDates[certDates.length-1];
+        const dFrom=(cert&&cert.data_settlement)||(cert&&cert.data_emissione)
+                   ||(full&&full.data_settlement)||(full&&full.data_emissione)||null;
+        const dTo=(cert&&cert.scadenza)||(full&&full.scadenza)||null;
         const dUpper=(dTo&&dTo<dateLimit)?dTo:dateLimit;
         // cometa del certificato (oro pieno, linea più spessa)
         if(cert)extra.push(...cometaTraces(cert,dUpper,GOLD,isin,true,dFrom));
