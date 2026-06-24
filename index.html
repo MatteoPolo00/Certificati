@@ -161,17 +161,14 @@
   .pgbtn:disabled{opacity:.3;cursor:default}
   #pgSize button{font-size:10.5px;padding:4px 10px}
   .mcount{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--faint);margin:0 2px 10px}
-  .tablewrap{border:1px solid var(--hair);border-radius:12px;overflow-x:auto;overflow-y:visible}
-  .tablewrap::-webkit-scrollbar{height:9px}
-  .tablewrap::-webkit-scrollbar-thumb{background:var(--hair);border-radius:4px}
-  .tablewrap::-webkit-scrollbar-track{background:transparent}
-  table.mtable{width:100%;border-collapse:collapse;font-size:12.5px;min-width:920px}
-  .mtable th{background:var(--panel-2);text-align:left;font-family:"IBM Plex Mono",monospace;font-weight:600;font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);padding:11px 13px;cursor:pointer;white-space:nowrap;user-select:none;transition:color .12s}
+  .tablewrap{border:1px solid var(--hair);border-radius:12px}
+  table.mtable{width:100%;border-collapse:collapse;font-size:12.5px}
+  .mtable th{background:var(--panel-2);text-align:left;font-family:"IBM Plex Mono",monospace;font-weight:600;font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--faint);padding:11px 10px;cursor:pointer;white-space:nowrap;user-select:none;transition:color .12s}
   .mtable th:hover{color:var(--muted)}
   .mtable th.num{text-align:right}
-  .mtable td{padding:10px 13px;border-bottom:1px solid var(--hair-soft);color:var(--txt);white-space:nowrap}
-  .mtable td.clip{max-width:200px;overflow:hidden;text-overflow:ellipsis}
-  .mtable td.dim{max-width:150px;overflow:hidden;text-overflow:ellipsis}
+  .mtable td{padding:10px 10px;border-bottom:1px solid var(--hair-soft);color:var(--txt);white-space:nowrap}
+  .mtable td.clip{max-width:170px;overflow:hidden;text-overflow:ellipsis}
+  .mtable td.dim{max-width:130px;overflow:hidden;text-overflow:ellipsis}
   .mtable td.dim{color:var(--muted)}
   .mtable td.num{text-align:right;font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums}
   .mtable td.isincell{font-family:"IBM Plex Mono",monospace}
@@ -496,6 +493,10 @@
     /* HUB sottostanti: una colonna, card non troppo alte, podio compatto */
     .hub-top{grid-template-columns:1fr;gap:12px}
     .hub-card{max-height:none;padding:14px}
+    /* lista classifica limitata (~10 righe visibili) con scroll interno: la seconda
+       card resta raggiungibile senza scorrere l'intera lista */
+    .hub-scroll{max-height:460px;overflow-y:auto}
+    .hub-scroll-sent{max-height:none}
     .hub-head h2{font-size:15px}
     .hub-podium{gap:6px}
     .podium-slot{padding:10px 4px 9px;border-radius:9px}
@@ -1727,26 +1728,40 @@ function showView(v){
 
 /* ================= HUB SOTTOSTANTI ================= */
 // z-score "attuale" dell'interesse (ultimo punto) sulla serie 5 anni, per il podio.
-function sentZScoreNow(sigla){
-  const rec=SENTIMENT&&SENTIMENT[sigla];if(!rec)return null;
-  const serie=rec.w5y;if(!serie)return null;
-  const vals=asArr(serie.values);const n=vals.length;if(n<10)return null;
-  // stesse finestre brevi del grafico z-score (reattivo)
-  const winMean=Math.min(8,Math.max(4,Math.floor(n/10)));
-  const winSd=Math.min(20,Math.max(8,Math.floor(n/4)));
-  const i=n-1;
+// z-score reattivo dell'interesse all'indice i (media corta, deviazione media-corta)
+function zScoreAt(vals,i,winMean,winSd){
   let sm=0,nm=0;
   for(let j=Math.max(0,i-winMean+1);j<=i;j++){const v=vals[j];if(v!=null&&isFinite(v)){sm+=v;nm++;}}
   if(nm<3)return null;
   const mean=sm/nm;
-  let sumv=0,ns=0;
   const a=Math.max(0,i-winSd+1);
+  let sumv=0,ns=0;
   for(let j=a;j<=i;j++){const v=vals[j];if(v!=null&&isFinite(v)){sumv+=v;ns++;}}
   if(ns<5)return null;
   const mLong=sumv/ns;let ss=0;
   for(let j=a;j<=i;j++){const v=vals[j];if(v!=null&&isFinite(v)){ss+=(v-mLong)*(v-mLong);}}
   const sd=Math.sqrt(ss/ns);
   return sd>0?(vals[i]-mean)/sd:0;
+}
+
+// "Caldo del momento": media PESATA dello z-score sulle ultime 4 settimane,
+// peso 50% ultima, 25% / 15% / 10% le precedenti. Finestre brevi → reattivo.
+function sentZScoreNow(sigla){
+  const rec=SENTIMENT&&SENTIMENT[sigla];if(!rec)return null;
+  const serie=rec.w5y;if(!serie)return null;
+  const vals=asArr(serie.values);const n=vals.length;if(n<10)return null;
+  // finestre brevi (come la primissima proposta): media molto corta
+  const winMean=Math.min(5,Math.max(3,Math.floor(n/15)));
+  const winSd=Math.min(13,Math.max(6,Math.floor(n/6)));
+  const weights=[0.50,0.25,0.15,0.10];   // ultima, -1, -2, -3 settimane
+  let acc=0,wsum=0;
+  for(let k=0;k<weights.length;k++){
+    const idx=(n-1)-k;if(idx<0)break;
+    const z=zScoreAt(vals,idx,winMean,winSd);
+    if(z!=null&&isFinite(z)){acc+=weights[k]*z;wsum+=weights[k];}
+  }
+  if(wsum===0)return null;
+  return acc/wsum;   // rinormalizzo se qualche settimana mancava
 }
 
 function openSottostantiHub(){
@@ -2237,11 +2252,11 @@ function renderSentiment(){
    stabile), cosi' i picchi anomali non vengono "assorbiti". Rosso graduale oltre 3 sigma. */
 function renderSentZScore(dates,vals){
   document.getElementById('anChartTitle').textContent='Z-score interesse \u00b7 vs media mobile';
-  // Finestre BREVI per uno z-score reattivo: media corta (~8 punti) e deviazione
-  // su finestra media (~16 punti). Reagisce in fretta ai picchi di attenzione.
+  // Finestre BREVI per uno z-score molto reattivo (come la prima proposta):
+  // media corta (~5 punti) e deviazione su finestra corta-media (~13 punti).
   const n=vals.length;
-  const winMean=Math.min(8,Math.max(4,Math.floor(n/10)));
-  const winSd=Math.min(20,Math.max(8,Math.floor(n/4)));
+  const winMean=Math.min(5,Math.max(3,Math.floor(n/15)));
+  const winSd=Math.min(13,Math.max(6,Math.floor(n/6)));
   const z=new Array(n).fill(null);
   for(let i=0;i<n;i++){
     // media mobile corta
@@ -2249,7 +2264,7 @@ function renderSentZScore(dates,vals){
     for(let j=Math.max(0,i-winMean+1);j<=i;j++){const v=vals[j];if(v!=null&&isFinite(v)){sm+=v;nm++;}}
     if(nm<3)continue;
     const mean=sm/nm;
-    // deviazione su finestra media centrata
+    // deviazione su finestra corta-media centrata
     let ns=0,sumv=0;
     const a=Math.max(0,i-Math.floor(winSd/2)),b=Math.min(n-1,i+Math.floor(winSd/2));
     for(let j=a;j<=b;j++){const v=vals[j];if(v!=null&&isFinite(v)){sumv+=v;ns++;}}
