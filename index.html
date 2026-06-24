@@ -217,23 +217,26 @@
   .ov-cert{align-items:stretch}
   .ov-cert .chart-card{display:flex;flex-direction:column}
   .ov-cert .chart-card .plot{flex:1;min-height:340px}
-  /* card KID */
-  .kid-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap}
-  .kid-titlewrap{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-  .kid-head h2{margin:0;font-family:var(--serif);font-size:16px;font-weight:600;color:var(--txt)}
-  .kid-tag{font-family:"IBM Plex Mono",monospace;font-size:10.5px;font-weight:600;letter-spacing:.04em;
-    padding:3px 8px;border-radius:6px;text-transform:uppercase}
-  .kid-tag.kid{background:rgba(184,151,90,.16);color:var(--brass-bright);border:1px solid rgba(184,151,90,.3)}
-  .kid-tag.doc{background:rgba(90,176,232,.14);color:#8Fc3e8;border:1px solid rgba(90,176,232,.28)}
-  .kid-tag.ft{background:rgba(140,155,168,.14);color:var(--muted);border:1px solid rgba(140,155,168,.28)}
-  .kid-dl{display:inline-flex;align-items:center;gap:8px;text-decoration:none;cursor:pointer;
-    background:var(--brass);color:var(--ink);font-family:"Inter",sans-serif;font-size:12.5px;font-weight:600;
-    padding:8px 15px;border-radius:9px;transition:filter .15s,transform .12s}
-  .kid-dl:hover{filter:brightness(1.08);transform:translateY(-1px)}
-  .kid-dl svg{width:16px;height:16px}
-  .kid-preview{border:1px solid var(--hair);border-radius:10px;overflow:hidden;background:var(--panel-3)}
-  .kid-preview iframe{width:100%;height:620px;border:0;display:block;background:#fff}
-  @media (max-width:760px){.kid-preview iframe{height:440px}}
+  /* blocco KID in cima alla scheda strumento */
+  .kid-box{margin:0 0 14px}
+  .kid-row{display:flex;align-items:center;gap:12px;padding:12px 13px;border-radius:11px;
+    border:1px solid var(--hair);background:var(--panel-3);transition:border-color .15s,background .15s}
+  .kid-row:hover{border-color:rgba(184,151,90,.4)}
+  .kid-ic{flex:none;width:38px;height:38px;display:flex;align-items:center;justify-content:center;
+    border-radius:9px;background:rgba(184,151,90,.12)}
+  .kid-ic svg{width:21px;height:21px;color:var(--brass-bright)}
+  .kid-row.doc .kid-ic{background:rgba(90,176,232,.12)}
+  .kid-row.doc .kid-ic svg{color:#8Fc3e8}
+  .kid-row.ft .kid-ic{background:rgba(140,155,168,.12)}
+  .kid-row.ft .kid-ic svg{color:var(--muted)}
+  .kid-txt{flex:1;min-width:0}
+  .kid-t{font-family:"Inter",sans-serif;font-size:13.5px;font-weight:600;color:var(--txt);line-height:1.2}
+  .kid-s{font-family:"Inter",sans-serif;font-size:11px;color:var(--faint);margin-top:2px}
+  .kid-go{flex:none;width:38px;height:38px;display:flex;align-items:center;justify-content:center;
+    border-radius:9px;background:var(--brass);color:var(--ink);text-decoration:none;
+    transition:filter .15s,transform .12s}
+  .kid-go:hover{filter:brightness(1.1);transform:translateY(-1px)}
+  .kid-go svg{width:18px;height:18px}
   /* scheda sottostante: card certificati alta come il grafico, lista che scorre dentro */
   .ov-sott{align-items:stretch}
   .ov-sott .chart-card{display:flex;flex-direction:column}
@@ -822,25 +825,11 @@
           <div class="chart-head"><div class="t">Serie storica</div><div class="h">prezzo di mercato</div></div>
           <div id="chartOverview" class="plot ov"></div>
         </div>
-        <div class="card meta"><h2>Scheda strumento</h2><div id="metaRows"></div></div>
+        <div class="card meta"><h2>Scheda strumento</h2><div id="kidBox" class="kid-box" hidden></div><div id="metaRows"></div></div>
       </div>
       <div class="card chart-card">
         <div class="chart-head"><div class="t">Calendario cedole e autocall</div><div class="h">date di osservazione</div></div>
         <div id="calWrap" class="caltable-wrap"></div>
-      </div>
-      <!-- KID / documento informativo — mostrato solo se disponibile -->
-      <div class="card kid-card" id="kidCard" hidden>
-        <div class="kid-head">
-          <div class="kid-titlewrap">
-            <h2 id="kidTitle">KID · Key Information Document</h2>
-            <span class="kid-tag kid" id="kidTag">KID</span>
-          </div>
-          <a class="kid-dl" id="kidDownload" href="#" target="_blank" rel="noopener">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 L12 15"/><path d="M7 10 L12 15 L17 10"/><path d="M4 19 L20 19"/></svg>
-            <span>Scarica PDF</span>
-          </a>
-        </div>
-        <div class="kid-preview"><iframe id="kidFrame" title="Anteprima documento" loading="lazy"></iframe></div>
       </div>
     </div>
 
@@ -2623,37 +2612,39 @@ function loadKidManifest(){
     .catch(()=>{KIDMAP={};return KIDMAP;});   // assente → nessun KID mostrato
 }
 
-// Mostra/nasconde la card KID nella overview in base alla disponibilità del file.
+// Mostra il blocco KID in cima alla "Scheda strumento": icona + pulsante scarica.
 // Il manifest può essere nel formato nuovo {file,tipo} o vecchio "file.pdf".
 function renderKid(isin){
-  const card=document.getElementById('kidCard');if(!card)return;
-  card.hidden=true;
+  const box=document.getElementById('kidBox');if(!box)return;
+  box.hidden=true;box.innerHTML='';
   loadKidManifest().then(()=>{
     const entry=(KIDMAP&&KIDMAP[isin])?KIDMAP[isin]:null;
-    if(!entry){card.hidden=true;return;}
-    // retrocompatibile: stringa = solo file; oggetto = {file,tipo}
+    if(!entry){box.hidden=true;return;}
     const file=(typeof entry==='string')?entry:entry.file;
     const tipo=(typeof entry==='string')?'kid':(entry.tipo||'documento');
-    if(!file){card.hidden=true;return;}
+    if(!file){box.hidden=true;return;}
     const url='kid/'+encodeURIComponent(file);
-    const frame=document.getElementById('kidFrame');
-    const dl=document.getElementById('kidDownload');
-    if(frame)frame.src=url+'#view=FitH';
-    if(dl){dl.href=url;dl.setAttribute('download',isin+'.pdf');}
-    // etichetta + titolo in base al tipo di documento
     const meta={
-      kid:        {tit:'KID · Key Information Document', tag:'KID',         cls:'kid'},
-      documento:  {tit:'Documento informativo',          tag:'Documento',    cls:'doc'},
-      final_terms:{tit:'Final Terms',                    tag:'Final Terms',  cls:'ft'},
-      termsheet:  {tit:'Term Sheet',                     tag:'Term Sheet',   cls:'ft'},
-      factsheet:  {tit:'Factsheet',                      tag:'Factsheet',    cls:'ft'},
-      prospectus: {tit:'Prospetto',                      tag:'Prospetto',    cls:'ft'}
-    }[tipo]||{tit:'Documento informativo',tag:'Documento',cls:'doc'};
-    const titEl=document.getElementById('kidTitle');
-    const tagEl=document.getElementById('kidTag');
-    if(titEl)titEl.textContent=meta.tit;
-    if(tagEl){tagEl.textContent=meta.tag;tagEl.className='kid-tag '+meta.cls;}
-    card.hidden=false;
+      kid:        {tit:'KID disponibile',     sub:'Key Information Document', cls:'kid'},
+      documento:  {tit:'Documento informativo',sub:'Scheda prodotto',          cls:'doc'},
+      final_terms:{tit:'Final Terms',         sub:'Condizioni definitive',     cls:'ft'},
+      termsheet:  {tit:'Term Sheet',          sub:'Scheda tecnica',            cls:'ft'},
+      factsheet:  {tit:'Factsheet',           sub:'Scheda prodotto',           cls:'ft'},
+      prospectus: {tit:'Prospetto',           sub:'Documento d\'offerta',      cls:'ft'}
+    }[tipo]||{tit:'Documento informativo',sub:'Scheda prodotto',cls:'doc'};
+    // icona documento + pulsante scarica
+    box.innerHTML=
+      '<div class="kid-row '+meta.cls+'">'+
+      '  <div class="kid-ic" aria-hidden="true">'+
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">'+
+        '<path d="M6 2 L14 2 L19 7 L19 22 L6 22 Z"/><path d="M14 2 L14 7 L19 7"/>'+
+        '<line x1="9" y1="12" x2="16" y2="12"/><line x1="9" y1="15.5" x2="16" y2="15.5"/><line x1="9" y1="19" x2="13" y2="19"/></svg>'+
+        '</div>'+
+        '<div class="kid-txt"><div class="kid-t">'+meta.tit+'</div><div class="kid-s">'+meta.sub+'</div></div>'+
+        '<a class="kid-go" href="'+url+'" target="_blank" rel="noopener" download="'+isin+'.pdf" title="Scarica il documento">'+
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 L12 15"/><path d="M7 10 L12 15 L17 10"/><path d="M4 20 L20 20"/></svg>'+
+        '</a></div>';
+    box.hidden=false;
   });
 }
 
