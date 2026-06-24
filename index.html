@@ -180,6 +180,14 @@
 
   /* ===== PRODOTTO (pagina singola) ===== */
   .prodhead{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+  .quote-box{text-align:right;padding:8px 15px;border:1px solid var(--hair);border-radius:11px;background:var(--panel-2)}
+  .quote-box .q-main{display:flex;align-items:baseline;gap:11px;justify-content:flex-end}
+  .quote-box .q-price{font-family:"IBM Plex Mono",monospace;font-size:20px;font-weight:600;color:var(--txt)}
+  .quote-box .q-cur{font-size:11px;color:var(--muted);font-weight:400}
+  .quote-box .q-chg{font-family:"IBM Plex Mono",monospace;font-size:13px;font-weight:600}
+  .quote-box .q-chg.q-up{color:var(--pos)}
+  .quote-box .q-chg.q-down{color:var(--neg)}
+  .quote-box .q-note{font-size:9.5px;color:var(--faint);margin-top:3px;letter-spacing:.02em;text-transform:uppercase}
   .prodleft{display:flex;align-items:center;gap:14px;min-width:0}
   .back{appearance:none;background:var(--panel);border:1px solid var(--hair);color:var(--muted);border-radius:9px;padding:9px 14px;cursor:pointer;font-family:"IBM Plex Mono",monospace;font-size:12px;white-space:nowrap;transition:color .15s,border-color .15s}
   .back:hover{color:var(--txt);border-color:var(--faint)}
@@ -783,6 +791,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 L20 7 L20 12 C20 17 16.5 20 12 21.5 C7.5 20 4 17 4 12 L4 7 Z"/><line x1="12" y1="9" x2="12" y2="13"/><circle cx="12" cy="16.5" r="0.6" fill="currentColor" stroke="none"/></svg>
         <span>Rischio</span>
       </button>
+      <button data-t="var" aria-pressed="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="21" x2="21" y2="21" opacity="0.4"/><line x1="3" y1="3" x2="3" y2="21" opacity="0.4"/><path d="M4 8 L9 9 L14 6 L20 7"/><path d="M4 14 L9 16 L14 13 L20 15"/><path d="M4 18 L9 19 L14 17 L20 18" opacity="0.5"/></svg>
+        <span>VaR</span>
+      </button>
     </div>
     </div>
 
@@ -871,6 +883,20 @@
     </div>
     <div class="subview" id="sv-autocall" hidden><div class="card placeholder">Vista <b>Autocall</b> — in arrivo.</div></div>
     <div class="subview" id="sv-rischio" hidden><div class="card placeholder">Vista <b>Rischio</b> — in arrivo.</div></div>
+    <div class="subview" id="sv-var" hidden>
+      <div class="card chart-card">
+        <div class="chart-head">
+          <div class="t">Percentili rolling dei rendimenti simulati</div>
+          <div class="hd-right">
+            <div class="seg var-seg" role="group" aria-label="Annualizzazione">
+              <button data-va="non" aria-pressed="true">Non ann.</button>
+              <button data-va="ann" aria-pressed="false">Annualizzato</button>
+            </div>
+          </div>
+        </div>
+        <div id="chartVar" class="plot ov-tall"></div>
+      </div>
+    </div>
   </section>
 
   <!-- ================= SOTTOSTANTE ================= -->
@@ -880,6 +906,7 @@
         <button class="back" id="backBtnSott">← Indietro</button>
         <div class="prodtitle"><div class="mtitle" id="sTitle">—</div><div class="msub" id="sSub">Sottostante</div></div>
       </div>
+      <div class="quote-box" id="sQuote" hidden></div>
     </div>
 
     <!-- ZONA ALTA: sotto-schede Prezzo / Rendimento -->
@@ -1572,7 +1599,8 @@ function loadRendimento(r){
         is_benchmark:      data.is_benchmark||[],
         scatter_mean:      data.mean_tot||[],
         scatter_vol:       data.vol_tot||[],
-        scatter_labels:    data.labels||[]};
+        scatter_labels:    data.labels||[],
+        var:               data.var||{has:false}};
       rendCache[isin]=assembled;
       renderRendimento(assembled);setRendTab(rendTab);})
     .catch(()=>{if(loadingEl){loadingEl.hidden=false;
@@ -1683,7 +1711,7 @@ function selectIsin(isin){current=DATA.find(x=>x.isin===isin)||current;if(!curre
   renderHero(current);renderMeta(current);renderCalendar(current);}
 
 function setSubview(t){subv=t;
-  ['overview','markup','rendimento','autocall','rischio'].forEach(k=>{const el=document.getElementById('sv-'+k);if(el)el.hidden=(k!==t);});
+  ['overview','markup','rendimento','autocall','rischio','var'].forEach(k=>{const el=document.getElementById('sv-'+k);if(el)el.hidden=(k!==t);});
   document.querySelectorAll('#subtabs button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.t===t?'true':'false'));
   if(current){const h='#/'+encodeURIComponent(current.isin)+'/'+t;if(location.hash!==h)location.hash=h;}
   // Disegno i grafici della scheda appena resa visibile (timing corretto: div ora dimensionato)
@@ -1699,7 +1727,62 @@ function drawTab(t){
     renderMarkup(w);renderPrice(w);
   }else if(t==='rendimento'){
     loadRendimento(current);
+  }else if(t==='var'){
+    loadVar(current);
   }
+}
+
+// ---- Vista VaR (percentili rolling dei rendimenti simulati) ----
+let varAnn=false;   // false = non annualizzato, true = annualizzato
+function loadVar(r){
+  // i dati VaR arrivano dallo stesso rendimento/ISIN.json (campo .var)
+  const cached=rendCache[r.isin];
+  if(cached){renderVar(cached.var);return;}
+  // se il rendimento non è ancora in cache, lo carico e poi disegno
+  loadRendimento(r);
+  // loadRendimento popola rendCache in modo asincrono: ritento a breve
+  let tries=0;const iv=setInterval(()=>{
+    tries++;const c=rendCache[r.isin];
+    if(c){clearInterval(iv);renderVar(c.var);}
+    else if(tries>40)clearInterval(iv);
+  },50);
+}
+
+function renderVar(v){
+  const host=document.getElementById('chartVar');if(!host)return;
+  // selettore non-ann / annualizzato
+  document.querySelectorAll('.var-seg button').forEach(b=>{
+    b.setAttribute('aria-pressed',(b.dataset.va==='ann')===varAnn?'true':'false');
+    if(!b._bound){b._bound=true;b.addEventListener('click',()=>{varAnn=(b.dataset.va==='ann');renderVar(v);});}
+  });
+  if(!v||!v.has){
+    const L0=baseLayout();L0.xaxis.autorange=true;L0.yaxis.autorange=true;
+    whenSized('chartVar',()=>{Plotly.purge(host);Plotly.newPlot(host,[{x:[],y:[]}],L0,PCFG);});
+    host.insertAdjacentHTML('beforebegin','');
+    return;
+  }
+  const dates=asArr(v.dates);
+  const p05=varAnn?asArr(v.var05_ann):asArr(v.var05);
+  const p10=varAnn?asArr(v.var10_ann):asArr(v.var10);
+  const p50=varAnn?asArr(v.var50_ann):asArr(v.var50);
+  // colori coerenti col tuo grafico MATLAB: rosso VaR5, blu VaR10, scuro mediana
+  const traces=[
+    {x:dates,y:p05,mode:'lines',name:'VaR 5%',
+      line:{color:'rgba(217,131,115,.95)',width:2,shape:'spline',smoothing:0.3},
+      hovertemplate:'VaR 5%%<br>%{x|%d %b %Y}<br><b>%{y:.2f}%%</b><extra></extra>'},
+    {x:dates,y:p10,mode:'lines',name:'VaR 10%',
+      line:{color:'rgba(90,150,200,.95)',width:2,shape:'spline',smoothing:0.3},
+      hovertemplate:'VaR 10%%<br>%{x|%d %b %Y}<br><b>%{y:.2f}%%</b><extra></extra>'},
+    {x:dates,y:p50,mode:'lines',name:'Mediana',
+      line:{color:'rgba(200,205,210,.85)',width:2,shape:'spline',smoothing:0.3},
+      hovertemplate:'Mediana<br>%{x|%d %b %Y}<br><b>%{y:.2f}%%</b><extra></extra>'}
+  ];
+  const L=baseLayout();
+  L.xaxis.autorange=true;L.yaxis.autorange=true;L.yaxis.ticksuffix='%';
+  L.yaxis.zeroline=true;L.yaxis.zerolinecolor='rgba(144,162,176,.3)';L.yaxis.zerolinewidth=1;
+  L.showlegend=true;
+  L.legend={orientation:'h',y:1.08,x:0,font:{size:11,color:C.muted},bgcolor:'rgba(0,0,0,0)'};
+  whenSized('chartVar',()=>{try{Plotly.purge(host);Plotly.newPlot(host,traces,L,PCFG);}catch(e){}});
 }
 function openProduct(isin,fromHash,tab){
   const changed=!current||current.isin!==isin;
@@ -1971,7 +2054,31 @@ function openSottostante(sigla,fromHash){
   // zona bassa: inizializzo l'analisi attiva
   setAnTab(anTab||'stagionalita');
   syncSottHeights();
+  // quotazione ritardata (se disponibile)
+  renderSottQuote(sigla);
   if(!fromHash){const h='#/sott/'+encodeURIComponent(sigla);if(location.hash!==h)location.hash=h;}
+}
+
+// Riquadro quotazione (Yahoo, ritardata ~15 min) nell'header della scheda sottostante.
+function renderSottQuote(sigla){
+  const box=document.getElementById('sQuote');if(!box)return;
+  box.hidden=true;box.innerHTML='';
+  loadQuotes().then(()=>{
+    const q=QUOTES&&QUOTES[sigla];
+    if(!q||q.price==null){box.hidden=true;return;}
+    const chg=q.change_pct;
+    const cls=chg==null?'':(chg>=0?'q-up':'q-down');
+    const arrow=chg==null?'':(chg>=0?'▲':'▼');
+    const chgTxt=chg==null?'':(arrow+' '+(chg>=0?'+':'')+chg.toFixed(2)+'%');
+    // prezzo formattato con la valuta
+    const cur=q.currency||'';
+    const price=Number(q.price).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2});
+    box.innerHTML=
+      '<div class="q-main"><span class="q-price">'+price+(cur?' <span class="q-cur">'+esc(cur)+'</span>':'')+'</span>'
+      +(chgTxt?'<span class="q-chg '+cls+'">'+chgTxt+'</span>':'')+'</div>'
+      +'<div class="q-note">quotazione ritardata · '+esc(q.yahoo||'')+'</div>';
+    box.hidden=false;
+  });
 }
 
 // ---- ZONA BASSA: analisi (Stagionalità / Sharpe / Sentiment) ----
@@ -2462,6 +2569,16 @@ function loadSentiment(){
     .then(r=>r.ok?r.json():Promise.reject())
     .then(d=>{SENTIMENT=d;return d;})
     .catch(()=>{SENTIMENT={};return SENTIMENT;});   // assente → vista mostra "non disponibile"
+}
+
+// Quotazioni ritardate (Yahoo Finance) generate da fetch_quotes.py
+let QUOTES=null;
+function loadQuotes(){
+  if(QUOTES)return Promise.resolve(QUOTES);
+  return fetch('quotes.json')
+    .then(r=>r.ok?r.json():Promise.reject())
+    .then(d=>{QUOTES=d;return d;})
+    .catch(()=>{QUOTES={};return QUOTES;});   // assente → nessuna quotazione mostrata
 }
 
 // Frontier dimostrativa quando frontier.json non è presente
