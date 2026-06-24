@@ -217,6 +217,23 @@
   .ov-cert{align-items:stretch}
   .ov-cert .chart-card{display:flex;flex-direction:column}
   .ov-cert .chart-card .plot{flex:1;min-height:340px}
+  /* card KID */
+  .kid-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+  .kid-titlewrap{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .kid-head h2{margin:0;font-family:var(--serif);font-size:16px;font-weight:600;color:var(--txt)}
+  .kid-tag{font-family:"IBM Plex Mono",monospace;font-size:10.5px;font-weight:600;letter-spacing:.04em;
+    padding:3px 8px;border-radius:6px;text-transform:uppercase}
+  .kid-tag.kid{background:rgba(184,151,90,.16);color:var(--brass-bright);border:1px solid rgba(184,151,90,.3)}
+  .kid-tag.doc{background:rgba(90,176,232,.14);color:#8Fc3e8;border:1px solid rgba(90,176,232,.28)}
+  .kid-tag.ft{background:rgba(140,155,168,.14);color:var(--muted);border:1px solid rgba(140,155,168,.28)}
+  .kid-dl{display:inline-flex;align-items:center;gap:8px;text-decoration:none;cursor:pointer;
+    background:var(--brass);color:var(--ink);font-family:"Inter",sans-serif;font-size:12.5px;font-weight:600;
+    padding:8px 15px;border-radius:9px;transition:filter .15s,transform .12s}
+  .kid-dl:hover{filter:brightness(1.08);transform:translateY(-1px)}
+  .kid-dl svg{width:16px;height:16px}
+  .kid-preview{border:1px solid var(--hair);border-radius:10px;overflow:hidden;background:var(--panel-3)}
+  .kid-preview iframe{width:100%;height:620px;border:0;display:block;background:#fff}
+  @media (max-width:760px){.kid-preview iframe{height:440px}}
   /* scheda sottostante: card certificati alta come il grafico, lista che scorre dentro */
   .ov-sott{align-items:stretch}
   .ov-sott .chart-card{display:flex;flex-direction:column}
@@ -810,6 +827,20 @@
       <div class="card chart-card">
         <div class="chart-head"><div class="t">Calendario cedole e autocall</div><div class="h">date di osservazione</div></div>
         <div id="calWrap" class="caltable-wrap"></div>
+      </div>
+      <!-- KID / documento informativo — mostrato solo se disponibile -->
+      <div class="card kid-card" id="kidCard" hidden>
+        <div class="kid-head">
+          <div class="kid-titlewrap">
+            <h2 id="kidTitle">KID · Key Information Document</h2>
+            <span class="kid-tag kid" id="kidTag">KID</span>
+          </div>
+          <a class="kid-dl" id="kidDownload" href="#" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 L12 15"/><path d="M7 10 L12 15 L17 10"/><path d="M4 19 L20 19"/></svg>
+            <span>Scarica PDF</span>
+          </a>
+        </div>
+        <div class="kid-preview"><iframe id="kidFrame" title="Anteprima documento" loading="lazy"></iframe></div>
       </div>
     </div>
 
@@ -1722,6 +1753,7 @@ function drawTab(t){
   if(!current)return;
   if(t==='overview'){
     renderOverviewChart();
+    renderKid(current.isin);
   }else if(t==='markup'){
     const w=sliceByWindow(current,win);
     renderMarkup(w);renderPrice(w);
@@ -2579,6 +2611,50 @@ function loadQuotes(){
     .then(r=>r.ok?r.json():Promise.reject())
     .then(d=>{QUOTES=d;return d;})
     .catch(()=>{QUOTES={};return QUOTES;});   // assente → nessuna quotazione mostrata
+}
+
+// Manifest dei KID: mappa ISIN -> nome file PDF (generato da genera_kid_manifest.py)
+let KIDMAP=null;
+function loadKidManifest(){
+  if(KIDMAP)return Promise.resolve(KIDMAP);
+  return fetch('kid/index.json')
+    .then(r=>r.ok?r.json():Promise.reject())
+    .then(d=>{KIDMAP=d||{};return KIDMAP;})
+    .catch(()=>{KIDMAP={};return KIDMAP;});   // assente → nessun KID mostrato
+}
+
+// Mostra/nasconde la card KID nella overview in base alla disponibilità del file.
+// Il manifest può essere nel formato nuovo {file,tipo} o vecchio "file.pdf".
+function renderKid(isin){
+  const card=document.getElementById('kidCard');if(!card)return;
+  card.hidden=true;
+  loadKidManifest().then(()=>{
+    const entry=(KIDMAP&&KIDMAP[isin])?KIDMAP[isin]:null;
+    if(!entry){card.hidden=true;return;}
+    // retrocompatibile: stringa = solo file; oggetto = {file,tipo}
+    const file=(typeof entry==='string')?entry:entry.file;
+    const tipo=(typeof entry==='string')?'kid':(entry.tipo||'documento');
+    if(!file){card.hidden=true;return;}
+    const url='kid/'+encodeURIComponent(file);
+    const frame=document.getElementById('kidFrame');
+    const dl=document.getElementById('kidDownload');
+    if(frame)frame.src=url+'#view=FitH';
+    if(dl){dl.href=url;dl.setAttribute('download',isin+'.pdf');}
+    // etichetta + titolo in base al tipo di documento
+    const meta={
+      kid:        {tit:'KID · Key Information Document', tag:'KID',         cls:'kid'},
+      documento:  {tit:'Documento informativo',          tag:'Documento',    cls:'doc'},
+      final_terms:{tit:'Final Terms',                    tag:'Final Terms',  cls:'ft'},
+      termsheet:  {tit:'Term Sheet',                     tag:'Term Sheet',   cls:'ft'},
+      factsheet:  {tit:'Factsheet',                      tag:'Factsheet',    cls:'ft'},
+      prospectus: {tit:'Prospetto',                      tag:'Prospetto',    cls:'ft'}
+    }[tipo]||{tit:'Documento informativo',tag:'Documento',cls:'doc'};
+    const titEl=document.getElementById('kidTitle');
+    const tagEl=document.getElementById('kidTag');
+    if(titEl)titEl.textContent=meta.tit;
+    if(tagEl){tagEl.textContent=meta.tag;tagEl.className='kid-tag '+meta.cls;}
+    card.hidden=false;
+  });
 }
 
 // Frontier dimostrativa quando frontier.json non è presente
