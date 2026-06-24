@@ -161,13 +161,17 @@
   .pgbtn:disabled{opacity:.3;cursor:default}
   #pgSize button{font-size:10.5px;padding:4px 10px}
   .mcount{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--faint);margin:0 2px 10px}
-  .tablewrap{border:1px solid var(--hair);border-radius:12px}
-  table.mtable{width:100%;border-collapse:collapse;font-size:12.5px}
+  .tablewrap{border:1px solid var(--hair);border-radius:12px;overflow-x:auto;overflow-y:visible}
+  .tablewrap::-webkit-scrollbar{height:9px}
+  .tablewrap::-webkit-scrollbar-thumb{background:var(--hair);border-radius:4px}
+  .tablewrap::-webkit-scrollbar-track{background:transparent}
+  table.mtable{width:100%;border-collapse:collapse;font-size:12.5px;min-width:920px}
   .mtable th{background:var(--panel-2);text-align:left;font-family:"IBM Plex Mono",monospace;font-weight:600;font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);padding:11px 13px;cursor:pointer;white-space:nowrap;user-select:none;transition:color .12s}
   .mtable th:hover{color:var(--muted)}
   .mtable th.num{text-align:right}
   .mtable td{padding:10px 13px;border-bottom:1px solid var(--hair-soft);color:var(--txt);white-space:nowrap}
-  .mtable td.dim,.mtable td.clip{max-width:220px;overflow:hidden;text-overflow:ellipsis}
+  .mtable td.clip{max-width:200px;overflow:hidden;text-overflow:ellipsis}
+  .mtable td.dim{max-width:150px;overflow:hidden;text-overflow:ellipsis}
   .mtable td.dim{color:var(--muted)}
   .mtable td.num{text-align:right;font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums}
   .mtable td.isincell{font-family:"IBM Plex Mono",monospace}
@@ -304,6 +308,8 @@
   .seg button[aria-pressed="true"]{background:var(--brass);color:var(--ink);font-weight:600}
   .seg button:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
   .sent-empty{font-family:"Inter",sans-serif;font-size:11.5px;color:var(--muted);font-style:italic;margin-right:4px}
+  .dd-badge{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--muted)}
+  .dd-badge b{color:var(--neg)}
   /* ===== HUB SOTTOSTANTI ===== */
   .hub-top{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;margin-top:4px}
   .hub-card{display:flex;flex-direction:column;max-height:640px;overflow:hidden}
@@ -469,7 +475,55 @@
     .caltable-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
     /* Chart head: titolo e controlli vanno a capo */
     .chart-head{flex-wrap:wrap;gap:8px}
-    .hd-right{width:100%;justify-content:space-between}
+    .hd-right{width:100%;justify-content:flex-start;flex-wrap:wrap;gap:7px}
+    /* Nav principale: icone più piccole, testo compatto, meno padding */
+    .mainnav button{gap:6px;padding:8px 6px 11px;font-size:12px;letter-spacing:.02em}
+    .mainnav button svg{width:16px;height:16px}
+    .mainnav button:not(:last-child)::before{bottom:10px}
+    /* Titolo sito più contenuto su mobile */
+    .bt{font-size:20px!important}
+    header.top .logo svg{width:26px;height:26px}
+    /* Selettori segmentati (.seg) più piccoli per il dito ma compatti */
+    .seg{padding:2px;border-radius:8px}
+    .seg button{padding:6px 10px;font-size:10.5px}
+    .sent-seg{flex-wrap:wrap}
+    /* Sub-tabs analisi sottostante: icone e testo ridotti */
+    .subtabs button{padding:8px 11px;font-size:12px;gap:6px}
+    .subtabs button svg{width:15px;height:15px}
+    /* Toggle stagionalità più compatto */
+    .stag-toggle{padding:4px 10px 4px 5px;font-size:10.5px}
+    .stag-corr{font-size:10px}
+    /* HUB sottostanti: una colonna, card non troppo alte, podio compatto */
+    .hub-top{grid-template-columns:1fr;gap:12px}
+    .hub-card{max-height:none;padding:14px}
+    .hub-head h2{font-size:15px}
+    .hub-podium{gap:6px}
+    .podium-slot{padding:10px 4px 9px;border-radius:9px}
+    .podium-1{padding-top:16px}
+    .podium-name{font-size:11px}
+    .podium-z{font-size:11.5px}
+    .podium-medal{width:20px;height:20px;font-size:11px}
+    .hub-row{padding:8px 10px;gap:8px}
+    .hub-bar{max-width:70px}
+    .hub-name{font-size:12px}
+    /* Scheda strumento e certificati collegati: padding ridotto già sopra */
+    .sott-certs-card{max-height:none}
+    /* Frontier toolbar: i selettori vanno a capo ordinati */
+    #frShowSeg,.fld{width:100%}
+    /* Mappa/grafici analisi più bassi */
+    #sottAnalysisCard .plot{height:300px}
+    .plot.ov-tall{height:320px}
+  }
+
+  /* Schermi molto stretti (telefoni piccoli) */
+  @media (max-width:420px){
+    .mainnav button span{font-size:11px}
+    .mainnav button{padding:7px 4px 10px}
+    .bt{font-size:18px!important}
+    .hub-podium{grid-template-columns:1fr 1fr 1fr;gap:4px}
+    .podium-name{font-size:10px}
+    .podium-sigla{font-size:8.5px}
+    .seg button{padding:6px 8px;font-size:10px}
   }
 
   /* Tap target minimi su touch */
@@ -523,7 +577,7 @@
       <span>Monitor</span>
     </button>
     <button data-nav="sottostanti" aria-pressed="false">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.2"/><path d="M5 20 C5 16 8 14.5 12 14.5 C16 14.5 19 16 19 20"/><circle cx="19" cy="6" r="1.3" fill="currentColor" stroke="none"/><circle cx="5" cy="6" r="1.3" fill="currentColor" stroke="none"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="14.5" width="7" height="6" rx="1.2"/><rect x="13.5" y="14.5" width="7" height="6" rx="1.2"/><rect x="8.5" y="3.5" width="7" height="6" rx="1.2" fill="currentColor" stroke="none" opacity="0.85"/><line x1="12" y1="9.5" x2="12" y2="14.5" opacity="0.5"/><line x1="7" y1="14.5" x2="10" y2="9.5" opacity="0.5"/><line x1="17" y1="14.5" x2="14" y2="9.5" opacity="0.5"/></svg>
       <span>Sottostanti</span>
     </button>
     <button data-nav="frontier" aria-pressed="false">
@@ -843,6 +897,10 @@
         <button data-an="sharpe" aria-pressed="false">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 L12 21"/><path d="M5 10 L12 3 L19 10"/></svg>
           <span>Sharpe Ratio</span>
+        </button>
+        <button data-an="drawdown" aria-pressed="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="4" x2="21" y2="4" opacity="0.4"/><path d="M3 4 L7 4 L9 11 L12 8 L15 17 L18 13 L21 13"/></svg>
+          <span>Drawdown</span>
         </button>
         <button data-an="sentiment" aria-pressed="false">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22 C8 22 5.5 19 5.5 15.5 C5.5 12 8 10.5 8.5 7 C11 9 11.5 11 11 13 C11 13 13 11.5 13 9 C13 7 12 5 14 2.5 C14.5 6 18.5 8.5 18.5 14.5 C18.5 18.5 16 22 12 22 Z"/><path d="M12 22 C10 22 8.5 20.5 8.5 18.5 C8.5 16.5 10 15.5 10.5 14 C12 15.5 13.5 16.5 13.5 18.5 C13.5 20.5 14 22 12 22 Z" fill="currentColor" stroke="none" opacity="0.55"/></svg>
@@ -1672,18 +1730,19 @@ function showView(v){
 function sentZScoreNow(sigla){
   const rec=SENTIMENT&&SENTIMENT[sigla];if(!rec)return null;
   const serie=rec.w5y;if(!serie)return null;
-  const vals=asArr(serie.values);const n=vals.length;if(n<16)return null;
-  // stessa logica "via di mezzo" del grafico: media intermedia, deviazione lunga
-  const winMean=Math.min(26,Math.max(10,Math.floor(n/6)));
+  const vals=asArr(serie.values);const n=vals.length;if(n<10)return null;
+  // stesse finestre brevi del grafico z-score (reattivo)
+  const winMean=Math.min(8,Math.max(4,Math.floor(n/10)));
+  const winSd=Math.min(20,Math.max(8,Math.floor(n/4)));
   const i=n-1;
   let sm=0,nm=0;
   for(let j=Math.max(0,i-winMean+1);j<=i;j++){const v=vals[j];if(v!=null&&isFinite(v)){sm+=v;nm++;}}
-  if(nm<5)return null;
+  if(nm<3)return null;
   const mean=sm/nm;
-  let sumv=0,ns=0;const winSd=Math.min(104,Math.max(26,Math.floor(n/2)));
+  let sumv=0,ns=0;
   const a=Math.max(0,i-winSd+1);
   for(let j=a;j<=i;j++){const v=vals[j];if(v!=null&&isFinite(v)){sumv+=v;ns++;}}
-  if(ns<8)return null;
+  if(ns<5)return null;
   const mLong=sumv/ns;let ss=0;
   for(let j=a;j<=i;j++){const v=vals[j];if(v!=null&&isFinite(v)){ss+=(v-mLong)*(v-mLong);}}
   const sd=Math.sqrt(ss/ns);
@@ -1832,6 +1891,7 @@ function setAnTab(t){
   if(ph)ph.hidden=true;
   if(t==='sentiment'){loadSentiment().then(()=>renderSentiment());return;}
   if(t==='stagionalita'){renderStagionalita();return;}
+  if(t==='drawdown'){renderDrawdown();return;}
 }
 
 // Vincola l'altezza della card "Certificati collegati" a quella della card grafico,
@@ -2088,6 +2148,43 @@ function renderStagControls(corrAll,corr5,nAll){
   if(btn)btn.addEventListener('click',()=>{stag5y=!stag5y;renderStagionalita();});
 }
 
+/* ===== DRAWDOWN (serie storica in rosso) ===== */
+// Drawdown = (prezzo / massimo storico fino a quel punto) - 1. Sempre <= 0.
+// 0% sui massimi, negativo quando si è sotto il picco precedente.
+function renderDrawdown(){
+  const dates=asArr(currentSott.prezzo_dates).length?asArr(currentSott.prezzo_dates):asArr(currentSott.dates);
+  const px=asArr(currentSott.prezzo);
+  document.getElementById('anChartTitle').textContent='Drawdown \u00b7 distanza dai massimi';
+  if(px.length<3){
+    const L0=baseLayout();L0.xaxis.autorange=true;L0.yaxis.autorange=true;
+    drawChartAnalysis([{x:[],y:[]}],L0);return;
+  }
+  // calcolo drawdown percentuale
+  const dd=[];let peak=-Infinity;
+  for(let i=0;i<px.length;i++){
+    const v=px[i];
+    if(v==null||!isFinite(v)){dd.push(null);continue;}
+    if(v>peak)peak=v;
+    dd.push(peak>0?(v/peak-1)*100:0);
+  }
+  // statistica: massimo drawdown
+  const fin=dd.filter(v=>v!=null&&isFinite(v));
+  const maxDD=fin.length?Math.min(...fin):0;
+  // badge max drawdown nell'header
+  const host=document.getElementById('anChartControls');
+  if(host)host.innerHTML='<span class="dd-badge">Max drawdown: <b>'+maxDD.toFixed(1)+'%</b></span>';
+
+  const traces=[{x:dates,y:dd,type:'scatter',mode:'lines',connectgaps:false,
+    line:{color:'rgba(217,131,115,.95)',width:1.6,shape:'linear'},
+    fill:'tozeroy',fillcolor:'rgba(217,131,115,.12)',
+    hovertemplate:'<b>%{x|%d %b %Y}</b><br>Drawdown&nbsp;&nbsp;<b>%{y:.1f}%</b><extra></extra>'}];
+  const L=baseLayout();
+  L.xaxis.autorange=true;
+  L.yaxis.autorange=true;L.yaxis.ticksuffix='%';
+  L.yaxis.zeroline=true;L.yaxis.zerolinecolor='rgba(144,162,176,.3)';L.yaxis.zerolinewidth=1;
+  drawChartAnalysis(traces,L);
+}
+
 /* ===== SENTIMENT (Google Trends) ===== */
 function renderSentiment(){
   const sig=currentSott.sigla;
@@ -2140,25 +2237,24 @@ function renderSentiment(){
    stabile), cosi' i picchi anomali non vengono "assorbiti". Rosso graduale oltre 3 sigma. */
 function renderSentZScore(dates,vals){
   document.getElementById('anChartTitle').textContent='Z-score interesse \u00b7 vs media mobile';
-  // Via di mezzo: la MEDIA segue una finestra intermedia (~26 punti, 6 mesi),
-  // così smorza la somiglianza con la serie pura; la DEVIAZIONE invece è calcolata
-  // su una finestra LUNGA (metà serie), così resta stabile e i picchi emergono.
+  // Finestre BREVI per uno z-score reattivo: media corta (~8 punti) e deviazione
+  // su finestra media (~16 punti). Reagisce in fretta ai picchi di attenzione.
   const n=vals.length;
-  const winMean=Math.min(26,Math.max(10,Math.floor(n/6)));
-  const winSd=Math.min(104,Math.max(26,Math.floor(n/2)));
+  const winMean=Math.min(8,Math.max(4,Math.floor(n/10)));
+  const winSd=Math.min(20,Math.max(8,Math.floor(n/4)));
   const z=new Array(n).fill(null);
   for(let i=0;i<n;i++){
-    // media mobile breve-intermedia
+    // media mobile corta
     let sm=0,nm=0;
     for(let j=Math.max(0,i-winMean+1);j<=i;j++){const v=vals[j];if(v!=null&&isFinite(v)){sm+=v;nm++;}}
-    if(nm<5)continue;
+    if(nm<3)continue;
     const mean=sm/nm;
-    // deviazione su finestra lunga centrata (stabile)
-    let ss=0,ns=0,sumv=0;
+    // deviazione su finestra media centrata
+    let ns=0,sumv=0;
     const a=Math.max(0,i-Math.floor(winSd/2)),b=Math.min(n-1,i+Math.floor(winSd/2));
     for(let j=a;j<=b;j++){const v=vals[j];if(v!=null&&isFinite(v)){sumv+=v;ns++;}}
-    if(ns<8)continue;
-    const mLong=sumv/ns;
+    if(ns<5)continue;
+    const mLong=sumv/ns;let ss=0;
     for(let j=a;j<=b;j++){const v=vals[j];if(v!=null&&isFinite(v)){ss+=(v-mLong)*(v-mLong);}}
     const sd=Math.sqrt(ss/ns);
     z[i]=sd>0?(vals[i]-mean)/sd:0;
