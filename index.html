@@ -308,6 +308,21 @@
   .dd-badge{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--muted)}
   .dd-badge b{color:var(--neg)}
   /* ===== HUB SOTTOSTANTI ===== */
+  .hub-search-wrap{position:relative;max-width:520px;margin:0 auto 18px}
+  .hub-search{display:flex;align-items:center;gap:10px;background:var(--panel-2);border:1px solid var(--hair);border-radius:11px;padding:0 14px;transition:border-color .15s}
+  .hub-search:focus-within{border-color:var(--brass)}
+  .hub-search-ico{width:17px;height:17px;color:var(--faint);flex-shrink:0}
+  .hub-search input{flex:1;appearance:none;background:transparent;border:0;outline:0;color:var(--txt);font-family:"Inter",sans-serif;font-size:14px;padding:13px 0}
+  .hub-search input::placeholder{color:var(--faint)}
+  .hub-search-results{position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:60;
+    background:var(--panel-2);border:1px solid var(--hair);border-radius:11px;padding:5px;
+    box-shadow:0 12px 32px rgba(0,0,0,.4);max-height:340px;overflow-y:auto}
+  .hub-sr-row{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;text-align:left;appearance:none;cursor:pointer;
+    background:transparent;border:0;border-radius:8px;padding:10px 12px;transition:background .12s}
+  .hub-sr-row:hover,.hub-sr-row.active{background:var(--panel-3)}
+  .hub-sr-name{font-size:13px;color:var(--txt)}
+  .hub-sr-sigla{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--brass);flex-shrink:0}
+  .hub-sr-empty{padding:12px;font-size:12.5px;color:var(--muted);font-style:italic}
   .hub-top{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;margin-top:4px}
   .hub-card{display:flex;flex-direction:column;max-height:640px;overflow:hidden}
   .hub-head{margin-bottom:14px}
@@ -647,6 +662,14 @@
 
   <!-- ================= SOTTOSTANTI (hub) ================= -->
   <section id="viewSottostantiHub" class="view">
+    <!-- ricerca: porta a un sottostante per nome o ticker -->
+    <div class="hub-search-wrap">
+      <div class="hub-search">
+        <svg class="hub-search-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>
+        <input type="search" id="hubSearch" placeholder="Cerca un sottostante per nome o ticker…" autocomplete="off" aria-label="Cerca sottostante">
+      </div>
+      <div id="hubSearchResults" class="hub-search-results" hidden></div>
+    </div>
     <div class="hub-top">
       <!-- sinistra: classifica per numero di certificati -->
       <div class="card hub-card">
@@ -1769,6 +1792,69 @@ function openSottostantiHub(){
   Promise.all([loadFrontier(),loadSentiment()]).then(()=>{
     renderHubByCount();
     renderHubSentiment();
+    setupHubSearch();
+  });
+}
+
+// Ricerca: tutti i sottostanti noti (da frontier + certificati), per nome o ticker
+let _hubSearchBound=false;
+function allSottostantiSigle(){
+  const set=new Set();
+  frontierSottostanti().forEach(s=>set.add(s.sigla));
+  DATA.forEach(c=>asArr(c.sottostanti).forEach(s=>set.add(s)));
+  return [...set];
+}
+function setupHubSearch(){
+  const inp=document.getElementById('hubSearch');
+  const box=document.getElementById('hubSearchResults');
+  if(!inp||!box)return;
+  inp.value='';box.hidden=true;box.innerHTML='';
+  if(_hubSearchBound)return;          // listener una volta sola
+  _hubSearchBound=true;
+
+  const sigle=()=>allSottostantiSigle();
+  let activeIdx=-1;
+
+  const render=(q)=>{
+    const query=q.trim().toLowerCase();
+    if(!query){box.hidden=true;box.innerHTML='';activeIdx=-1;return;}
+    // match su sigla o nome esteso
+    const matches=sigle().map(sig=>({sig,nome:nameOf(sig)||sig}))
+      .filter(o=>o.sig.toLowerCase().includes(query)||o.nome.toLowerCase().includes(query))
+      .sort((a,b)=>{
+        // priorità a chi inizia con la query
+        const as=a.sig.toLowerCase().startsWith(query)||a.nome.toLowerCase().startsWith(query)?0:1;
+        const bs=b.sig.toLowerCase().startsWith(query)||b.nome.toLowerCase().startsWith(query)?0:1;
+        return as-bs||a.nome.localeCompare(b.nome);
+      }).slice(0,8);
+    if(!matches.length){
+      box.innerHTML='<div class="hub-sr-empty">Nessun sottostante trovato</div>';
+      box.hidden=false;activeIdx=-1;return;
+    }
+    box.innerHTML=matches.map((o,i)=>
+      `<button class="hub-sr-row${i===activeIdx?' active':''}" data-sig="${esc(o.sig)}">`
+      +`<span class="hub-sr-name">${esc(o.nome)}</span>`
+      +`<span class="hub-sr-sigla">${esc(o.sig)}</span></button>`).join('');
+    box.hidden=false;
+    box.querySelectorAll('.hub-sr-row').forEach(b=>b.addEventListener('click',()=>{
+      goSott(b.dataset.sig);}));
+  };
+  const goSott=(sig)=>{box.hidden=true;inp.value='';location.hash='#/sott/'+encodeURIComponent(sig);};
+
+  inp.addEventListener('input',()=>{activeIdx=-1;render(inp.value);});
+  inp.addEventListener('keydown',e=>{
+    const rows=[...box.querySelectorAll('.hub-sr-row')];
+    if(e.key==='ArrowDown'){e.preventDefault();activeIdx=Math.min(rows.length-1,activeIdx+1);render(inp.value);}
+    else if(e.key==='ArrowUp'){e.preventDefault();activeIdx=Math.max(0,activeIdx-1);render(inp.value);}
+    else if(e.key==='Enter'){
+      e.preventDefault();
+      if(activeIdx>=0&&rows[activeIdx])goSott(rows[activeIdx].dataset.sig);
+      else if(rows[0])goSott(rows[0].dataset.sig);
+    }else if(e.key==='Escape'){box.hidden=true;}
+  });
+  // chiudo il dropdown cliccando fuori
+  document.addEventListener('click',e=>{
+    if(!e.target.closest('.hub-search-wrap')){box.hidden=true;}
   });
 }
 
