@@ -1771,7 +1771,11 @@ function loadVar(r){
 
 function renderVar(v){
   const host=document.getElementById('chartVar');if(!host)return;
-  // selettore non-ann / annualizzato
+  const full=v&&v.has&&v.full!==false;   // full=false → solo VaR5/VaR10 non ann.
+  // selettore non-ann / annualizzato: visibile solo se ho i dati annualizzati
+  const seg=document.querySelector('.var-seg');
+  if(seg)seg.style.display=full?'':'none';
+  if(!full)varAnn=false;   // senza annualizzato forzo non-ann
   document.querySelectorAll('.var-seg button').forEach(b=>{
     b.setAttribute('aria-pressed',(b.dataset.va==='ann')===varAnn?'true':'false');
     if(!b._bound){b._bound=true;b.addEventListener('click',()=>{varAnn=(b.dataset.va==='ann');renderVar(v);});}
@@ -1779,13 +1783,11 @@ function renderVar(v){
   if(!v||!v.has){
     const L0=baseLayout();L0.xaxis.autorange=true;L0.yaxis.autorange=true;
     whenSized('chartVar',()=>{Plotly.purge(host);Plotly.newPlot(host,[{x:[],y:[]}],L0,PCFG);});
-    host.insertAdjacentHTML('beforebegin','');
     return;
   }
   const dates=asArr(v.dates);
   const p05=varAnn?asArr(v.var05_ann):asArr(v.var05);
   const p10=varAnn?asArr(v.var10_ann):asArr(v.var10);
-  const p50=varAnn?asArr(v.var50_ann):asArr(v.var50);
   // colori coerenti col tuo grafico MATLAB: rosso VaR5, blu VaR10, scuro mediana
   const traces=[
     {x:dates,y:p05,mode:'lines',name:'VaR 5%',
@@ -1793,11 +1795,15 @@ function renderVar(v){
       hovertemplate:'VaR 5%%<br>%{x|%d %b %Y}<br><b>%{y:.2f}%%</b><extra></extra>'},
     {x:dates,y:p10,mode:'lines',name:'VaR 10%',
       line:{color:'rgba(90,150,200,.95)',width:2,shape:'spline',smoothing:0.3},
-      hovertemplate:'VaR 10%%<br>%{x|%d %b %Y}<br><b>%{y:.2f}%%</b><extra></extra>'},
-    {x:dates,y:p50,mode:'lines',name:'Mediana',
-      line:{color:'rgba(200,205,210,.85)',width:2,shape:'spline',smoothing:0.3},
-      hovertemplate:'Mediana<br>%{x|%d %b %Y}<br><b>%{y:.2f}%%</b><extra></extra>'}
+      hovertemplate:'VaR 10%%<br>%{x|%d %b %Y}<br><b>%{y:.2f}%%</b><extra></extra>'}
   ];
+  // la mediana c'è solo nei dati completi
+  if(full){
+    const p50=varAnn?asArr(v.var50_ann):asArr(v.var50);
+    traces.push({x:dates,y:p50,mode:'lines',name:'Mediana',
+      line:{color:'rgba(200,205,210,.85)',width:2,shape:'spline',smoothing:0.3},
+      hovertemplate:'Mediana<br>%{x|%d %b %Y}<br><b>%{y:.2f}%%</b><extra></extra>'});
+  }
   const L=baseLayout();
   L.xaxis.autorange=true;L.yaxis.autorange=true;L.yaxis.ticksuffix='%';
   L.yaxis.zeroline=true;L.yaxis.zerolinecolor='rgba(144,162,176,.3)';L.yaxis.zerolinewidth=1;
