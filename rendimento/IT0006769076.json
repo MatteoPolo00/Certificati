@@ -1,1 +1,1 @@
-{"isin":"IT0006769076","dates":["2025-06-20"],"labels":[],"mean_roll":[],"vol_roll":[],"mean_tot":[],"vol_tot":[],"is_benchmark":[],"var":{"has":false}}
+{"isin":"IT0006769076","dates":["2025-06-20"],"labels":[],"mean_roll":[],"vol_roll":[],"mean_tot":[],"vol_tot":[],"is_benchmark":[],"var":{"has":true,"full":false,"dates":["2025-06-18","2025-06-20"],"var05":[-65.0214,-64.4968],"var10":[-52.1641,-53.3229]}}

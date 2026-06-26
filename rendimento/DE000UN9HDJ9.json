@@ -1,1 +1,1 @@
-{"isin":"DE000UN9HDJ9","dates":[""],"labels":[],"mean_roll":[],"vol_roll":[],"mean_tot":[],"vol_tot":[],"is_benchmark":[],"var":{"has":false}}
+{"isin":"DE000UN9HDJ9","dates":[""],"labels":[],"mean_roll":[],"vol_roll":[],"mean_tot":[],"vol_tot":[],"is_benchmark":[],"var":{"has":true,"full":false,"dates":["2026-06-12"],"var05":-71.6324,"var10":-61.0547}}
