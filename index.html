@@ -395,13 +395,17 @@
 
   /* slider frontier */
   .fr-slider-wrap{padding:18px 8px 6px}
-  #frSlider{-webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:3px;
-    background:linear-gradient(90deg,rgba(184,151,90,.5),rgba(184,151,90,.15));outline:none;cursor:pointer}
-  #frSlider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:18px;height:18px;border-radius:50%;
-    background:var(--brass);border:3px solid var(--ink);box-shadow:0 0 0 1px var(--brass),0 2px 8px rgba(184,151,90,.4);cursor:pointer;transition:transform .12s}
-  #frSlider::-webkit-slider-thumb:hover{transform:scale(1.15)}
-  #frSlider::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:var(--brass);border:3px solid var(--ink);box-shadow:0 0 0 1px var(--brass);cursor:pointer}
-  .fr-slider-ticks{display:flex;justify-content:space-between;margin-top:8px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--faint)}
+  #frSliderStart,#frSliderEnd{-webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:3px;
+    background:linear-gradient(90deg,var(--hair),var(--hair));outline:none;cursor:pointer}
+  #frSliderStart::-webkit-slider-thumb,#frSliderEnd::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:18px;height:18px;border-radius:50%;
+    background:var(--brass);border:3px solid var(--ink);box-shadow:0 0 0 1px var(--brass);cursor:pointer;transition:transform .12s}
+  #frSliderStart::-webkit-slider-thumb:hover,#frSliderEnd::-webkit-slider-thumb:hover{transform:scale(1.15)}
+  #frSliderStart::-moz-range-thumb,#frSliderEnd::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:var(--brass);border:3px solid var(--ink);box-shadow:0 0 0 1px var(--brass);cursor:pointer}
+  .fr-range{margin-top:14px;display:flex;flex-direction:column;gap:11px}
+  .fr-range-row{display:flex;align-items:center;gap:12px}
+  .fr-range-lbl{font-family:"Inter",sans-serif;font-size:11px;font-weight:600;color:var(--muted);width:22px;flex:none;text-align:right}
+  .fr-range-val{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--brass-bright);width:96px;flex:none;text-align:right}
+  .fr-ann-seg button{font-size:11px}
 
   .foot{margin-top:30px;border-top:1px solid var(--hair-soft);padding-top:22px;display:flex;justify-content:space-between;align-items:flex-end;gap:18px;flex-wrap:wrap}
   .foot .method{font-size:11.5px;color:var(--faint);line-height:1.7;max-width:60ch}
@@ -504,8 +508,8 @@
     .subtabs::-webkit-scrollbar{display:none}
     .subtabs button{flex-shrink:0}
     /* Slider frontier: thumb più grande per il dito */
-    #frSlider::-webkit-slider-thumb{width:22px;height:22px}
-    #frSlider::-moz-range-thumb{width:22px;height:22px}
+    #frSliderStart::-webkit-slider-thumb,#frSliderEnd::-webkit-slider-thumb{width:22px;height:22px}
+    #frSliderStart::-moz-range-thumb,#frSliderEnd::-moz-range-thumb{width:22px;height:22px}
     /* Paginazione: centrata e ariosa */
     .pager{flex-wrap:wrap;gap:8px;justify-content:center}
     /* Card padding ridotto */
@@ -771,12 +775,25 @@
     <div class="card chart-card" style="margin-top:4px">
       <div class="chart-head">
         <div class="t">Efficient Frontier <span class="badge" id="frCount">—</span></div>
-        <div class="hd-right"><span class="h" id="frDateLabel">—</span></div>
+        <div class="hd-right">
+          <div class="seg fr-ann-seg" role="group" aria-label="Annualizzazione rendimento">
+            <button data-fa="non" aria-pressed="true">Non ann.</button>
+            <button data-fa="ann" aria-pressed="false">Annualizzato</button>
+          </div>
+        </div>
       </div>
       <div id="chartFrontier" class="plot tall"></div>
-      <div class="fr-slider-wrap">
-        <input type="range" id="frSlider" min="0" max="0" value="0" step="1">
-        <div class="fr-slider-ticks" id="frTicks"></div>
+      <div class="fr-range">
+        <div class="fr-range-row">
+          <span class="fr-range-lbl">Da</span>
+          <input type="range" id="frSliderStart" min="0" max="0" value="0" step="1">
+          <span class="fr-range-val" id="frStartLabel">—</span>
+        </div>
+        <div class="fr-range-row">
+          <span class="fr-range-lbl">A</span>
+          <input type="range" id="frSliderEnd" min="0" max="0" value="0" step="1">
+          <span class="fr-range-val" id="frEndLabel">—</span>
+        </div>
       </div>
     </div>
   </section>
@@ -2571,6 +2588,8 @@ function highlightCertPeriod(cert){
 
 /* ================= EFFICIENT FRONTIER ================= */
 let FRONTIER=null, frDates=[], frDateIdx=0;
+let frStartIdx=0, frEndIdx=0;   // indici inizio/fine intervallo (Strada 2)
+let frAnn=false;                // false = rendimento sul periodo, true = annualizzato
 const frFilters={q:'',emit:'',struct:'',sott:''};
 let frColorBy={field:'',value:''};   // caratteristica + valore da evidenziare in rosso
 let frShow='cert';   // 'cert' | 'sott' | 'both'
@@ -2582,8 +2601,10 @@ function loadFrontier(){
   if(FRONTIER)return Promise.resolve(FRONTIER);
   return fetch('frontier.json')
     .then(r=>r.ok?r.json():Promise.reject())
-    .then(d=>{FRONTIER=d;frDates=d.dates||[];frDateIdx=frDates.length-1;return d;})
-    .catch(()=>{FRONTIER=demoFrontier();frDates=FRONTIER.dates;frDateIdx=frDates.length-1;return FRONTIER;});
+    .then(d=>{FRONTIER=d;frDates=d.dates||[];frDateIdx=frDates.length-1;
+      frStartIdx=0;frEndIdx=frDates.length-1;return d;})
+    .catch(()=>{FRONTIER=demoFrontier();frDates=FRONTIER.dates;frDateIdx=frDates.length-1;
+      frStartIdx=0;frEndIdx=frDates.length-1;return FRONTIER;});
 }
 
 // ---- Sentiment (Google Trends) ----
@@ -2731,6 +2752,51 @@ function valueAtDate(p,dateStr){
   return null;
 }
 
+// STRADA 2 — calcola rendimento e volatilità di uno strumento NELL'intervallo
+// [dStart, dEnd] direttamente dalla serie prezzo. Ritorna {m,v} oppure null.
+//   m = rendimento sul periodo (frAnn=false) o annualizzato (frAnn=true), in %
+//   v = volatilità annualizzata dei log-rendimenti giornalieri nell'intervallo, in %
+// I certificati hanno {dates, prezzo}; i sottostanti {prezzo_dates, prezzo}.
+function valueOverInterval(p,dStart,dEnd){
+  const pd=asArr(p.prezzo_dates&&p.prezzo_dates.length?p.prezzo_dates:p.dates);
+  const px=asArr(p.prezzo);
+  if(!px.length||px.length!==pd.length)return null;
+  // indici interni all'intervallo [dStart,dEnd]
+  let i0=-1,i1=-1;
+  for(let i=0;i<pd.length;i++){
+    if(pd[i]>=dStart&&i0<0)i0=i;
+    if(pd[i]<=dEnd)i1=i;
+  }
+  if(i0<0||i1<0||i1<=i0)return null;
+  // prezzi validi agli estremi
+  const p0=px[i0],p1=px[i1];
+  if(!(p0>0)||!(p1>0))return null;
+  // numero di giorni di calendario nell'intervallo effettivo
+  const ms=Date.parse(pd[i1])-Date.parse(pd[i0]);
+  const giorni=ms/86400000;
+  const anni=giorni/365.25;
+  if(anni<=0)return null;
+  // rendimento semplice sul periodo
+  const rPer=(p1/p0)-1;
+  // rendimento annualizzato (composto); guardia contro p1/p0<=0 già fatta
+  const rAnn=Math.pow(p1/p0,1/anni)-1;
+  // volatilità annualizzata dai log-rendimenti giornalieri nell'intervallo
+  let s=0,s2=0,n=0;
+  for(let i=i0+1;i<=i1;i++){
+    if(px[i]>0&&px[i-1]>0){
+      let lr=Math.log(px[i]/px[i-1]);
+      if(Math.abs(lr)<=0.80){s+=lr;s2+=lr*lr;n++;}   // filtro gap come nell'export
+    }
+  }
+  let vol=null;
+  if(n>2){
+    const mean=s/n;const varr=(s2-n*mean*mean)/(n-1);
+    vol=Math.sqrt(Math.max(varr,0))*Math.sqrt(252);
+  }
+  const r=frAnn?rAnn:rPer;
+  return{m:r*100,v:(vol==null?null:vol*100)};
+}
+
 function renderFrontier(){
   if(!document.getElementById('chartFrontier'))return;
   const dateStr=frDates[frDateIdx]||'';
@@ -2745,7 +2811,6 @@ function renderFrontier(){
     (showCert?vis.length+' certificati':'')+
     (showCert&&showSott?' · ':'')+
     (showSott?sottAll.length+' sottostanti':'');
-  document.getElementById('frDateLabel').textContent=dateStr?fmtDate(dateStr):'—';
 
   // Colorazione certificati: selezionati ROSSI, resto BLU. Mai arcobaleno.
   const SEL='rgba(217,131,115,.92)';
@@ -2757,18 +2822,19 @@ function renderFrontier(){
     if(frColorBy.field==='sottostante')return asArr(p.sottostanti).includes(frColorBy.value);
     return false;}
 
-  // ---- Mappa posizione sottostanti alla data corrente (per hover e per i punti) ----
-  // sigla -> {v, m, nome}. Usata sia per disegnare i sottostanti sia per l'hover.
+  // ---- Mappa posizione sottostanti NELL'intervallo [start,end] (per hover e punti) ----
+  const dStart=frDates[frStartIdx]||'';
+  const dEnd=frDates[frEndIdx]||'';
   const sottPos={};
   frontierSottostanti().forEach(s=>{
-    const pt=valueAtDate(s,dateStr);if(!pt||pt.v==null||pt.m==null)return;
+    const pt=valueOverInterval(s,dStart,dEnd);if(!pt||pt.v==null||pt.m==null)return;
     sottPos[s.sigla]={v:pt.v,m:pt.m,nome:nameOf(s.sigla)||s.sigla};});
 
   // ---- Certificati ----
   // customdata: [isin, emittente, struttura, sottostanti_label, sigle_json]
   const selX=[],selY=[],selCd=[],othX=[],othY=[],othCd=[];
   vis.forEach(p=>{
-    const pt=valueAtDate(p,dateStr);if(!pt||pt.v==null||pt.m==null)return;
+    const pt=valueOverInterval(p,dStart,dEnd);if(!pt||pt.v==null||pt.m==null)return;
     const sigle=asArr(p.sottostanti);
     const cd=[p.isin,p.emittente||'—',p.struttura||'—',sigle.map(s=>nameOf(s)||s).join(', ')||'—',JSON.stringify(sigle)];
     if(isSel(p)){selX.push(pt.v);selY.push(pt.m);selCd.push(cd);}
@@ -2814,7 +2880,8 @@ function renderFrontier(){
   _frHover.nBase=nBaseTraces;
   _frHover.sottLight=sottLight;
   _frHover.showSott=showSott;
-  _frHover.dateStr=dateStr;
+  _frHover.dateStr=frDates[frEndIdx]||'';      // fine intervallo = limite cometa
+  _frHover.dateFrom=frDates[frStartIdx]||'';   // inizio intervallo
   _frHover.frShow=frShow;
   // mappa serie complete: certificati per ISIN, sottostanti per sigla
   _frHover.certByIsin={};vis.forEach(p=>{_frHover.certByIsin[p.isin]=p;});
@@ -2822,15 +2889,17 @@ function renderFrontier(){
 
   const L=baseLayout();
   L.xaxis.title={text:'Volatilità annualizzata',font:{size:12.5,color:C.muted,family:'Inter, system-ui, sans-serif'}};
-  L.yaxis.title={text:'Rendimento annualizzato',font:{size:12.5,color:C.muted,family:'Inter, system-ui, sans-serif'}};
-  L.xaxis.tickformat='.0%';L.yaxis.tickformat='+.0%';
+  L.yaxis.title={text:(frAnn?'Rendimento annualizzato':'Rendimento sul periodo'),font:{size:12.5,color:C.muted,family:'Inter, system-ui, sans-serif'}};
+  // la funzione valueOverInterval ritorna valori già in %, quindi tickformat numerico+suffisso
+  L.xaxis.ticksuffix='%';L.yaxis.ticksuffix='%';
+  L.xaxis.tickformat='.0f';L.yaxis.tickformat='+.0f';
   L.xaxis.showline=false;L.yaxis.showline=false;
   L.xaxis.showgrid=true;L.xaxis.gridcolor='rgba(255,255,255,.04)';
   L.yaxis.showgrid=true;L.yaxis.gridcolor='rgba(255,255,255,.04)';
   L.xaxis.zeroline=true;L.xaxis.zerolinecolor='rgba(184,151,90,.6)';L.xaxis.zerolinewidth=2;
   L.yaxis.zeroline=true;L.yaxis.zerolinecolor='rgba(184,151,90,.6)';L.yaxis.zerolinewidth=2;
-  L.yaxis.range=[-0.70,0.70];L.yaxis.autorange=false;
-  L.xaxis.range=[0,0.70];L.xaxis.autorange=false;
+  // intervallo arbitrario → i rendimenti variano molto: autorange con margine
+  L.yaxis.autorange=true;L.xaxis.autorange=true;L.xaxis.rangemode='tozero';
   L.hovermode='closest';   // tooltip sul punto, non righe verticali/orizzontali
   L.annotations=[
     {xref:'paper',yref:'paper',x:1,y:0,ax:-18,ay:0,xanchor:'left',yanchor:'middle',text:'',showarrow:true,arrowhead:2,arrowsize:1.4,arrowwidth:1.5,arrowcolor:'rgba(184,151,90,.6)'},
@@ -2875,9 +2944,12 @@ function renderFrontier(){
         // periodo del certificato: settlement→scadenza, ora presenti nel prodotto
         // frontiera stesso (cert). In subordine i dati completi di DATA.
         const full=DATA.find(x=>x.isin===isin);
-        const dFrom=(cert&&cert.data_settlement)||(cert&&cert.data_emissione)
+        const dFromC=(cert&&cert.data_settlement)||(cert&&cert.data_emissione)
                    ||(full&&full.data_settlement)||(full&&full.data_emissione)||null;
         const dTo=(cert&&cert.scadenza)||(full&&full.scadenza)||null;
+        // limiti cometa = intersezione tra [periodo certificato] e [intervallo slider]
+        const dStartSel=_frHover.dateFrom||'';
+        const dFrom=(dFromC&&dStartSel&&dFromC<dStartSel)?dStartSel:(dFromC||dStartSel||null);
         const dUpper=(dTo&&dTo<dateLimit)?dTo:dateLimit;
         // cometa del certificato (oro pieno, linea più spessa)
         if(cert)extra.push(...cometaTraces(cert,dUpper,GOLD,isin,true,dFrom));
@@ -2898,7 +2970,7 @@ function renderFrontier(){
         // --- SOTTOSTANTE (vista sottostanti) ---
         const sig=pt.customdata[1];
         const s=_frHover.sottBySigla[sig];
-        if(s)extra.push(...cometaTraces(s,dateLimit,GOLD,sig,false));
+        if(s)extra.push(...cometaTraces(s,dateLimit,GOLD,sig,false,_frHover.dateFrom||null));
       }
 
       if(!extra.length)return;
@@ -2963,15 +3035,41 @@ function cometaTraces(serie,dateLimit,rgbHead,label,isCert,dateFrom){
   return out;
 }
 
+function updateFrRangeLabels(){
+  const a=document.getElementById('frStartLabel');
+  const b=document.getElementById('frEndLabel');
+  if(a)a.textContent=frDates[frStartIdx]?fmtDate(frDates[frStartIdx]):'—';
+  if(b)b.textContent=frDates[frEndIdx]?fmtDate(frDates[frEndIdx]):'—';
+}
+
 function initFrontierSlider(){
-  const sl=document.getElementById('frSlider');if(!sl)return;
-  sl.min=0;sl.max=Math.max(0,frDates.length-1);sl.value=frDateIdx;
-  sl.oninput=()=>{frDateIdx=parseInt(sl.value,10)||0;renderFrontier();};
-  // ticks: prima, metà, ultima data
-  const tc=document.getElementById('frTicks');
-  if(tc&&frDates.length){
-    const first=frDates[0],mid=frDates[Math.floor(frDates.length/2)],last=frDates[frDates.length-1];
-    tc.innerHTML=`<span>${fmtDate(first)}</span><span>${fmtDate(mid)}</span><span>${fmtDate(last)}</span>`;}
+  const slS=document.getElementById('frSliderStart');
+  const slE=document.getElementById('frSliderEnd');
+  if(!slS||!slE)return;
+  const maxI=Math.max(0,frDates.length-1);
+  slS.min=0;slS.max=maxI;slS.value=frStartIdx;
+  slE.min=0;slE.max=maxI;slE.value=frEndIdx;
+  // inizio non può superare fine (lascio almeno 1 punto di distanza)
+  slS.oninput=()=>{
+    let v=parseInt(slS.value,10)||0;
+    if(v>frEndIdx-1)v=Math.max(0,frEndIdx-1);
+    frStartIdx=v;slS.value=v;updateFrRangeLabels();renderFrontier();
+  };
+  slE.oninput=()=>{
+    let v=parseInt(slE.value,10)||0;
+    if(v<frStartIdx+1)v=Math.min(maxI,frStartIdx+1);
+    frEndIdx=v;slE.value=v;updateFrRangeLabels();renderFrontier();
+  };
+  updateFrRangeLabels();
+  // toggle annualizzato / non annualizzato
+  document.querySelectorAll('.fr-ann-seg button').forEach(b=>{
+    b.setAttribute('aria-pressed',(b.dataset.fa==='ann')===frAnn?'true':'false');
+    if(!b._bound){b._bound=true;b.addEventListener('click',()=>{
+      frAnn=(b.dataset.fa==='ann');
+      document.querySelectorAll('.fr-ann-seg button').forEach(x=>x.setAttribute('aria-pressed',(x.dataset.fa==='ann')===frAnn?'true':'false'));
+      renderFrontier();
+    });}
+  });
 }
 
 function setupFrontierFilters(){
