@@ -3071,8 +3071,10 @@ function cometaTraces(serie,dateLimit,rgbHead,label,isCert,dateFrom){
     idx.push(i);
   }
   if(idx.length<2)return [];   // serve almeno un breve tratto per la scia
-  const vs=idx.map(i=>allV[i]).filter(x=>x!=null&&isFinite(x));
-  const ms=idx.map(i=>allM[i]).filter(x=>x!=null&&isFinite(x));
+  // I valori rolling mean/vol sono FRAZIONI (es. 0.15); la vista principale ora è in
+  // PERCENTUALE (assi 0-70). Moltiplico ×100 per allineare la cometa alla scala.
+  const vs=idx.map(i=>allV[i]).filter(x=>x!=null&&isFinite(x)).map(x=>x*100);
+  const ms=idx.map(i=>allM[i]).filter(x=>x!=null&&isFinite(x)).map(x=>x*100);
   const n=Math.min(vs.length,ms.length);
   if(n<2)return [];
   const out=[];
