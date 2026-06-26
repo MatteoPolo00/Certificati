@@ -395,16 +395,26 @@
 
   /* slider frontier */
   .fr-slider-wrap{padding:18px 8px 6px}
-  #frSliderStart,#frSliderEnd{-webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:3px;
-    background:linear-gradient(90deg,var(--hair),var(--hair));outline:none;cursor:pointer}
-  #frSliderStart::-webkit-slider-thumb,#frSliderEnd::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:18px;height:18px;border-radius:50%;
-    background:var(--brass);border:3px solid var(--ink);box-shadow:0 0 0 1px var(--brass);cursor:pointer;transition:transform .12s}
-  #frSliderStart::-webkit-slider-thumb:hover,#frSliderEnd::-webkit-slider-thumb:hover{transform:scale(1.15)}
-  #frSliderStart::-moz-range-thumb,#frSliderEnd::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:var(--brass);border:3px solid var(--ink);box-shadow:0 0 0 1px var(--brass);cursor:pointer}
-  .fr-range{margin-top:14px;display:flex;flex-direction:column;gap:11px}
-  .fr-range-row{display:flex;align-items:center;gap:12px}
-  .fr-range-lbl{font-family:"Inter",sans-serif;font-size:11px;font-weight:600;color:var(--muted);width:22px;flex:none;text-align:right}
-  .fr-range-val{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--brass-bright);width:96px;flex:none;text-align:right}
+  /* slider a doppia maniglia (range) per intervallo frontier */
+  .fr-range2{margin-top:16px}
+  .fr-range2-head{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:12px}
+  .fr-range2-val{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--brass-bright);font-weight:600}
+  .fr-range2-sep{color:var(--faint);font-size:12px}
+  .dual-slider{position:relative;height:20px}
+  .dual-track{position:absolute;top:8px;left:0;right:0;height:4px;border-radius:3px;background:var(--hair)}
+  .dual-fill{position:absolute;top:8px;height:4px;border-radius:3px;
+    background:linear-gradient(90deg,rgba(184,151,90,.55),rgba(184,151,90,.85))}
+  /* i due input occupano lo stesso spazio; trasparenti, ricevono il puntatore solo sul thumb */
+  .dual-slider input[type=range]{position:absolute;top:0;left:0;width:100%;height:20px;margin:0;
+    -webkit-appearance:none;appearance:none;background:none;pointer-events:none}
+  .dual-slider input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
+    width:18px;height:18px;border-radius:50%;background:var(--brass);border:3px solid var(--ink);
+    box-shadow:0 0 0 1px var(--brass),0 2px 6px rgba(0,0,0,.4);cursor:pointer;pointer-events:auto;transition:transform .12s}
+  .dual-slider input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.15)}
+  .dual-slider input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;
+    background:var(--brass);border:3px solid var(--ink);box-shadow:0 0 0 1px var(--brass);cursor:pointer;pointer-events:auto}
+  .dual-slider input[type=range]::-webkit-slider-runnable-track{background:none;border:none}
+  .dual-slider input[type=range]::-moz-range-track{background:none;border:none}
   .fr-ann-seg button{font-size:11px}
 
   .foot{margin-top:30px;border-top:1px solid var(--hair-soft);padding-top:22px;display:flex;justify-content:space-between;align-items:flex-end;gap:18px;flex-wrap:wrap}
@@ -508,8 +518,8 @@
     .subtabs::-webkit-scrollbar{display:none}
     .subtabs button{flex-shrink:0}
     /* Slider frontier: thumb più grande per il dito */
-    #frSliderStart::-webkit-slider-thumb,#frSliderEnd::-webkit-slider-thumb{width:22px;height:22px}
-    #frSliderStart::-moz-range-thumb,#frSliderEnd::-moz-range-thumb{width:22px;height:22px}
+    .dual-slider input[type=range]::-webkit-slider-thumb{width:22px;height:22px}
+    .dual-slider input[type=range]::-moz-range-thumb{width:22px;height:22px}
     /* Paginazione: centrata e ariosa */
     .pager{flex-wrap:wrap;gap:8px;justify-content:center}
     /* Card padding ridotto */
@@ -783,16 +793,17 @@
         </div>
       </div>
       <div id="chartFrontier" class="plot tall"></div>
-      <div class="fr-range">
-        <div class="fr-range-row">
-          <span class="fr-range-lbl">Da</span>
-          <input type="range" id="frSliderStart" min="0" max="0" value="0" step="1">
-          <span class="fr-range-val" id="frStartLabel">—</span>
+      <div class="fr-range2">
+        <div class="fr-range2-head">
+          <span class="fr-range2-val" id="frStartLabel">—</span>
+          <span class="fr-range2-sep">→</span>
+          <span class="fr-range2-val" id="frEndLabel">—</span>
         </div>
-        <div class="fr-range-row">
-          <span class="fr-range-lbl">A</span>
+        <div class="dual-slider" id="frDual">
+          <div class="dual-track"></div>
+          <div class="dual-fill" id="frDualFill"></div>
+          <input type="range" id="frSliderStart" min="0" max="0" value="0" step="1">
           <input type="range" id="frSliderEnd" min="0" max="0" value="0" step="1">
-          <span class="fr-range-val" id="frEndLabel">—</span>
         </div>
       </div>
     </div>
@@ -3040,6 +3051,13 @@ function updateFrRangeLabels(){
   const b=document.getElementById('frEndLabel');
   if(a)a.textContent=frDates[frStartIdx]?fmtDate(frDates[frStartIdx]):'—';
   if(b)b.textContent=frDates[frEndIdx]?fmtDate(frDates[frEndIdx]):'—';
+  // aggiorno la barra di riempimento tra le due maniglie
+  const fill=document.getElementById('frDualFill');
+  const maxI=Math.max(1,frDates.length-1);
+  if(fill){
+    const l=(frStartIdx/maxI)*100, r=(frEndIdx/maxI)*100;
+    fill.style.left=l+'%';fill.style.width=(r-l)+'%';
+  }
 }
 
 function initFrontierSlider(){
@@ -3049,17 +3067,21 @@ function initFrontierSlider(){
   const maxI=Math.max(0,frDates.length-1);
   slS.min=0;slS.max=maxI;slS.value=frStartIdx;
   slE.min=0;slE.max=maxI;slE.value=frEndIdx;
-  // inizio non può superare fine (lascio almeno 1 punto di distanza)
+  // maniglia inizio: non può superare (fine - 1)
   slS.oninput=()=>{
     let v=parseInt(slS.value,10)||0;
     if(v>frEndIdx-1)v=Math.max(0,frEndIdx-1);
     frStartIdx=v;slS.value=v;updateFrRangeLabels();renderFrontier();
   };
+  // maniglia fine: non può scendere sotto (inizio + 1)
   slE.oninput=()=>{
     let v=parseInt(slE.value,10)||0;
     if(v<frStartIdx+1)v=Math.min(maxI,frStartIdx+1);
     frEndIdx=v;slE.value=v;updateFrRangeLabels();renderFrontier();
   };
+  // porto in primo piano la maniglia che si sta toccando (così non resta "sotto" l'altra)
+  slS.onpointerdown=()=>{slS.style.zIndex=5;slE.style.zIndex=4;};
+  slE.onpointerdown=()=>{slE.style.zIndex=5;slS.style.zIndex=4;};
   updateFrRangeLabels();
   // toggle annualizzato / non annualizzato
   document.querySelectorAll('.fr-ann-seg button').forEach(b=>{
