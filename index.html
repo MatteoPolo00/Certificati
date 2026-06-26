@@ -396,6 +396,18 @@
   /* slider frontier */
   .fr-slider-wrap{padding:18px 8px 6px}
   /* slider a doppia maniglia (range) per intervallo frontier */
+  .fr-chart-wrap{position:relative}
+  .fr-minimap{position:absolute;left:10px;bottom:10px;width:120px;height:90px;
+    background:rgba(8,11,15,.82);border:1px solid var(--hair);border-radius:8px;
+    cursor:pointer;overflow:hidden;transition:border-color .15s,transform .12s,box-shadow .15s;z-index:3}
+  .fr-minimap:hover{border-color:rgba(184,151,90,.6);transform:scale(1.04);box-shadow:0 4px 14px rgba(0,0,0,.4)}
+  .fr-minimap.active{border-color:var(--brass);box-shadow:0 0 0 1px var(--brass)}
+  .fr-minimap svg{width:100%;height:100%;display:block}
+  .fr-minimap-cap{position:absolute;left:0;right:0;bottom:0;text-align:center;
+    font-family:"IBM Plex Mono",monospace;font-size:8px;letter-spacing:.04em;color:var(--faint);
+    background:rgba(8,11,15,.7);padding:2px 0;text-transform:uppercase}
+  .fr-minimap.active .fr-minimap-cap{color:var(--brass-bright)}
+  @media (max-width:600px){.fr-minimap{width:92px;height:70px}}
   .fr-range2{margin-top:16px}
   .fr-range2-head{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:12px}
   .fr-range2-val{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--brass-bright);font-weight:600}
@@ -792,7 +804,13 @@
           </div>
         </div>
       </div>
-      <div id="chartFrontier" class="plot tall"></div>
+      <div class="fr-chart-wrap">
+        <div id="chartFrontier" class="plot tall"></div>
+        <div class="fr-minimap" id="frMinimap" title="Vista completa — clic per espandere">
+          <svg id="frMinimapSvg" viewBox="0 0 120 90" preserveAspectRatio="none" aria-hidden="true"></svg>
+          <div class="fr-minimap-cap">vista completa</div>
+        </div>
+      </div>
       <div class="fr-range2">
         <div class="fr-range2-head">
           <span class="fr-range2-val" id="frStartLabel">—</span>
@@ -2601,6 +2619,7 @@ function highlightCertPeriod(cert){
 let FRONTIER=null, frDates=[], frDateIdx=0;
 let frStartIdx=0, frEndIdx=0;   // indici inizio/fine intervallo (Strada 2)
 let frAnn=false;                // false = rendimento sul periodo, true = annualizzato
+let frFullView=false;           // false = limiti fissi; true = autorange (vista completa)
 const frFilters={q:'',emit:'',struct:'',sott:''};
 let frColorBy={field:'',value:''};   // caratteristica + valore da evidenziare in rosso
 let frShow='cert';   // 'cert' | 'sott' | 'both'
@@ -2920,14 +2939,27 @@ function renderFrontier(){
   L.yaxis.zeroline=true;L.yaxis.zerolinecolor='rgba(184,151,90,.6)';L.yaxis.zerolinewidth=2;
   // niente linea verticale/orizzontale al passaggio del mouse: è uno scatter, non una serie temporale
   L.xaxis.showspikes=false;L.yaxis.showspikes=false;
-  // intervallo arbitrario → i rendimenti variano molto: autorange con margine
-  L.yaxis.autorange=true;L.xaxis.autorange=true;L.xaxis.rangemode='tozero';
+  // Scala: valori in %. Vista fissa (default) rend ±70%, vol 0-70%.
+  // Con frFullView=true passo ad autorange per vedere anche i punti fuori scala.
+  if(frFullView){
+    L.yaxis.autorange=true;L.xaxis.autorange=true;L.xaxis.rangemode='tozero';
+  }else{
+    L.yaxis.range=[-70,70];L.yaxis.autorange=false;
+    L.xaxis.range=[0,70];L.xaxis.autorange=false;
+  }
   L.hovermode='closest';   // tooltip sul punto, non righe verticali/orizzontali
   L.annotations=[
     {xref:'paper',yref:'paper',x:1,y:0,ax:-18,ay:0,xanchor:'left',yanchor:'middle',text:'',showarrow:true,arrowhead:2,arrowsize:1.4,arrowwidth:1.5,arrowcolor:'rgba(184,151,90,.6)'},
     {xref:'paper',yref:'paper',x:0,y:1,ax:0,ay:18,xanchor:'center',yanchor:'bottom',text:'',showarrow:true,arrowhead:2,arrowsize:1.4,arrowwidth:1.5,arrowcolor:'rgba(184,151,90,.6)'}];
   L.margin={l:70,r:30,t:20,b:60};L.showlegend=false;
   Plotly.react('chartFrontier',traces,L,PCFG);forceRedraw('chartFrontier');
+
+  // Mini-mappa: tutti i punti visibili (cert selezionati/altri + sottostanti mostrati)
+  const miniPts=[];
+  for(let i=0;i<othX.length;i++)miniPts.push({x:othX[i],y:othY[i],c:'base'});
+  for(let i=0;i<selX.length;i++)miniPts.push({x:selX[i],y:selY[i],c:'sel'});
+  if(showSott)Object.values(sottPos).forEach(o=>miniPts.push({x:o.v,y:o.m,c:'sott'}));
+  renderMinimap(miniPts);
 
   // Click su un punto → apri la scheda prodotto
   const gd=document.getElementById('chartFrontier');
@@ -3071,6 +3103,43 @@ function updateFrRangeLabels(){
   }
 }
 
+// Disegna la mini-mappa nell'angolo: TUTTI i punti dell'intervallo con scala propria
+// (così si vedono anche quelli fuori dai limiti fissi della vista principale).
+function renderMinimap(pts){
+  const svg=document.getElementById('frMinimapSvg');
+  const box=document.getElementById('frMinimap');
+  if(!svg||!box)return;
+  box.classList.toggle('active',frFullView);
+  if(!pts||!pts.length){svg.innerHTML='';return;}
+  // estremi dei dati (con piccolo margine)
+  let xmin=Infinity,xmax=-Infinity,ymin=Infinity,ymax=-Infinity;
+  pts.forEach(p=>{if(p.x<xmin)xmin=p.x;if(p.x>xmax)xmax=p.x;if(p.y<ymin)ymin=p.y;if(p.y>ymax)ymax=p.y;});
+  if(!isFinite(xmin)){svg.innerHTML='';return;}
+  const padX=(xmax-xmin)*0.08||1, padY=(ymax-ymin)*0.08||1;
+  xmin-=padX;xmax+=padX;ymin-=padY;ymax+=padY;
+  const W=120,H=90;
+  const sx=v=>((v-xmin)/(xmax-xmin))*W;
+  const sy=v=>H-((v-ymin)/(ymax-ymin))*H;   // y invertita (rendimento alto = su)
+  const col={base:'rgba(90,130,170,.75)',sel:'rgba(217,131,115,.95)',sott:'rgba(184,151,90,.9)'};
+  let s='';
+  // riquadro che marca l'area dei limiti fissi (rend ±70, vol 0-70) dentro la minimappa
+  const rx0=sx(0),rx1=sx(70),ry0=sy(70),ry1=sy(-70);
+  s+='<rect x="'+Math.min(rx0,rx1)+'" y="'+Math.min(ry0,ry1)+'" width="'+Math.abs(rx1-rx0)+
+     '" height="'+Math.abs(ry1-ry0)+'" fill="rgba(184,151,90,.08)" stroke="rgba(184,151,90,.4)" stroke-width="0.6"/>';
+  // punti
+  pts.forEach(p=>{s+='<circle cx="'+sx(p.x).toFixed(1)+'" cy="'+sy(p.y).toFixed(1)+'" r="1.3" fill="'+(col[p.c]||col.base)+'"/>';});
+  svg.innerHTML=s;
+}
+
+function bindMinimap(){
+  const box=document.getElementById('frMinimap');
+  if(!box||box._bound)return;box._bound=true;
+  box.addEventListener('click',()=>{
+    frFullView=!frFullView;        // alterna limiti fissi / vista completa
+    renderFrontier();
+  });
+}
+
 function initFrontierSlider(){
   const slS=document.getElementById('frSliderStart');
   const slE=document.getElementById('frSliderEnd');
@@ -3162,7 +3231,7 @@ function setupFrontierFilters(){
 let frontierReady=false;
 function openFrontier(){
   loadFrontier().then(()=>{
-    if(!frontierReady){setupFrontierFilters();initFrontierSlider();frontierReady=true;}
+    if(!frontierReady){setupFrontierFilters();initFrontierSlider();bindMinimap();frontierReady=true;}
     renderFrontier();
     setTimeout(()=>{try{Plotly.Plots.resize('chartFrontier');}catch(e){}},80);});
 }
