@@ -397,28 +397,31 @@
   .fr-slider-wrap{padding:18px 8px 6px}
   /* slider a doppia maniglia (range) per intervallo frontier */
   .fr-chart-wrap{position:relative}
-  .fr-minimap{position:absolute;left:10px;bottom:10px;width:120px;height:90px;
+  .fr-minimap{position:absolute;left:10px;bottom:10px;width:165px;height:124px;
     background:rgba(8,11,15,.82);border:1px solid var(--hair);border-radius:8px;
     cursor:pointer;overflow:hidden;transition:border-color .15s,transform .12s,box-shadow .15s;z-index:3}
   .fr-minimap:hover{border-color:rgba(184,151,90,.6);transform:scale(1.04);box-shadow:0 4px 14px rgba(0,0,0,.4)}
   .fr-minimap.active{border-color:var(--brass);box-shadow:0 0 0 1px var(--brass)}
   .fr-minimap svg{width:100%;height:100%;display:block}
   .fr-minimap-cap{position:absolute;left:0;right:0;bottom:0;text-align:center;
-    font-family:"IBM Plex Mono",monospace;font-size:8px;letter-spacing:.04em;color:var(--faint);
-    background:rgba(8,11,15,.7);padding:2px 0;text-transform:uppercase}
+    font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:.04em;color:var(--faint);
+    background:rgba(8,11,15,.7);padding:3px 0;text-transform:uppercase}
   .fr-minimap.active .fr-minimap-cap{color:var(--brass-bright)}
-  @media (max-width:600px){.fr-minimap{width:92px;height:70px}}
+  @media (max-width:600px){.fr-minimap{width:120px;height:90px}}
   .fr-range2{margin-top:16px}
   .fr-range2-head{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:12px}
   .fr-range2-val{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--brass-bright);font-weight:600}
   .fr-range2-sep{color:var(--faint);font-size:12px}
   .dual-slider{position:relative;height:20px}
   .dual-track{position:absolute;top:8px;left:0;right:0;height:4px;border-radius:3px;background:var(--hair)}
-  .dual-fill{position:absolute;top:8px;height:4px;border-radius:3px;
-    background:linear-gradient(90deg,rgba(184,151,90,.55),rgba(184,151,90,.85))}
+  .dual-fill{position:absolute;top:6px;height:8px;border-radius:4px;
+    background:linear-gradient(90deg,rgba(184,151,90,.55),rgba(184,151,90,.85));
+    cursor:grab;pointer-events:auto;z-index:1}
+  .dual-fill:active{cursor:grabbing}
+  .dual-fill.dragging{background:linear-gradient(90deg,rgba(184,151,90,.75),rgba(184,151,90,1))}
   /* i due input occupano lo stesso spazio; trasparenti, ricevono il puntatore solo sul thumb */
   .dual-slider input[type=range]{position:absolute;top:0;left:0;width:100%;height:20px;margin:0;
-    -webkit-appearance:none;appearance:none;background:none;pointer-events:none}
+    -webkit-appearance:none;appearance:none;background:none;pointer-events:none;z-index:2}
   .dual-slider input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
     width:18px;height:18px;border-radius:50%;background:var(--brass);border:3px solid var(--ink);
     box-shadow:0 0 0 1px var(--brass),0 2px 6px rgba(0,0,0,.4);cursor:pointer;pointer-events:auto;transition:transform .12s}
@@ -428,6 +431,8 @@
   .dual-slider input[type=range]::-webkit-slider-runnable-track{background:none;border:none}
   .dual-slider input[type=range]::-moz-range-track{background:none;border:none}
   .fr-ann-seg button{font-size:11px}
+  /* badge giorni intervallo: più grande del badge standard */
+  #frCount{font-size:12px;letter-spacing:.06em;padding:3px 10px;text-transform:none}
 
   .foot{margin-top:30px;border-top:1px solid var(--hair-soft);padding-top:22px;display:flex;justify-content:space-between;align-items:flex-end;gap:18px;flex-wrap:wrap}
   .foot .method{font-size:11.5px;color:var(--faint);line-height:1.7;max-width:60ch}
@@ -2846,10 +2851,12 @@ function renderFrontier(){
 
   const vis=showCert?frVisible():[];
   const sottAll=showSott?frontierSottostanti():[];
-  document.getElementById('frCount').textContent=
-    (showCert?vis.length+' certificati':'')+
-    (showCert&&showSott?' · ':'')+
-    (showSott?sottAll.length+' sottostanti':'');
+  // Badge: durata dell'intervallo selezionato in giorni (più informativo del conteggio).
+  const dS=frDates[frStartIdx],dE=frDates[frEndIdx];
+  let giorniInt=0;
+  if(dS&&dE)giorniInt=Math.round((Date.parse(dE)-Date.parse(dS))/86400000);
+  const badge=document.getElementById('frCount');
+  if(badge)badge.textContent=giorniInt>0?(giorniInt+' giorni'):'—';
 
   // Colorazione certificati: selezionati ROSSI, resto BLU. Mai arcobaleno.
   const SEL='rgba(217,131,115,.92)';
@@ -3162,6 +3169,39 @@ function initFrontierSlider(){
   // porto in primo piano la maniglia che si sta toccando (così non resta "sotto" l'altra)
   slS.onpointerdown=()=>{slS.style.zIndex=5;slE.style.zIndex=4;};
   slE.onpointerdown=()=>{slE.style.zIndex=5;slS.style.zIndex=4;};
+
+  // --- Drag dell'intervallo: trascino la barra dorata mantenendo l'ampiezza ---
+  const fill=document.getElementById('frDualFill');
+  const dual=document.getElementById('frDual');
+  if(fill&&dual&&!fill._dragBound){
+    fill._dragBound=true;
+    let dragging=false,startX=0,startStart=0,width=0;
+    fill.addEventListener('pointerdown',e=>{
+      dragging=true;width=frEndIdx-frStartIdx;startStart=frStartIdx;
+      startX=e.clientX;fill.classList.add('dragging');
+      fill.setPointerCapture(e.pointerId);e.preventDefault();
+    });
+    fill.addEventListener('pointermove',e=>{
+      if(!dragging)return;
+      const rect=dual.getBoundingClientRect();
+      const maxI=Math.max(1,frDates.length-1);
+      // sposto in unità di "indice" in base allo spostamento in pixel
+      const deltaIdx=Math.round(((e.clientX-startX)/rect.width)*maxI);
+      let ns=startStart+deltaIdx;
+      ns=Math.max(0,Math.min(ns,maxI-width));   // resto nei limiti mantenendo l'ampiezza
+      const ne=ns+width;
+      if(ns!==frStartIdx||ne!==frEndIdx){
+        frStartIdx=ns;frEndIdx=ne;
+        slS.value=ns;slE.value=ne;
+        updateFrRangeLabels();renderFrontier();
+      }
+    });
+    const endDrag=e=>{if(dragging){dragging=false;fill.classList.remove('dragging');
+      try{fill.releasePointerCapture(e.pointerId);}catch(_){}}};
+    fill.addEventListener('pointerup',endDrag);
+    fill.addEventListener('pointercancel',endDrag);
+  }
+
   updateFrRangeLabels();
   // toggle annualizzato / non annualizzato
   document.querySelectorAll('.fr-ann-seg button').forEach(b=>{
