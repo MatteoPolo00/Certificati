@@ -914,7 +914,7 @@
           <div id="calWrap" class="caltable-wrap"></div>
         </div>
         <!-- vista cedole non erogate (fondo memory) -->
-        <div id="memView" hidden>
+        <div id="memView" style="display:none">
           <div class="mem-block">
             <div class="mem-lbl">Fondo memory accumulato</div>
             <div id="chartMemFondo" class="plot mem-plot"></div>
@@ -1627,8 +1627,9 @@ function applyCalView(r){
   const showMem=(calView==='mem'&&memHasData(r));
   // aggiorno lo stato visivo dei bottoni
   if(seg)seg.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x.dataset.cv===calView?'true':'false'));
-  if(calV)calV.hidden=showMem;
-  if(memV)memV.hidden=!showMem;
+  // uso style.display esplicito: più robusto dell'attributo hidden (che alcune regole CSS sovrascrivono)
+  if(calV)calV.style.display=showMem?'none':'';
+  if(memV)memV.style.display=showMem?'':'none';
   if(title)title.textContent=showMem?'Cedole non erogate':'Calendario cedole e autocall';
   if(showMem)renderMemoryCharts(r);
 }
