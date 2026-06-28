@@ -510,6 +510,17 @@
   .mtable td{font-variant-numeric:tabular-nums}
   /* Riga tabella: feedback tap più morbido */
   .mtable tbody tr:active{background:var(--panel-2)}
+  /* chip livello di rischio (1-7) nella tabella Monitor */
+  .risk-chip{display:inline-block;min-width:20px;padding:2px 7px;border-radius:5px;
+    font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:600;text-align:center;
+    border:1px solid transparent}
+  .risk-1{color:#6FBF8F;background:rgba(111,191,143,.12);border-color:rgba(111,191,143,.3)}
+  .risk-2{color:#8CC07A;background:rgba(140,192,122,.12);border-color:rgba(140,192,122,.3)}
+  .risk-3{color:#C7C074;background:rgba(199,192,116,.12);border-color:rgba(199,192,116,.3)}
+  .risk-4{color:#D6B45A;background:rgba(214,180,90,.13);border-color:rgba(214,180,90,.32)}
+  .risk-5{color:#D99A6C;background:rgba(217,154,108,.13);border-color:rgba(217,154,108,.32)}
+  .risk-6{color:#D98373;background:rgba(217,131,115,.14);border-color:rgba(217,131,115,.34)}
+  .risk-7{color:#D9706B;background:rgba(217,112,107,.16);border-color:rgba(217,112,107,.38)}
 
   /* ============ MOBILE (≤760px) ============ */
   @media (max-width:760px){
@@ -672,7 +683,7 @@
   <nav class="mainnav rise" id="mainnav" style="--d:.06s">
     <button data-nav="monitor" aria-pressed="true">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/><circle cx="7" cy="6" r="1.4" fill="currentColor" stroke="none"/><circle cx="13" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="9" cy="18" r="1.4" fill="currentColor" stroke="none"/></svg>
-      <span>Monitor</span>
+      <span>Certificates Monitor</span>
     </button>
     <button data-nav="sottostanti" aria-pressed="false">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="14.5" width="7" height="6" rx="1.2"/><rect x="13.5" y="14.5" width="7" height="6" rx="1.2"/><rect x="8.5" y="3.5" width="7" height="6" rx="1.2" fill="currentColor" stroke="none" opacity="0.85"/><line x1="12" y1="9.5" x2="12" y2="14.5" opacity="0.5"/><line x1="7" y1="14.5" x2="10" y2="9.5" opacity="0.5"/><line x1="17" y1="14.5" x2="14" y2="9.5" opacity="0.5"/></svg>
@@ -1241,12 +1252,13 @@ DEMO.forEach((r,i)=>{const yr=2026+(i%4);r.scadenza=`${yr}-${String(3+i%9).padSt
       md.push(d.toISOString().slice(0,10));fm.push(0);pb.push(0);}
     r.memory={has:true,accumulo:false,dates:md,fondo:fm,prob:pb};
   }
-  // serie rischio demo sui primi due certificati
-  if(i<2){
+  // serie rischio demo su tutti i certificati (per popolare la colonna Rischio)
+  {
     const rd=[],rv=[];const base=new Date(2023,0,1);
+    const target=3+(i%5);   // rischio finale diverso per certificato (3..7)
     for(let k=0;k<30;k++){const d=new Date(base);d.setMonth(d.getMonth()+k);
       rd.push(d.toISOString().slice(0,10));
-      rv.push(Math.max(1,Math.min(7,Math.round(4+2*Math.sin(k/4)))));}
+      rv.push(Math.max(1,Math.min(7,Math.round(target+1.2*Math.sin(k/4)))));}
     r.rischio_serie={has:true,dates:rd,valori:rv};
   }});
 
@@ -1437,6 +1449,17 @@ function drawChart(id,traces,layout){
   }catch(e){}});
 }
 function lastNum(a){if(!a)return null;for(let i=a.length-1;i>=0;i--){if(a[i]!=null&&!Number.isNaN(a[i]))return a[i];}return null;}
+// Ultimo valore della metrica di rischio (1-7). Fonte primaria: serie rischio_serie;
+// fallback: campo rischio scalare se presente nel record.
+function riskLast(r){
+  const rs=r&&r.rischio_serie;
+  if(rs&&rs.has&&Array.isArray(rs.valori)){
+    const v=lastNum(rs.valori);
+    if(v!=null)return Math.round(v);
+  }
+  if(r&&r.rischio!=null&&!Number.isNaN(+r.rischio))return Math.round(+r.rischio);
+  return null;
+}
 function fmtPct(v){return (v>0?'+':'')+v.toFixed(2)+'%';}
 function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 function cedolaNum(c){if(c==null)return NaN;if(Array.isArray(c))return c.length?+c[0]:NaN;return +c;}
@@ -1481,6 +1504,7 @@ const COLS=[
   {key:'isin',label:'ISIN',cls:'isincell',get:r=>esc(r.isin),sort:r=>r.isin||'',num:false},
   {key:'emittente',label:'Emittente',cls:'clip',get:r=>esc(r.emittente||'—'),sort:r=>r.emittente||'',num:false},
   {key:'struttura',label:'Struttura',cls:'clip',get:r=>esc(r.struttura||'—'),sort:r=>r.struttura||'',num:false},
+  {key:'rischio',label:'Rischio',cls:'num',html:true,get:r=>{const v=riskLast(r);return v==null?'<span class="mkna">—</span>':`<span class="risk-chip risk-${v}">${v}</span>`;},sort:r=>{const v=riskLast(r);return v==null?-1:v;},num:true},
   {key:'sottostanti',label:'Sottostanti',cls:'dim',get:r=>esc((r.sottostanti||[]).join(', ')||'—'),tip:r=>(r.sottostanti||[]).map(nameOf).join(', '),sort:r=>(r.sottostanti||[]).join(','),num:false},
   {key:'scadenza',label:'Scadenza',cls:'',get:r=>esc(r.scadenza||'—'),sort:r=>r.scadenza||'',num:false},
   {key:'cedola',label:'Cedola',cls:'num',get:r=>fmtCedola(r.cedola),sort:r=>cedolaNum(r.cedola),num:true},
@@ -1770,6 +1794,7 @@ const EXPORT_COLS=[
   {key:'isin',label:'ISIN',get:r=>r.isin||'',def:true},
   {key:'emittente',label:'Emittente',get:r=>r.emittente||'',def:true},
   {key:'struttura',label:'Struttura',get:r=>r.struttura||'',def:true},
+  {key:'rischio',label:'Rischio',get:r=>{const v=riskLast(r);return v==null?'':v;},def:true},
   {key:'sottostanti',label:'Sottostanti',get:r=>(r.sottostanti||[]).join(', '),def:true},
   {key:'scadenza',label:'Scadenza',get:r=>r.scadenza||'',def:true},
   {key:'cedola',label:'Cedola',get:r=>cedolaNum(r.cedola)||'',def:true},
