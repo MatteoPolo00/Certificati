@@ -448,6 +448,7 @@
   .mem-block+.mem-block{margin-top:18px}
   .mem-lbl{font-family:"Inter",sans-serif;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:8px}
   .mem-plot{width:100%;height:230px}
+  .rend-seg button{font-size:11px}
   .mem-empty{text-align:center;padding:56px 20px;font-family:"Inter",sans-serif;font-size:15px;font-weight:600;color:var(--muted)}
   .mem-empty-sub{font-size:12.5px;font-weight:400;color:var(--faint);margin-top:8px}
   /* scheda barriere sopra il calendario */
@@ -965,10 +966,17 @@
       <div id="rv-mean">
         <div class="card chart-card">
           <div class="chart-head">
-            <div class="t">Rendimento annualizzato rolling <span class="badge">252 gg</span></div>
-            <div class="hd-right"><span class="h">media mobile · % ann.</span></div>
+            <div class="hd-left">
+              <div class="t" id="rendMeanTitle">Serie storiche normalizzate</div>
+              <div class="seg rend-seg" id="rendSeg" role="group" aria-label="Vista rendimento">
+                <button data-rv="norm" aria-pressed="true">Normalizzato</button>
+                <button data-rv="roll" aria-pressed="false">Rolling</button>
+              </div>
+            </div>
+            <div class="hd-right"><span class="h" id="rendMeanSub">base 1 · serie storiche</span></div>
           </div>
-          <div id="chartRollMean" class="plot plot-fadein"></div>
+          <div id="chartNorm" class="plot plot-fadein"></div>
+          <div id="chartRollMean" class="plot plot-fadein" style="display:none"></div>
         </div>
       </div>
       <div id="rv-vol" hidden>
@@ -998,7 +1006,12 @@
       </div>
     </div>
     <div class="subview" id="sv-autocall" hidden><div class="card placeholder">Vista <b>Autocall</b> — in arrivo.</div></div>
-    <div class="subview" id="sv-rischio" hidden><div class="card placeholder">Vista <b>Rischio</b> — in arrivo.</div></div>
+    <div class="subview" id="sv-rischio" hidden>
+      <div class="card chart-card">
+        <div class="chart-head"><div class="t">Misura di rischio dinamica <span class="badge">scala 1-7</span></div></div>
+        <div id="chartRischio" class="plot ov-tall"></div>
+      </div>
+    </div>
     <div class="subview" id="sv-var" hidden>
       <div class="card chart-card">
         <div class="chart-head">
@@ -1227,7 +1240,46 @@ DEMO.forEach((r,i)=>{const yr=2026+(i%4);r.scadenza=`${yr}-${String(3+i%9).padSt
     for(let k=0;k<24;k++){const d=new Date(base);d.setMonth(d.getMonth()+k);
       md.push(d.toISOString().slice(0,10));fm.push(0);pb.push(0);}
     r.memory={has:true,accumulo:false,dates:md,fondo:fm,prob:pb};
+  }
+  // serie rischio demo sui primi due certificati
+  if(i<2){
+    const rd=[],rv=[];const base=new Date(2023,0,1);
+    for(let k=0;k<30;k++){const d=new Date(base);d.setMonth(d.getMonth()+k);
+      rd.push(d.toISOString().slice(0,10));
+      rv.push(Math.max(1,Math.min(7,Math.round(4+2*Math.sin(k/4)))));}
+    r.rischio_serie={has:true,dates:rd,valori:rv};
   }});
+
+// Demo: precarico rendCache per i primi due certificati con serie normalizzate sintetiche
+// (così la vista "Normalizzato" della scheda Rendimento è testabile senza file).
+const _demoRendCache={};
+DEMO.slice(0,2).forEach((r,i)=>{
+  const dts=[],cert=[],idx=[],equi=[],a1=[],a2=[],ac=[];const base=new Date(2021,0,1);
+  for(let k=0;k<260;k++){const d=new Date(base);d.setDate(d.getDate()+k*5);
+    dts.push(d.toISOString().slice(0,10));
+    const t=k/52;
+    cert.push(+(1+0.10*Math.sin(t*1.4)+0.04*t).toFixed(4));
+    idx.push(+(1+0.14*Math.sin(t*1.1+0.5)+0.05*t).toFixed(4));
+    equi.push(+(1+0.16*Math.sin(t*1.6+1)+0.03*t).toFixed(4));
+    a1.push(+(1+0.22*Math.sin(t*1.9+2)+0.02*t).toFixed(4));
+    a2.push(+(1+0.26*Math.sin(t*2.2+0.3)-0.01*t).toFixed(4));
+    ac.push(k<60?null:+(1.0-0.0006*(k-60)).toFixed(3));   // autocall discendente
+  }
+  const serie=[
+    {label:'Certificato',tipo:'cert',valori:cert},
+    {label:'Indice',tipo:'indice',valori:idx},
+    {label:'Equipesato',tipo:'equi',valori:equi},
+    {label:r.sottostanti[0]||'A1',tipo:'asset',valori:a1},
+    {label:r.sottostanti[1]||'A2',tipo:'asset',valori:a2}];
+  _demoRendCache[r.isin]={isin:r.isin,
+    rendimento_dates:dts,rendimento_labels:['Certificato','Indice'],
+    rendimento_mean:[cert.map(()=>0.05),idx.map(()=>0.06)],rendimento_vol:[cert.map(()=>0.12),idx.map(()=>0.14)],
+    is_benchmark:[false,true],scatter_mean:[0.05,0.06],scatter_vol:[0.12,0.14],scatter_labels:['Certificato','Indice'],
+    var:{has:false},
+    norm:{has:true,dates:dts,serie:serie,barriera_K:0.6,
+      autocall:ac,
+      cedola_dates:[dts[20],dts[70],dts[120],dts[170],dts[220]],cedola:[0.7,0.7,0.7,0.7,0.7]}};
+});
 
 /* ---------- Plotly ---------- */
 const CSS=getComputedStyle(document.documentElement);
@@ -1842,6 +1894,93 @@ function renderRendimento(r){
 function fadeIn(id){const el=document.getElementById(id);if(!el)return;
   el.classList.remove('plot-fadein');void el.offsetWidth;el.classList.add('plot-fadein');}
 
+// ---- Vista "Normalizzato": serie storiche normalizzate + barriera/soglie ----
+let rendMeanView='norm';   // 'norm' (default) | 'roll'
+let _rendSegBound=false;
+function renderNorm(r){
+  const host=document.getElementById('chartNorm');if(!host)return;
+  const nm=r&&r.norm;
+  if(!nm||!nm.has||!Array.isArray(nm.serie)||!nm.serie.length){
+    host.innerHTML='<div class="mem-empty">Serie storiche non disponibili</div>';
+    return;
+  }
+  const dates=asArr(nm.dates);
+  const traces=[];
+  // stile per tipo: certificato rosso spesso, indice nero spesso,
+  // equipesato rosso sottile, sottostanti neri sottili
+  const styleOf={
+    cert:  {color:'rgba(217,131,115,.95)',width:2.2},
+    indice:{color:'rgba(232,237,241,.85)',width:2.2},   // "nero" → chiaro su sfondo scuro
+    equi:  {color:'rgba(217,131,115,.55)',width:0.9},
+    asset: {color:'rgba(140,155,168,.5)', width:0.8}
+  };
+  // disegno prima i sottostanti (sottili, sotto), poi equipesato, indice, certificato sopra
+  const order={asset:0,equi:1,indice:2,cert:3};
+  const sorted=nm.serie.slice().sort((a,b)=>(order[a.tipo]||0)-(order[b.tipo]||0));
+  sorted.forEach(s=>{
+    const st=styleOf[s.tipo]||styleOf.asset;
+    const showName=(s.tipo==='cert'||s.tipo==='indice'||s.tipo==='equi');
+    traces.push({x:dates,y:asArr(s.valori),mode:'lines',type:'scatter',
+      name:s.label,
+      line:{color:st.color,width:st.width,shape:'spline',smoothing:0.2},
+      hovertemplate:`<b>${esc(s.label)}</b>&nbsp;&nbsp;%{y:.3f}<extra></extra>`,
+      showlegend:showName});
+  });
+  // barriera K: linea orizzontale rossa tratteggiata
+  const shapes=[];
+  if(nm.barriera_K!=null&&isFinite(nm.barriera_K)){
+    shapes.push({type:'line',xref:'paper',x0:0,x1:1,yref:'y',y0:nm.barriera_K,y1:nm.barriera_K,
+      line:{color:'rgba(217,131,115,.8)',width:1.2,dash:'dash'}});
+  }
+  // soglia autocall: serie temporale (può essere discendente), linea sottile discreta
+  if(Array.isArray(nm.autocall)&&nm.autocall.length){
+    const ac=nm.autocall.map(v=>(v==null?null:v));
+    traces.push({x:dates,y:ac,mode:'lines',type:'scatter',name:'Soglia autocall',
+      line:{color:'rgba(232,237,241,.55)',width:1,dash:'dot',shape:'hv'},
+      hovertemplate:'Autocall&nbsp;&nbsp;%{y:.2f}<extra></extra>',showlegend:true,connectgaps:false});
+  }
+  // soglia cedola: sulle date dei pagamenti, linea sottile discreta a gradini
+  if(Array.isArray(nm.cedola)&&nm.cedola.length&&Array.isArray(nm.cedola_dates)){
+    const cd=nm.cedola.map(v=>(v==null?null:v));
+    traces.push({x:nm.cedola_dates,y:cd,mode:'lines',type:'scatter',name:'Soglia cedola',
+      line:{color:'rgba(184,151,90,.6)',width:1,dash:'dot',shape:'hv'},
+      hovertemplate:'Cedola&nbsp;&nbsp;%{y:.2f}<extra></extra>',showlegend:true,connectgaps:false});
+  }
+  const L=baseLayout();
+  L.xaxis.autorange=true;L.yaxis.autorange=true;
+  L.xaxis.showspikes=false;L.yaxis.showspikes=false;L.hovermode='closest';
+  L.showlegend=true;L.legend={orientation:'h',y:-0.18,x:0,
+    font:{size:11,color:C.muted,family:'Inter, system-ui, sans-serif'},
+    bgcolor:'rgba(0,0,0,0)',borderwidth:0,itemsizing:'constant',itemwidth:16};
+  L.margin={l:54,r:18,t:14,b:64};L.shapes=shapes;
+  whenSized('chartNorm',()=>{try{Plotly.purge(host);Plotly.newPlot(host,traces,L,PCFG);}catch(e){}});
+}
+
+// applica la vista mean (normalizzato vs rolling) e gestisce il toggle
+function applyRendMeanView(){
+  const cN=document.getElementById('chartNorm');
+  const cR=document.getElementById('chartRollMean');
+  const title=document.getElementById('rendMeanTitle');
+  const sub=document.getElementById('rendMeanSub');
+  const seg=document.getElementById('rendSeg');
+  const isNorm=(rendMeanView==='norm');
+  if(seg)seg.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x.dataset.rv===rendMeanView?'true':'false'));
+  if(cN)cN.style.display=isNorm?'':'none';
+  if(cR)cR.style.display=isNorm?'none':'';
+  if(title)title.textContent=isNorm?'Serie storiche normalizzate':'Rendimento annualizzato rolling';
+  if(sub)sub.textContent=isNorm?'base 1 · serie storiche':'media mobile · % ann.';
+  if(!current)return;
+  const rd=rendCache[current.isin];if(!rd)return;
+  if(isNorm){renderNorm(rd);}
+  else{setTimeout(()=>{try{Plotly.Plots.resize('chartRollMean');Plotly.relayout('chartRollMean',{'xaxis.autorange':true,'yaxis.autorange':true});}catch(e){}},60);}
+}
+function bindRendSeg(){
+  const seg=document.getElementById('rendSeg');if(!seg||_rendSegBound)return;_rendSegBound=true;
+  seg.querySelectorAll('button').forEach(b=>{
+    b.addEventListener('click',()=>{rendMeanView=b.dataset.rv;applyRendMeanView();});
+  });
+}
+
 let rendTab='mean',scatterWin='all';
 function setRendTab(t){rendTab=t;
   ['mean','vol','scatter'].forEach(k=>{const el=document.getElementById('rv-'+k);if(el)el.hidden=(k!==t);});
@@ -1851,7 +1990,7 @@ function setRendTab(t){rendTab=t;
   // rolling mean/vol: scala automatica. scatter: mantiene il suo range calcolato (solo resize).
   const doAuto=id=>setTimeout(()=>{try{Plotly.Plots.resize(id);Plotly.relayout(id,{'xaxis.autorange':true,'yaxis.autorange':true});}catch(e){}},60);
   const doResize=id=>setTimeout(()=>{try{Plotly.Plots.resize(id);}catch(e){}},60);
-  if(t==='mean')doAuto('chartRollMean');
+  if(t==='mean'){bindRendSeg();applyRendMeanView();}
   if(t==='vol')doAuto('chartRollVol');
   if(t==='scatter'){if(rd)renderScatterCometa(rd,scatterWin);doResize('chartScatter');}}
 
@@ -1859,6 +1998,11 @@ let rendCache={};
 function loadRendimento(r){
   const isin=r.isin;
   if(rendCache[isin]){renderRendimento(rendCache[isin]);setRendTab(rendTab);return;}
+  // in modalità demo uso i dati sintetici precaricati (se presenti per questo ISIN)
+  if(typeof _demoRendCache!=='undefined'&&_demoRendCache[isin]){
+    rendCache[isin]=_demoRendCache[isin];
+    renderRendimento(rendCache[isin]);setRendTab(rendTab);return;
+  }
   const isin_safe=isin.replace(/[^A-Za-z0-9]/g,'_');
   // Mostro stato di caricamento SENZA distruggere i div dei grafici
   const loadingEl=document.getElementById('rendLoading');
@@ -1877,7 +2021,8 @@ function loadRendimento(r){
         scatter_mean:      data.mean_tot||[],
         scatter_vol:       data.vol_tot||[],
         scatter_labels:    data.labels||[],
-        var:               data.var||{has:false}};
+        var:               data.var||{has:false},
+        norm:              data.norm||{has:false}};
       rendCache[isin]=assembled;
       renderRendimento(assembled);setRendTab(rendTab);})
     .catch(()=>{if(loadingEl){loadingEl.hidden=false;
@@ -2007,7 +2152,29 @@ function drawTab(t){
     loadRendimento(current);
   }else if(t==='var'){
     loadVar(current);
+  }else if(t==='rischio'){
+    renderRischioSerie(current);
   }
+}
+
+// ---- Vista Rischio: serie storica della misura di rischio dinamica (1-7) ----
+function renderRischioSerie(r){
+  const host=document.getElementById('chartRischio');if(!host)return;
+  const rs=r&&r.rischio_serie;
+  if(!rs||!rs.has){
+    host.innerHTML='<div class="mem-empty">Serie del rischio non disponibile</div>';
+    return;
+  }
+  const dates=asArr(rs.dates),val=asArr(rs.valori);
+  const tr=[{x:dates,y:val,mode:'lines',type:'scatter',
+    line:{color:'rgba(232,237,241,.92)',width:2.2,shape:'spline',smoothing:0.25},
+    hovertemplate:'<b>%{x|%d %b %Y}</b><br>Rischio&nbsp;&nbsp;<b>%{y:.0f}</b>/7<extra></extra>'}];
+  const L=baseLayout();
+  L.xaxis.autorange=true;L.yaxis.range=[0,8];L.yaxis.autorange=false;
+  L.yaxis.dtick=1;L.yaxis.tick0=0;   // tacche intere 0..7
+  L.margin={l:54,r:18,t:14,b:44};L.showlegend=false;
+  L.xaxis.showspikes=false;L.yaxis.showspikes=false;L.hovermode='x';
+  whenSized('chartRischio',()=>{try{Plotly.purge(host);Plotly.newPlot(host,tr,L,PCFG);}catch(e){}});
 }
 
 // ---- Vista VaR (percentili rolling dei rendimenti simulati) ----
