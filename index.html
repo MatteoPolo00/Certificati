@@ -448,6 +448,7 @@
   .mem-block+.mem-block{margin-top:18px}
   .mem-lbl{font-family:"Inter",sans-serif;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:8px}
   .mem-plot{width:100%;height:230px}
+  .rend-seg button{font-size:11px}
   .mem-empty{text-align:center;padding:56px 20px;font-family:"Inter",sans-serif;font-size:15px;font-weight:600;color:var(--muted)}
   .mem-empty-sub{font-size:12.5px;font-weight:400;color:var(--faint);margin-top:8px}
   /* scheda barriere sopra il calendario */
@@ -509,6 +510,17 @@
   .mtable td{font-variant-numeric:tabular-nums}
   /* Riga tabella: feedback tap più morbido */
   .mtable tbody tr:active{background:var(--panel-2)}
+  /* chip livello di rischio (1-7) nella tabella Monitor */
+  .risk-chip{display:inline-block;min-width:20px;padding:2px 7px;border-radius:5px;
+    font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:600;text-align:center;
+    border:1px solid transparent}
+  .risk-1{color:#6FBF8F;background:rgba(111,191,143,.12);border-color:rgba(111,191,143,.3)}
+  .risk-2{color:#8CC07A;background:rgba(140,192,122,.12);border-color:rgba(140,192,122,.3)}
+  .risk-3{color:#C7C074;background:rgba(199,192,116,.12);border-color:rgba(199,192,116,.3)}
+  .risk-4{color:#D6B45A;background:rgba(214,180,90,.13);border-color:rgba(214,180,90,.32)}
+  .risk-5{color:#D99A6C;background:rgba(217,154,108,.13);border-color:rgba(217,154,108,.32)}
+  .risk-6{color:#D98373;background:rgba(217,131,115,.14);border-color:rgba(217,131,115,.34)}
+  .risk-7{color:#D9706B;background:rgba(217,112,107,.16);border-color:rgba(217,112,107,.38)}
 
   /* ============ MOBILE (≤760px) ============ */
   @media (max-width:760px){
@@ -671,7 +683,7 @@
   <nav class="mainnav rise" id="mainnav" style="--d:.06s">
     <button data-nav="monitor" aria-pressed="true">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/><circle cx="7" cy="6" r="1.4" fill="currentColor" stroke="none"/><circle cx="13" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="9" cy="18" r="1.4" fill="currentColor" stroke="none"/></svg>
-      <span>Monitor</span>
+      <span>Certificates Monitor</span>
     </button>
     <button data-nav="sottostanti" aria-pressed="false">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="14.5" width="7" height="6" rx="1.2"/><rect x="13.5" y="14.5" width="7" height="6" rx="1.2"/><rect x="8.5" y="3.5" width="7" height="6" rx="1.2" fill="currentColor" stroke="none" opacity="0.85"/><line x1="12" y1="9.5" x2="12" y2="14.5" opacity="0.5"/><line x1="7" y1="14.5" x2="10" y2="9.5" opacity="0.5"/><line x1="17" y1="14.5" x2="14" y2="9.5" opacity="0.5"/></svg>
@@ -965,10 +977,17 @@
       <div id="rv-mean">
         <div class="card chart-card">
           <div class="chart-head">
-            <div class="t">Rendimento annualizzato rolling <span class="badge">252 gg</span></div>
-            <div class="hd-right"><span class="h">media mobile · % ann.</span></div>
+            <div class="hd-left">
+              <div class="t" id="rendMeanTitle">Serie storiche normalizzate</div>
+              <div class="seg rend-seg" id="rendSeg" role="group" aria-label="Vista rendimento">
+                <button data-rv="norm" aria-pressed="true">Normalizzato</button>
+                <button data-rv="roll" aria-pressed="false">Rolling</button>
+              </div>
+            </div>
+            <div class="hd-right"><span class="h" id="rendMeanSub">base 1 · serie storiche</span></div>
           </div>
-          <div id="chartRollMean" class="plot plot-fadein"></div>
+          <div id="chartNorm" class="plot plot-fadein"></div>
+          <div id="chartRollMean" class="plot plot-fadein" style="display:none"></div>
         </div>
       </div>
       <div id="rv-vol" hidden>
@@ -998,7 +1017,12 @@
       </div>
     </div>
     <div class="subview" id="sv-autocall" hidden><div class="card placeholder">Vista <b>Autocall</b> — in arrivo.</div></div>
-    <div class="subview" id="sv-rischio" hidden><div class="card placeholder">Vista <b>Rischio</b> — in arrivo.</div></div>
+    <div class="subview" id="sv-rischio" hidden>
+      <div class="card chart-card">
+        <div class="chart-head"><div class="t">Misura di rischio dinamica <span class="badge">scala 1-7</span></div></div>
+        <div id="chartRischio" class="plot ov-tall"></div>
+      </div>
+    </div>
     <div class="subview" id="sv-var" hidden>
       <div class="card chart-card">
         <div class="chart-head">
@@ -1227,7 +1251,47 @@ DEMO.forEach((r,i)=>{const yr=2026+(i%4);r.scadenza=`${yr}-${String(3+i%9).padSt
     for(let k=0;k<24;k++){const d=new Date(base);d.setMonth(d.getMonth()+k);
       md.push(d.toISOString().slice(0,10));fm.push(0);pb.push(0);}
     r.memory={has:true,accumulo:false,dates:md,fondo:fm,prob:pb};
+  }
+  // serie rischio demo su tutti i certificati (per popolare la colonna Rischio)
+  {
+    const rd=[],rv=[];const base=new Date(2023,0,1);
+    const target=3+(i%5);   // rischio finale diverso per certificato (3..7)
+    for(let k=0;k<30;k++){const d=new Date(base);d.setMonth(d.getMonth()+k);
+      rd.push(d.toISOString().slice(0,10));
+      rv.push(Math.max(1,Math.min(7,Math.round(target+1.2*Math.sin(k/4)))));}
+    r.rischio_serie={has:true,dates:rd,valori:rv};
   }});
+
+// Demo: precarico rendCache per i primi due certificati con serie normalizzate sintetiche
+// (così la vista "Normalizzato" della scheda Rendimento è testabile senza file).
+const _demoRendCache={};
+DEMO.slice(0,2).forEach((r,i)=>{
+  const dts=[],cert=[],idx=[],equi=[],a1=[],a2=[],ac=[];const base=new Date(2021,0,1);
+  for(let k=0;k<260;k++){const d=new Date(base);d.setDate(d.getDate()+k*5);
+    dts.push(d.toISOString().slice(0,10));
+    const t=k/52;
+    cert.push(+(1+0.10*Math.sin(t*1.4)+0.04*t).toFixed(4));
+    idx.push(+(1+0.14*Math.sin(t*1.1+0.5)+0.05*t).toFixed(4));
+    equi.push(+(1+0.16*Math.sin(t*1.6+1)+0.03*t).toFixed(4));
+    a1.push(+(1+0.22*Math.sin(t*1.9+2)+0.02*t).toFixed(4));
+    a2.push(+(1+0.26*Math.sin(t*2.2+0.3)-0.01*t).toFixed(4));
+    ac.push(k<60?null:+(1.0-0.0006*(k-60)).toFixed(3));   // autocall discendente
+  }
+  const serie=[
+    {label:'Certificato',tipo:'cert',valori:cert},
+    {label:'Indice',tipo:'indice',valori:idx},
+    {label:'Equipesato',tipo:'equi',valori:equi},
+    {label:r.sottostanti[0]||'A1',tipo:'asset',valori:a1},
+    {label:r.sottostanti[1]||'A2',tipo:'asset',valori:a2}];
+  _demoRendCache[r.isin]={isin:r.isin,
+    rendimento_dates:dts,rendimento_labels:['Certificato','Indice'],
+    rendimento_mean:[cert.map(()=>0.05),idx.map(()=>0.06)],rendimento_vol:[cert.map(()=>0.12),idx.map(()=>0.14)],
+    is_benchmark:[false,true],scatter_mean:[0.05,0.06],scatter_vol:[0.12,0.14],scatter_labels:['Certificato','Indice'],
+    var:{has:false},
+    norm:{has:true,dates:dts,serie:serie,barriera_K:0.6,
+      autocall:ac,
+      cedola_dates:[dts[20],dts[70],dts[120],dts[170],dts[220]],cedola:[0.7,0.7,0.7,0.7,0.7]}};
+});
 
 /* ---------- Plotly ---------- */
 const CSS=getComputedStyle(document.documentElement);
@@ -1385,6 +1449,17 @@ function drawChart(id,traces,layout){
   }catch(e){}});
 }
 function lastNum(a){if(!a)return null;for(let i=a.length-1;i>=0;i--){if(a[i]!=null&&!Number.isNaN(a[i]))return a[i];}return null;}
+// Ultimo valore della metrica di rischio (1-7). Fonte primaria: serie rischio_serie;
+// fallback: campo rischio scalare se presente nel record.
+function riskLast(r){
+  const rs=r&&r.rischio_serie;
+  if(rs&&rs.has&&Array.isArray(rs.valori)){
+    const v=lastNum(rs.valori);
+    if(v!=null)return Math.round(v);
+  }
+  if(r&&r.rischio!=null&&!Number.isNaN(+r.rischio))return Math.round(+r.rischio);
+  return null;
+}
 function fmtPct(v){return (v>0?'+':'')+v.toFixed(2)+'%';}
 function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 function cedolaNum(c){if(c==null)return NaN;if(Array.isArray(c))return c.length?+c[0]:NaN;return +c;}
@@ -1429,6 +1504,7 @@ const COLS=[
   {key:'isin',label:'ISIN',cls:'isincell',get:r=>esc(r.isin),sort:r=>r.isin||'',num:false},
   {key:'emittente',label:'Emittente',cls:'clip',get:r=>esc(r.emittente||'—'),sort:r=>r.emittente||'',num:false},
   {key:'struttura',label:'Struttura',cls:'clip',get:r=>esc(r.struttura||'—'),sort:r=>r.struttura||'',num:false},
+  {key:'rischio',label:'Rischio',cls:'num',html:true,get:r=>{const v=riskLast(r);return v==null?'<span class="mkna">—</span>':`<span class="risk-chip risk-${v}">${v}</span>`;},sort:r=>{const v=riskLast(r);return v==null?-1:v;},num:true},
   {key:'sottostanti',label:'Sottostanti',cls:'dim',get:r=>esc((r.sottostanti||[]).join(', ')||'—'),tip:r=>(r.sottostanti||[]).map(nameOf).join(', '),sort:r=>(r.sottostanti||[]).join(','),num:false},
   {key:'scadenza',label:'Scadenza',cls:'',get:r=>esc(r.scadenza||'—'),sort:r=>r.scadenza||'',num:false},
   {key:'cedola',label:'Cedola',cls:'num',get:r=>fmtCedola(r.cedola),sort:r=>cedolaNum(r.cedola),num:true},
@@ -1606,24 +1682,19 @@ function renderCalendar(r){const host=document.getElementById('calWrap');
 // ===== Vista "Cedole non erogate" (fondo memory) =====
 let calView='cal';   // 'cal' = calendario, 'mem' = cedole non erogate
 let _calSegBound=false;
-// Il toggle appare se il certificato è a memoria (memory.has), anche senza accumulo.
-function memHasData(r){
-  const m=r&&r.memory;
-  return !!(m&&m.has);
-}
-// C'è stato davvero accumulo di fondo memory?
+// Il toggle "Cedole non erogate" appare SEMPRE, su tutti i certificati.
+function memHasData(r){return true;}
+// C'è stato davvero accumulo di fondo memory? (decide grafici vs messaggio)
 function memHasAccumulo(r){
   const m=r&&r.memory;
   if(!m||!m.has)return false;
   if(m.accumulo!=null)return !!m.accumulo;   // flag dall'export
   return Array.isArray(m.fondo)&&m.fondo.some(v=>v>0);   // fallback
 }
-// Chiamata ad ogni apertura certificato: mostra/nasconde il toggle e applica la vista.
+// Chiamata ad ogni apertura certificato: il toggle è sempre visibile.
 function setupCalMemToggle(r){
   const seg=document.getElementById('calSeg');
-  const has=memHasData(r);
-  if(seg)seg.hidden=!has;
-  if(!has)calView='cal';   // senza dati memory resto sempre sul calendario
+  if(seg)seg.hidden=false;   // toggle sempre presente, su tutti i certificati
   // binding UNA VOLTA SOLA: i click usano sempre il certificato corrente (current)
   if(seg&&!_calSegBound){
     _calSegBound=true;
@@ -1641,7 +1712,7 @@ function applyCalView(r){
   const memV=document.getElementById('memView');
   const title=document.getElementById('calCardTitle');
   const seg=document.getElementById('calSeg');
-  const showMem=(calView==='mem'&&memHasData(r));
+  const showMem=(calView==='mem');   // toggle sempre attivo
   // aggiorno lo stato visivo dei bottoni
   if(seg)seg.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x.dataset.cv===calView?'true':'false'));
   // uso style.display esplicito: più robusto dell'attributo hidden (che alcune regole CSS sovrascrivono)
@@ -1651,10 +1722,10 @@ function applyCalView(r){
   if(showMem)renderMemoryCharts(r);
 }
 function renderMemoryCharts(r){
-  const m=r.memory;if(!m||!m.has)return;
   const memV=document.getElementById('memView');
-  // Nessun accumulo: messaggio centrato al posto dei grafici.
-  if(!memHasAccumulo(r)){
+  const m=r&&r.memory;
+  // Messaggio quando: memory assente, has=false, o nessun accumulo.
+  if(!m||!m.has||!memHasAccumulo(r)){
     if(memV)memV.innerHTML='<div class="mem-empty">Nessuna accumulazione del fondo memory<div class="mem-empty-sub">Tutte le cedole previste sono state erogate regolarmente.</div></div>';
     return;
   }
@@ -1723,6 +1794,7 @@ const EXPORT_COLS=[
   {key:'isin',label:'ISIN',get:r=>r.isin||'',def:true},
   {key:'emittente',label:'Emittente',get:r=>r.emittente||'',def:true},
   {key:'struttura',label:'Struttura',get:r=>r.struttura||'',def:true},
+  {key:'rischio',label:'Rischio',get:r=>{const v=riskLast(r);return v==null?'':v;},def:true},
   {key:'sottostanti',label:'Sottostanti',get:r=>(r.sottostanti||[]).join(', '),def:true},
   {key:'scadenza',label:'Scadenza',get:r=>r.scadenza||'',def:true},
   {key:'cedola',label:'Cedola',get:r=>cedolaNum(r.cedola)||'',def:true},
@@ -1847,6 +1919,93 @@ function renderRendimento(r){
 function fadeIn(id){const el=document.getElementById(id);if(!el)return;
   el.classList.remove('plot-fadein');void el.offsetWidth;el.classList.add('plot-fadein');}
 
+// ---- Vista "Normalizzato": serie storiche normalizzate + barriera/soglie ----
+let rendMeanView='norm';   // 'norm' (default) | 'roll'
+let _rendSegBound=false;
+function renderNorm(r){
+  const host=document.getElementById('chartNorm');if(!host)return;
+  const nm=r&&r.norm;
+  if(!nm||!nm.has||!Array.isArray(nm.serie)||!nm.serie.length){
+    host.innerHTML='<div class="mem-empty">Serie storiche non disponibili</div>';
+    return;
+  }
+  const dates=asArr(nm.dates);
+  const traces=[];
+  // stile per tipo: certificato rosso spesso, indice nero spesso,
+  // equipesato rosso sottile, sottostanti neri sottili
+  const styleOf={
+    cert:  {color:'rgba(217,131,115,.95)',width:2.2},
+    indice:{color:'rgba(232,237,241,.85)',width:2.2},   // "nero" → chiaro su sfondo scuro
+    equi:  {color:'rgba(217,131,115,.55)',width:0.9},
+    asset: {color:'rgba(140,155,168,.5)', width:0.8}
+  };
+  // disegno prima i sottostanti (sottili, sotto), poi equipesato, indice, certificato sopra
+  const order={asset:0,equi:1,indice:2,cert:3};
+  const sorted=nm.serie.slice().sort((a,b)=>(order[a.tipo]||0)-(order[b.tipo]||0));
+  sorted.forEach(s=>{
+    const st=styleOf[s.tipo]||styleOf.asset;
+    const showName=(s.tipo==='cert'||s.tipo==='indice'||s.tipo==='equi');
+    traces.push({x:dates,y:asArr(s.valori),mode:'lines',type:'scatter',
+      name:s.label,
+      line:{color:st.color,width:st.width,shape:'spline',smoothing:0.2},
+      hovertemplate:`<b>${esc(s.label)}</b>&nbsp;&nbsp;%{y:.3f}<extra></extra>`,
+      showlegend:showName});
+  });
+  // barriera K: linea orizzontale rossa tratteggiata
+  const shapes=[];
+  if(nm.barriera_K!=null&&isFinite(nm.barriera_K)){
+    shapes.push({type:'line',xref:'paper',x0:0,x1:1,yref:'y',y0:nm.barriera_K,y1:nm.barriera_K,
+      line:{color:'rgba(217,131,115,.8)',width:1.2,dash:'dash'}});
+  }
+  // soglia autocall: serie temporale (può essere discendente), linea sottile discreta
+  if(Array.isArray(nm.autocall)&&nm.autocall.length){
+    const ac=nm.autocall.map(v=>(v==null?null:v));
+    traces.push({x:dates,y:ac,mode:'lines',type:'scatter',name:'Soglia autocall',
+      line:{color:'rgba(232,237,241,.55)',width:1,dash:'dot',shape:'hv'},
+      hovertemplate:'Autocall&nbsp;&nbsp;%{y:.2f}<extra></extra>',showlegend:true,connectgaps:false});
+  }
+  // soglia cedola: sulle date dei pagamenti, linea sottile discreta a gradini
+  if(Array.isArray(nm.cedola)&&nm.cedola.length&&Array.isArray(nm.cedola_dates)){
+    const cd=nm.cedola.map(v=>(v==null?null:v));
+    traces.push({x:nm.cedola_dates,y:cd,mode:'lines',type:'scatter',name:'Soglia cedola',
+      line:{color:'rgba(184,151,90,.6)',width:1,dash:'dot',shape:'hv'},
+      hovertemplate:'Cedola&nbsp;&nbsp;%{y:.2f}<extra></extra>',showlegend:true,connectgaps:false});
+  }
+  const L=baseLayout();
+  L.xaxis.autorange=true;L.yaxis.autorange=true;
+  L.xaxis.showspikes=false;L.yaxis.showspikes=false;L.hovermode='closest';
+  L.showlegend=true;L.legend={orientation:'h',y:-0.18,x:0,
+    font:{size:11,color:C.muted,family:'Inter, system-ui, sans-serif'},
+    bgcolor:'rgba(0,0,0,0)',borderwidth:0,itemsizing:'constant',itemwidth:16};
+  L.margin={l:54,r:18,t:14,b:64};L.shapes=shapes;
+  whenSized('chartNorm',()=>{try{Plotly.purge(host);Plotly.newPlot(host,traces,L,PCFG);}catch(e){}});
+}
+
+// applica la vista mean (normalizzato vs rolling) e gestisce il toggle
+function applyRendMeanView(){
+  const cN=document.getElementById('chartNorm');
+  const cR=document.getElementById('chartRollMean');
+  const title=document.getElementById('rendMeanTitle');
+  const sub=document.getElementById('rendMeanSub');
+  const seg=document.getElementById('rendSeg');
+  const isNorm=(rendMeanView==='norm');
+  if(seg)seg.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x.dataset.rv===rendMeanView?'true':'false'));
+  if(cN)cN.style.display=isNorm?'':'none';
+  if(cR)cR.style.display=isNorm?'none':'';
+  if(title)title.textContent=isNorm?'Serie storiche normalizzate':'Rendimento annualizzato rolling';
+  if(sub)sub.textContent=isNorm?'base 1 · serie storiche':'media mobile · % ann.';
+  if(!current)return;
+  const rd=rendCache[current.isin];if(!rd)return;
+  if(isNorm){renderNorm(rd);}
+  else{setTimeout(()=>{try{Plotly.Plots.resize('chartRollMean');Plotly.relayout('chartRollMean',{'xaxis.autorange':true,'yaxis.autorange':true});}catch(e){}},60);}
+}
+function bindRendSeg(){
+  const seg=document.getElementById('rendSeg');if(!seg||_rendSegBound)return;_rendSegBound=true;
+  seg.querySelectorAll('button').forEach(b=>{
+    b.addEventListener('click',()=>{rendMeanView=b.dataset.rv;applyRendMeanView();});
+  });
+}
+
 let rendTab='mean',scatterWin='all';
 function setRendTab(t){rendTab=t;
   ['mean','vol','scatter'].forEach(k=>{const el=document.getElementById('rv-'+k);if(el)el.hidden=(k!==t);});
@@ -1856,7 +2015,7 @@ function setRendTab(t){rendTab=t;
   // rolling mean/vol: scala automatica. scatter: mantiene il suo range calcolato (solo resize).
   const doAuto=id=>setTimeout(()=>{try{Plotly.Plots.resize(id);Plotly.relayout(id,{'xaxis.autorange':true,'yaxis.autorange':true});}catch(e){}},60);
   const doResize=id=>setTimeout(()=>{try{Plotly.Plots.resize(id);}catch(e){}},60);
-  if(t==='mean')doAuto('chartRollMean');
+  if(t==='mean'){bindRendSeg();applyRendMeanView();}
   if(t==='vol')doAuto('chartRollVol');
   if(t==='scatter'){if(rd)renderScatterCometa(rd,scatterWin);doResize('chartScatter');}}
 
@@ -1864,6 +2023,11 @@ let rendCache={};
 function loadRendimento(r){
   const isin=r.isin;
   if(rendCache[isin]){renderRendimento(rendCache[isin]);setRendTab(rendTab);return;}
+  // in modalità demo uso i dati sintetici precaricati (se presenti per questo ISIN)
+  if(typeof _demoRendCache!=='undefined'&&_demoRendCache[isin]){
+    rendCache[isin]=_demoRendCache[isin];
+    renderRendimento(rendCache[isin]);setRendTab(rendTab);return;
+  }
   const isin_safe=isin.replace(/[^A-Za-z0-9]/g,'_');
   // Mostro stato di caricamento SENZA distruggere i div dei grafici
   const loadingEl=document.getElementById('rendLoading');
@@ -1882,7 +2046,8 @@ function loadRendimento(r){
         scatter_mean:      data.mean_tot||[],
         scatter_vol:       data.vol_tot||[],
         scatter_labels:    data.labels||[],
-        var:               data.var||{has:false}};
+        var:               data.var||{has:false},
+        norm:              data.norm||{has:false}};
       rendCache[isin]=assembled;
       renderRendimento(assembled);setRendTab(rendTab);})
     .catch(()=>{if(loadingEl){loadingEl.hidden=false;
@@ -2012,7 +2177,29 @@ function drawTab(t){
     loadRendimento(current);
   }else if(t==='var'){
     loadVar(current);
+  }else if(t==='rischio'){
+    renderRischioSerie(current);
   }
+}
+
+// ---- Vista Rischio: serie storica della misura di rischio dinamica (1-7) ----
+function renderRischioSerie(r){
+  const host=document.getElementById('chartRischio');if(!host)return;
+  const rs=r&&r.rischio_serie;
+  if(!rs||!rs.has){
+    host.innerHTML='<div class="mem-empty">Serie del rischio non disponibile</div>';
+    return;
+  }
+  const dates=asArr(rs.dates),val=asArr(rs.valori);
+  const tr=[{x:dates,y:val,mode:'lines',type:'scatter',
+    line:{color:'rgba(232,237,241,.92)',width:2.2,shape:'spline',smoothing:0.25},
+    hovertemplate:'<b>%{x|%d %b %Y}</b><br>Rischio&nbsp;&nbsp;<b>%{y:.0f}</b>/7<extra></extra>'}];
+  const L=baseLayout();
+  L.xaxis.autorange=true;L.yaxis.range=[0,8];L.yaxis.autorange=false;
+  L.yaxis.dtick=1;L.yaxis.tick0=0;   // tacche intere 0..7
+  L.margin={l:54,r:18,t:14,b:44};L.showlegend=false;
+  L.xaxis.showspikes=false;L.yaxis.showspikes=false;L.hovermode='x';
+  whenSized('chartRischio',()=>{try{Plotly.purge(host);Plotly.newPlot(host,tr,L,PCFG);}catch(e){}});
 }
 
 // ---- Vista VaR (percentili rolling dei rendimenti simulati) ----
