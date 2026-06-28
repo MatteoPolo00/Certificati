@@ -988,7 +988,7 @@
         <div id="chartMarkup" class="plot mk"></div>
       </div>
       <div class="card chart-card">
-        <div class="chart-head"><div class="t">Prezzo di mercato vs modello</div><div class="hd-right"><span class="h">€ per certificato</span><button id="xlsPrice" class="xlsbtn" title="Scarica dati in Excel" aria-label="Scarica dati in Excel"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3" fill="#1D6F42"/><path d="M8.8 7.6l6.4 8.8M15.2 7.6l-6.4 8.8" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg></button></div></div>
+        <div class="chart-head"><div class="t">Prezzo di mercato vs Jensen</div><div class="hd-right"><span class="h">€ per certificato</span><button id="xlsPrice" class="xlsbtn" title="Scarica dati in Excel" aria-label="Scarica dati in Excel"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3" fill="#1D6F42"/><path d="M8.8 7.6l6.4 8.8M15.2 7.6l-6.4 8.8" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg></button></div></div>
         <div id="chartPrice" class="plot sm"></div>
       </div>
     </div>
@@ -1451,10 +1451,10 @@ function renderPrice(r){const x=r.dates;
      line:{color:'rgba(184,151,90,.95)',width:2,shape:'spline',smoothing:0.4},
      connectgaps:false,
      hovertemplate:'Mercato&nbsp;&nbsp;<b>%{y:.2f}</b><extra></extra>'},
-    {x,y:r.prezzo_modello,type:'scatter',mode:'lines',name:'Modello',
+    {x,y:r.prezzo_modello,type:'scatter',mode:'lines',name:'Jensen',
      line:{color:'rgba(90,150,200,.95)',width:2,shape:'spline',smoothing:0.4},
      connectgaps:false,
-     hovertemplate:'Modello&nbsp;&nbsp;<b>%{y:.2f}</b><extra></extra>'}
+     hovertemplate:'Jensen&nbsp;&nbsp;<b>%{y:.2f}</b><extra></extra>'}
   ];
   const L=baseLayout();
   L.showlegend=true;
@@ -2303,15 +2303,21 @@ function renderBarrieraProb(r){
     host.innerHTML='<div class="mem-empty">Probabilità barriera non disponibile</div>';
     return;
   }
-  const dates=asArr(bp.dates);
+  // dates può arrivare annidato ([[...]]) da jsonencode: lo "srotolo" finché è un array singolo che contiene un array
+  let dates=bp.dates;
+  while(Array.isArray(dates)&&dates.length===1&&Array.isArray(dates[0]))dates=dates[0];
+  dates=asArr(dates);
   const traces=[];
-  // una linea tratteggiata per ogni sottostante, colori distinti
-  const palette=['rgba(90,150,200,.9)','rgba(184,151,90,.9)','rgba(150,190,140,.9)','rgba(200,140,180,.9)','rgba(140,200,200,.9)'];
+  // una linea continua e morbida per ogni sottostante, colori distinti e ben leggibili
+  const palette=['rgba(90,150,200,.92)','rgba(201,164,92,.92)','rgba(111,191,143,.92)','rgba(205,140,180,.92)','rgba(140,200,200,.92)','rgba(217,154,108,.92)'];
   bp.assets.forEach((s,i)=>{
     const lab=nameOf(s.label)||s.label;
-    const prob100=asArr(s.valori).map(v=>(v==null?null:v*100));
+    // anche i valori potrebbero essere annidati: stesso srotolamento
+    let vv=s.valori;
+    while(Array.isArray(vv)&&vv.length===1&&Array.isArray(vv[0]))vv=vv[0];
+    const prob100=asArr(vv).map(v=>(v==null?null:v*100));
     traces.push({x:dates,y:prob100,mode:'lines',type:'scatter',name:lab,
-      line:{color:palette[i%palette.length],width:1.6,dash:'dash',shape:'spline',smoothing:0.3},
+      line:{color:palette[i%palette.length],width:1.8,shape:'spline',smoothing:0.4},
       hovertemplate:`<b>${esc(lab)}</b>&nbsp;&nbsp;%{y:.1f}%<extra></extra>`,
       connectgaps:false});
   });
