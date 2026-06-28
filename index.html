@@ -442,6 +442,7 @@
 
   .caltable-wrap{overflow-x:auto;margin-top:4px}
   /* vista cedole non erogate (fondo memory) */
+  .hd-left{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
   .cal-seg button{font-size:11px}
   .mem-block{margin-top:6px}
   .mem-block+.mem-block{margin-top:18px}
@@ -899,8 +900,8 @@
       </div>
       <div class="card chart-card">
         <div class="chart-head">
-          <div class="t" id="calCardTitle">Calendario cedole e autocall</div>
-          <div class="hd-right">
+          <div class="hd-left">
+            <div class="t" id="calCardTitle">Calendario cedole e autocall</div>
             <div class="seg cal-seg" id="calSeg" role="group" aria-label="Vista" hidden>
               <button data-cv="cal" aria-pressed="true">Calendario</button>
               <button data-cv="mem" aria-pressed="false">Cedole non erogate</button>
@@ -1595,33 +1596,37 @@ function renderCalendar(r){const host=document.getElementById('calWrap');
 
 // ===== Vista "Cedole non erogate" (fondo memory) =====
 let calView='cal';   // 'cal' = calendario, 'mem' = cedole non erogate
+let _calSegBound=false;
 function memHasData(r){
   const m=r&&r.memory;
   return !!(m&&m.has&&Array.isArray(m.fondo)&&m.fondo.some(v=>v>0));
 }
-// Decide se mostrare il toggle e quale vista attivare per il certificato corrente.
+// Chiamata ad ogni apertura certificato: mostra/nasconde il toggle e applica la vista.
 function setupCalMemToggle(r){
   const seg=document.getElementById('calSeg');
   const has=memHasData(r);
   if(seg)seg.hidden=!has;
   if(!has)calView='cal';   // senza dati memory resto sempre sul calendario
-  applyCalView(r);
-  if(seg){
+  // binding UNA VOLTA SOLA: i click usano sempre il certificato corrente (current)
+  if(seg&&!_calSegBound){
+    _calSegBound=true;
     seg.querySelectorAll('button').forEach(b=>{
-      b.setAttribute('aria-pressed',b.dataset.cv===calView?'true':'false');
-      if(!b._bound){b._bound=true;b.addEventListener('click',()=>{
+      b.addEventListener('click',()=>{
         calView=b.dataset.cv;
-        seg.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x.dataset.cv===calView?'true':'false'));
-        applyCalView(r);
-      });}
+        applyCalView(current);
+      });
     });
   }
+  applyCalView(r);
 }
 function applyCalView(r){
   const calV=document.getElementById('calView');
   const memV=document.getElementById('memView');
   const title=document.getElementById('calCardTitle');
+  const seg=document.getElementById('calSeg');
   const showMem=(calView==='mem'&&memHasData(r));
+  // aggiorno lo stato visivo dei bottoni
+  if(seg)seg.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x.dataset.cv===calView?'true':'false'));
   if(calV)calV.hidden=showMem;
   if(memV)memV.hidden=!showMem;
   if(title)title.textContent=showMem?'Cedole non erogate':'Calendario cedole e autocall';
