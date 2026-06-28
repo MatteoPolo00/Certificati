@@ -1390,11 +1390,11 @@ function renderMarkup(r){const x=r.dates;
 function renderPrice(r){const x=r.dates;
   const traces=[
     {x,y:r.prezzo_mercato,type:'scatter',mode:'lines',name:'Mercato',
-     line:{color:'rgba(184,151,90,.95)',width:1.8,shape:'linear'},
+     line:{color:'rgba(184,151,90,.95)',width:2,shape:'spline',smoothing:0.4},
      connectgaps:false,
      hovertemplate:'Mercato&nbsp;&nbsp;<b>%{y:.2f}</b><extra></extra>'},
     {x,y:r.prezzo_modello,type:'scatter',mode:'lines',name:'Modello',
-     line:{color:'rgba(91,191,155,.8)',width:1.5,shape:'linear',dash:'dot'},
+     line:{color:'rgba(90,150,200,.95)',width:2,shape:'spline',smoothing:0.4},
      connectgaps:false,
      hovertemplate:'Modello&nbsp;&nbsp;<b>%{y:.2f}</b><extra></extra>'}
   ];
@@ -1958,7 +1958,10 @@ function renderNorm(r){
   // disegno prima i sottostanti (sotto), poi equipesato, indice, certificato sopra
   const order={asset:0,equi:1,indice:2,cert:3};
   const sorted=nm.serie.slice().sort((a,b)=>(order[a.tipo]||0)-(order[b.tipo]||0));
+  const nSott=((current&&current.sottostanti)||[]).length;
   sorted.forEach(s=>{
+    // con un solo sottostante l'equipesato coincide col sottostante → ometto l'equipesato
+    if(s.tipo==='equi'&&nSott<=1)return;
     const st=styleOf[s.tipo]||styleOf.asset;
     const lab=logicalLabel(s);
     // tutte le serie compaiono in legenda (anche i sottostanti, per accenderli/spegnerli)
