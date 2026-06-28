@@ -43,6 +43,14 @@
 "file": "FACTSHEET_IE00BKY4W127_WisdomTree Broad Commodities UCITS ETF - USD Acc_itIT.pdf",
 "tipo": "factsheet"
 },
+"IT0006769498": {
+"file": "KID-IT0006769498.pdf",
+"tipo": "kid"
+},
+"IT0006769597": {
+"file": "KID-IT0006769597.pdf",
+"tipo": "kid"
+},
 "DE000HB53ZM9": {
 "file": "FTS_it_DE000HB53ZM9.pdf",
 "tipo": "final_terms"
@@ -50,6 +58,14 @@
 "DE000HD28DB7": {
 "file": "FTS_it_DE000HD28DB7.pdf",
 "tipo": "final_terms"
+},
+"IT0006772716": {
+"file": "KID_IT0006772716.pdf",
+"tipo": "kid"
+},
+"IT0006772724": {
+"file": "KID_IT0006772724.pdf",
+"tipo": "kid"
 },
 "DE000HB15925": {
 "file": "KID_DE000HB15925.pdf",
@@ -137,6 +153,10 @@
 },
 "DE000HC86DD3": {
 "file": "KID_DE000HC86DD3.pdf",
+"tipo": "kid"
+},
+"DE000HC8QNH5": {
+"file": "KID_DE000HC8QNH5.pdf",
 "tipo": "kid"
 },
 "DE000HC92M61": {
@@ -279,12 +299,24 @@
 "file": "FT_en_DE000UG2DJ04.pdf",
 "tipo": "final_terms"
 },
+"DE000UG4G5S0": {
+"file": "FT_en_DE000UG4G5S0.pdf",
+"tipo": "final_terms"
+},
 "DE000UG6NZE6": {
 "file": "KID_DE000UG6NZE6.pdf",
 "tipo": "kid"
 },
 "DE000UN0YJR3": {
 "file": "KID_DE000UN0YJR3.pdf",
+"tipo": "kid"
+},
+"DE000UN0YK20": {
+"file": "KID_DE000UN0YK20.pdf",
+"tipo": "kid"
+},
+"DE000UN9HQ67": {
+"file": "KID_DE000UN9HQ67.pdf",
 "tipo": "kid"
 },
 "IT0005435265": {
@@ -395,6 +427,10 @@
 "file": "IT0005586968 -  2024-Mar-22 .pdf",
 "tipo": "documento"
 },
+"IT0005702151": {
+"file": "IT0005702151-it.pdf",
+"tipo": "documento"
+},
 "IT0006771841": {
 "file": "IT0006771841_Brochure.pdf",
 "tipo": "documento"
@@ -451,8 +487,28 @@
 "file": "KID_DE000HC7SX00.pdf",
 "tipo": "kid"
 },
+"DE000HC844E3": {
+"file": "KID_DE000HC844E3.pdf",
+"tipo": "kid"
+},
 "DE000HC86DJ0": {
 "file": "KID_DE000HC86DJ0.pdf",
+"tipo": "kid"
+},
+"DE000HC8QNN3": {
+"file": "KID_DE000HC8QNN3.pdf",
+"tipo": "kid"
+},
+"DE000HC8QNQ6": {
+"file": "KID_DE000HC8QNQ6.pdf",
+"tipo": "kid"
+},
+"DE000HC8QNT0": {
+"file": "KID_DE000HC8QNT0.pdf",
+"tipo": "kid"
+},
+"DE000HC8QNU8": {
+"file": "KID_DE000HC8QNU8.pdf",
 "tipo": "kid"
 },
 "DE000HD04CN5": {
@@ -463,12 +519,92 @@
 "file": "KID_DE000HD04CU0.pdf",
 "tipo": "kid"
 },
+"DE000HD2T310": {
+"file": "KID_DE000HD2T310.pdf",
+"tipo": "kid"
+},
+"DE000HD2T336": {
+"file": "KID_DE000HD2T336.pdf",
+"tipo": "kid"
+},
+"DE000HD2T344": {
+"file": "KID_DE000HD2T344.pdf",
+"tipo": "kid"
+},
+"DE000HD2T393": {
+"file": "KID_DE000HD2T393.pdf",
+"tipo": "kid"
+},
+"DE000HD2T3A4": {
+"file": "KID_DE000HD2T3A4.pdf",
+"tipo": "kid"
+},
+"DE000HD2T3E6": {
+"file": "KID_DE000HD2T3E6.pdf",
+"tipo": "kid"
+},
 "DE000HD2XRW3": {
 "file": "KID_DE000HD2XRW3.pdf",
 "tipo": "kid"
 },
 "DE000HD48EX7": {
 "file": "KID_DE000HD48EX7.pdf",
+"tipo": "kid"
+},
+"DE000HD4CMY0": {
+"file": "KID_DE000HD4CMY0.pdf",
+"tipo": "kid"
+},
+"DE000HD4CMZ7": {
+"file": "KID_DE000HD4CMZ7.pdf",
+"tipo": "kid"
+},
+"DE000HD4CN01": {
+"file": "KID_DE000HD4CN01.pdf",
+"tipo": "kid"
+},
+"DE000HD4CN19": {
+"file": "KID_DE000HD4CN19.pdf",
+"tipo": "kid"
+},
+"DE000HD4CSF6": {
+"file": "KID_DE000HD4CSF6.pdf",
+"tipo": "kid"
+},
+"DE000HD4CSG4": {
+"file": "KID_DE000HD4CSG4.pdf",
+"tipo": "kid"
+},
+"DE000HD4CSH2": {
+"file": "KID_DE000HD4CSH2.pdf",
+"tipo": "kid"
+},
+"DE000HD4CSJ8": {
+"file": "KID_DE000HD4CSJ8.pdf",
+"tipo": "kid"
+},
+"DE000HD5EZU3": {
+"file": "KID_DE000HD5EZU3.pdf",
+"tipo": "kid"
+},
+"DE000HD5EZW9": {
+"file": "KID_DE000HD5EZW9.pdf",
+"tipo": "kid"
+},
+"DE000HD5EZX7": {
+"file": "KID_DE000HD5EZX7.pdf",
+"tipo": "kid"
+},
+"DE000HD5EZY5": {
+"file": "KID_DE000HD5EZY5.pdf",
+"tipo": "kid"
+},
+"DE000HD5F007": {
+"file": "KID_DE000HD5F007.pdf",
+"tipo": "kid"
+},
+"DE000HD5F015": {
+"file": "KID_DE000HD5F015.pdf",
 "tipo": "kid"
 },
 "DE000HD63P47": {
@@ -505,6 +641,18 @@
 },
 "DE000HD6JA98": {
 "file": "KID_DE000HD6JA98.pdf",
+"tipo": "kid"
+},
+"DE000HD9J480": {
+"file": "KID_DE000HD9J480.pdf",
+"tipo": "kid"
+},
+"DE000HD9J4A7": {
+"file": "KID_DE000HD9J4A7.pdf",
+"tipo": "kid"
+},
+"DE000HD9J4E9": {
+"file": "KID_DE000HD9J4E9.pdf",
 "tipo": "kid"
 },
 "DE000HR9VK48": {
@@ -591,6 +739,58 @@
 "file": "KID_DE000UG2YPL8.pdf",
 "tipo": "kid"
 },
+"DE000UG361R9": {
+"file": "KID_DE000UG361R9.pdf",
+"tipo": "kid"
+},
+"DE000UG361S7": {
+"file": "KID_DE000UG361S7.pdf",
+"tipo": "kid"
+},
+"DE000UG361T5": {
+"file": "KID_DE000UG361T5.pdf",
+"tipo": "kid"
+},
+"DE000UG361U3": {
+"file": "KID_DE000UG361U3.pdf",
+"tipo": "kid"
+},
+"DE000UG361V1": {
+"file": "KID_DE000UG361V1.pdf",
+"tipo": "kid"
+},
+"DE000UG361W9": {
+"file": "KID_DE000UG361W9.pdf",
+"tipo": "kid"
+},
+"DE000UG361X7": {
+"file": "KID_DE000UG361X7.pdf",
+"tipo": "kid"
+},
+"DE000UG361Y5": {
+"file": "KID_DE000UG361Y5.pdf",
+"tipo": "kid"
+},
+"DE000UG361Z2": {
+"file": "KID_DE000UG361Z2.pdf",
+"tipo": "kid"
+},
+"DE000UG36204": {
+"file": "KID_DE000UG36204.pdf",
+"tipo": "kid"
+},
+"DE000UG36212": {
+"file": "KID_DE000UG36212.pdf",
+"tipo": "kid"
+},
+"DE000UG3YEQ9": {
+"file": "KID_DE000UG3YEQ9.pdf",
+"tipo": "kid"
+},
+"DE000UG3YER7": {
+"file": "KID_DE000UG3YER7.pdf",
+"tipo": "kid"
+},
 "DE000UG4G5R2": {
 "file": "KID_DE000UG4G5R2.pdf",
 "tipo": "kid"
@@ -601,6 +801,14 @@
 },
 "DE000UG4G602": {
 "file": "KID_DE000UG4G602.pdf",
+"tipo": "kid"
+},
+"DE000UG641E2": {
+"file": "KID_DE000UG641E2.pdf",
+"tipo": "kid"
+},
+"DE000UG641F9": {
+"file": "KID_DE000UG641F9.pdf",
 "tipo": "kid"
 },
 "DE000UG6YPR6": {
@@ -619,8 +827,24 @@
 "file": "KID_DE000UG6YPV8.pdf",
 "tipo": "kid"
 },
+"DE000UG71ME8": {
+"file": "KID_DE000UG71ME8.pdf",
+"tipo": "kid"
+},
 "DE000UG71MH1": {
 "file": "KID_DE000UG71MH1.pdf",
+"tipo": "kid"
+},
+"DE000UG7YL75": {
+"file": "KID_DE000UG7YL75.pdf",
+"tipo": "kid"
+},
+"DE000UG7YL91": {
+"file": "KID_DE000UG7YL91.pdf",
+"tipo": "kid"
+},
+"DE000UG7YLB7": {
+"file": "KID_DE000UG7YLB7.pdf",
 "tipo": "kid"
 },
 "DE000UG81LQ3": {
@@ -631,12 +855,180 @@
 "file": "KID_DE000UG81Q28.pdf",
 "tipo": "kid"
 },
+"DE000UG8FE84": {
+"file": "KID_DE000UG8FE84.pdf",
+"tipo": "kid"
+},
+"DE000UG8FE92": {
+"file": "KID_DE000UG8FE92.pdf",
+"tipo": "kid"
+},
+"DE000UG8FEA1": {
+"file": "KID_DE000UG8FEA1.pdf",
+"tipo": "kid"
+},
+"DE000UG8FEB9": {
+"file": "KID_DE000UG8FEB9.pdf",
+"tipo": "kid"
+},
+"DE000UG8FEC7": {
+"file": "KID_DE000UG8FEC7.pdf",
+"tipo": "kid"
+},
+"DE000UG8FED5": {
+"file": "KID_DE000UG8FED5.pdf",
+"tipo": "kid"
+},
+"DE000UN0YE51": {
+"file": "KID_DE000UN0YE51.pdf",
+"tipo": "kid"
+},
+"DE000UN0YE69": {
+"file": "KID_DE000UN0YE69.pdf",
+"tipo": "kid"
+},
+"DE000UN0YJN2": {
+"file": "KID_DE000UN0YJN2.pdf",
+"tipo": "kid"
+},
+"DE000UN0YJP7": {
+"file": "KID_DE000UN0YJP7.pdf",
+"tipo": "kid"
+},
+"DE000UN0YJQ5": {
+"file": "KID_DE000UN0YJQ5.pdf",
+"tipo": "kid"
+},
+"DE000UN0YJS1": {
+"file": "KID_DE000UN0YJS1.pdf",
+"tipo": "kid"
+},
+"DE000UN0YJT9": {
+"file": "KID_DE000UN0YJT9.pdf",
+"tipo": "kid"
+},
+"DE000UN0YJV5": {
+"file": "KID_DE000UN0YJV5.pdf",
+"tipo": "kid"
+},
+"DE000UN0YJW3": {
+"file": "KID_DE000UN0YJW3.pdf",
+"tipo": "kid"
+},
+"DE000UN0YJX1": {
+"file": "KID_DE000UN0YJX1.pdf",
+"tipo": "kid"
+},
+"DE000UN0YJY9": {
+"file": "KID_DE000UN0YJY9.pdf",
+"tipo": "kid"
+},
+"DE000UN0YJZ6": {
+"file": "KID_DE000UN0YJZ6.pdf",
+"tipo": "kid"
+},
+"DE000UN24EY8": {
+"file": "KID_DE000UN24EY8.pdf",
+"tipo": "kid"
+},
+"DE000UN24EZ5": {
+"file": "KID_DE000UN24EZ5.pdf",
+"tipo": "kid"
+},
+"DE000UN24F06": {
+"file": "KID_DE000UN24F06.pdf",
+"tipo": "kid"
+},
+"DE000UN24F22": {
+"file": "KID_DE000UN24F22.pdf",
+"tipo": "kid"
+},
+"DE000UN24F30": {
+"file": "KID_DE000UN24F30.pdf",
+"tipo": "kid"
+},
+"DE000UN24F48": {
+"file": "KID_DE000UN24F48.pdf",
+"tipo": "kid"
+},
 "DE000UN2SA44": {
 "file": "KID_DE000UN2SA44.pdf",
 "tipo": "kid"
 },
+"DE000UN2SA69": {
+"file": "KID_DE000UN2SA69.pdf",
+"tipo": "kid"
+},
+"DE000UN2SA77": {
+"file": "KID_DE000UN2SA77.pdf",
+"tipo": "kid"
+},
 "DE000UN2SAA6": {
 "file": "KID_DE000UN2SAA6.pdf",
+"tipo": "kid"
+},
+"DE000UN2SAB4": {
+"file": "KID_DE000UN2SAB4.pdf",
+"tipo": "kid"
+},
+"DE000UN2SAC2": {
+"file": "KID_DE000UN2SAC2.pdf",
+"tipo": "kid"
+},
+"DE000UN2SAD0": {
+"file": "KID_DE000UN2SAD0.pdf",
+"tipo": "kid"
+},
+"DE000UN2SAE8": {
+"file": "KID_DE000UN2SAE8.pdf",
+"tipo": "kid"
+},
+"DE000UN2SAF5": {
+"file": "KID_DE000UN2SAF5.pdf",
+"tipo": "kid"
+},
+"DE000UN2SAG3": {
+"file": "KID_DE000UN2SAG3.pdf",
+"tipo": "kid"
+},
+"DE000UN2SAH1": {
+"file": "KID_DE000UN2SAH1.pdf",
+"tipo": "kid"
+},
+"DE000UN2SAK5": {
+"file": "KID_DE000UN2SAK5.pdf",
+"tipo": "kid"
+},
+"DE000UN2SAL3": {
+"file": "KID_DE000UN2SAL3.pdf",
+"tipo": "kid"
+},
+"DE000UN2SAM1": {
+"file": "KID_DE000UN2SAM1.pdf",
+"tipo": "kid"
+},
+"DE000UN2SAN9": {
+"file": "KID_DE000UN2SAN9.pdf",
+"tipo": "kid"
+},
+"DE000UN2SAP4": {
+"file": "KID_DE000UN2SAP4.pdf",
+"tipo": "kid"
+},
+"DE000UN2SAQ2": {
+"file": "KID_DE000UN2SAQ2.pdf",
+"tipo": "kid"
+},
+"DE000UN2SAR0": {
+"file": "KID_DE000UN2SAR0.pdf",
+"tipo": "kid"
+},
+"DE000UN2SAS8": {
+"file": "KID_DE000UN2SAS8.pdf",
+"tipo": "kid"
+},
+"DE000UN5R2B5": {
+"file": "KID_DE000UN5R2B5.pdf",
 "tipo": "kid"
 },
 "DE000UN5R2K6": {
@@ -673,6 +1065,42 @@
 },
 "IT0005646127": {
 "file": "KID_IT0005646127.pdf",
+"tipo": "kid"
+},
+"IT0006771130": {
+"file": "KID_IT0006771130.pdf",
+"tipo": "kid"
+},
+"IT0006771320": {
+"file": "KID_IT0006771320.pdf",
+"tipo": "kid"
+},
+"IT0006772708": {
+"file": "KID_IT0006772708.pdf",
+"tipo": "kid"
+},
+"IT0006772815": {
+"file": "KID_IT0006772815.pdf",
+"tipo": "kid"
+},
+"IT0006773599": {
+"file": "KID_IT0006773599.pdf",
+"tipo": "kid"
+},
+"IT0006773623": {
+"file": "KID_IT0006773623.pdf",
+"tipo": "kid"
+},
+"IT0006774043": {
+"file": "KID_IT0006774043.pdf",
+"tipo": "kid"
+},
+"IT0006774068": {
+"file": "KID_IT0006774068.pdf",
+"tipo": "kid"
+},
+"IT0006774589": {
+"file": "KID_IT0006774589.pdf",
 "tipo": "kid"
 },
 "GB00B15KY104": {
@@ -762,6 +1190,10 @@
 "CH1316654297": {
 "file": "kid-ch1316654297-it.pdf",
 "tipo": "kid"
+},
+"IT0005568057": {
+"file": "it0005568057_serie-290_cashcollect-sx5e_bmed_ft-sn.pdf",
+"tipo": "documento"
 },
 "CH1107634144": {
 "file": "kid-ch1107634144-it.pdf",
