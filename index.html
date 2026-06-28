@@ -1606,24 +1606,19 @@ function renderCalendar(r){const host=document.getElementById('calWrap');
 // ===== Vista "Cedole non erogate" (fondo memory) =====
 let calView='cal';   // 'cal' = calendario, 'mem' = cedole non erogate
 let _calSegBound=false;
-// Il toggle appare se il certificato è a memoria (memory.has), anche senza accumulo.
-function memHasData(r){
-  const m=r&&r.memory;
-  return !!(m&&m.has);
-}
-// C'è stato davvero accumulo di fondo memory?
+// Il toggle "Cedole non erogate" appare SEMPRE, su tutti i certificati.
+function memHasData(r){return true;}
+// C'è stato davvero accumulo di fondo memory? (decide grafici vs messaggio)
 function memHasAccumulo(r){
   const m=r&&r.memory;
   if(!m||!m.has)return false;
   if(m.accumulo!=null)return !!m.accumulo;   // flag dall'export
   return Array.isArray(m.fondo)&&m.fondo.some(v=>v>0);   // fallback
 }
-// Chiamata ad ogni apertura certificato: mostra/nasconde il toggle e applica la vista.
+// Chiamata ad ogni apertura certificato: il toggle è sempre visibile.
 function setupCalMemToggle(r){
   const seg=document.getElementById('calSeg');
-  const has=memHasData(r);
-  if(seg)seg.hidden=!has;
-  if(!has)calView='cal';   // senza dati memory resto sempre sul calendario
+  if(seg)seg.hidden=false;   // toggle sempre presente, su tutti i certificati
   // binding UNA VOLTA SOLA: i click usano sempre il certificato corrente (current)
   if(seg&&!_calSegBound){
     _calSegBound=true;
@@ -1641,7 +1636,7 @@ function applyCalView(r){
   const memV=document.getElementById('memView');
   const title=document.getElementById('calCardTitle');
   const seg=document.getElementById('calSeg');
-  const showMem=(calView==='mem'&&memHasData(r));
+  const showMem=(calView==='mem');   // toggle sempre attivo
   // aggiorno lo stato visivo dei bottoni
   if(seg)seg.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x.dataset.cv===calView?'true':'false'));
   // uso style.display esplicito: più robusto dell'attributo hidden (che alcune regole CSS sovrascrivono)
@@ -1651,10 +1646,10 @@ function applyCalView(r){
   if(showMem)renderMemoryCharts(r);
 }
 function renderMemoryCharts(r){
-  const m=r.memory;if(!m||!m.has)return;
   const memV=document.getElementById('memView');
-  // Nessun accumulo: messaggio centrato al posto dei grafici.
-  if(!memHasAccumulo(r)){
+  const m=r&&r.memory;
+  // Messaggio quando: memory assente, has=false, o nessun accumulo.
+  if(!m||!m.has||!memHasAccumulo(r)){
     if(memV)memV.innerHTML='<div class="mem-empty">Nessuna accumulazione del fondo memory<div class="mem-empty-sub">Tutte le cedole previste sono state erogate regolarmente.</div></div>';
     return;
   }
