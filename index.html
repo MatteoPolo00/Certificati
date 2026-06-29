@@ -4105,7 +4105,7 @@ function setupFrontierFilters(){
 
 let frontierReady=false;
 // ================= INSIGHTS =================
-let _insReady=false, _insMemData=null, _insMemDates=null;
+let _insReady=false, _insMemData=null, _insMemDates=null, _insMemXMax=1;
 
 function openInsights(){
   // mostro il mosaico, nascondo le viste analisi
@@ -4149,13 +4149,33 @@ function buildInsMemoryData(){
   // timeline condivisa: unione ordinata di tutte le date memory
   const dateSet=new Set();
   certs.forEach(c=>asArr(c.memory.dates).forEach(d=>dateSet.add(d)));
-  const dates=[...dateSet].sort();
+  const allDates=[...dateSet].sort();
+  // Granularità SETTIMANALE: tengo una data ogni ~7 giorni (la prima di ogni settimana),
+  // così lo slider ha un passo settimanale invece che giornaliero.
+  const dates=[];
+  let lastKept=null;
+  allDates.forEach(d=>{
+    if(lastKept===null){dates.push(d);lastKept=new Date(d);return;}
+    const cur=new Date(d);
+    const giorni=(cur-lastKept)/(1000*60*60*24);
+    if(giorni>=7){dates.push(d);lastKept=cur;}
+  });
+  // garantisco che l'ultima data reale sia inclusa (per arrivare a "oggi")
+  if(allDates.length && dates[dates.length-1]!==allDates[allDates.length-1]){
+    dates.push(allDates[allDates.length-1]);
+  }
   // per ogni certificato preparo una mappa data→indice per lookup veloce
   const prepared=certs.map(c=>{
     const dd=asArr(c.memory.dates),fo=asArr(c.memory.fondo),pr=asArr(c.memory.prob);
     const idx={};dd.forEach((d,i)=>{idx[d]=i;});
-    return {isin:c.isin,emit:c.emittente||'—',str:c.struttura||'—',dd,fo,pr,idx};
+    return {isin:c.isin,emit:c.emittente||'—',str:c.struttura||'—',
+            sott:asArr(c.sottostanti),dd,fo,pr,idx};
   });
+  // limite X massimo globale (su tutte le date e tutti i certificati, escludendo fondo=0)
+  // così l'asse X resta FISSO mentre si muove lo slider e i punti non "ballano".
+  let xMax=0;
+  prepared.forEach(c=>{c.fo.forEach(v=>{if(v!=null&&isFinite(v)&&v>xMax)xMax=v;});});
+  _insMemXMax=xMax>0?xMax*1.08:1;   // piccolo margine
   _insMemData=prepared;_insMemDates=dates;
 }
 
@@ -4171,17 +4191,20 @@ function renderInsMemoryAt(sliderVal){
   const n=_insMemDates.length;
   const di=Math.min(n-1,Math.max(0,Math.round((sliderVal/100)*(n-1))));
   const dataSel=_insMemDates[di];
-  // per ogni certificato, prendo entità (X) e prob erogazione (Y=1-prob) a quella data (se esiste)
+  // per ogni certificato: entità (X) e prob erogazione (Y=1-prob) a quella data.
+  // ESCLUDO i prodotti con fondo memory pari a 0 (non hanno accumulo a quella data).
   const xs=[],ys=[],txt=[],isins=[];
   _insMemData.forEach(c=>{
     const i=c.idx[dataSel];
     if(i==null)return;                       // questo certificato non ha quella data
     const fondo=c.fo[i], probSvuot=c.pr[i];
     if(fondo==null||!isFinite(fondo)||probSvuot==null||!isFinite(probSvuot))return;
+    if(fondo<=0)return;                       // <-- escludo fondo = 0
     xs.push(fondo);
     ys.push((1-probSvuot)*100);              // probabilità EROGAZIONE = 1 - svuotamento, in %
     isins.push(c.isin);
-    txt.push(`<b>${esc(c.isin)}</b><br><span style="color:#8C9BA8">${esc(c.emit)} · ${esc(c.str)}</span><br>Fondo&nbsp;&nbsp;<b>${(+fondo).toFixed(2)}</b><br>Prob. erogazione&nbsp;&nbsp;<b>${((1-probSvuot)*100).toFixed(1)}%</b>`);
+    const sottTxt=c.sott.length?c.sott.map(x=>nameOf(x)||x).join(', '):'—';
+    txt.push(`<b>${esc(c.isin)}</b><br><span style="color:#8C9BA8">${esc(c.emit)} · ${esc(c.str)}</span><br>Sottostanti:&nbsp;${esc(sottTxt)}<br>Fondo&nbsp;&nbsp;<b>${(+fondo).toFixed(2)}</b><br>Prob. erogazione&nbsp;&nbsp;<b>${((1-probSvuot)*100).toFixed(1)}%</b>`);
   });
   const trace={x:xs,y:ys,customdata:isins,text:txt,mode:'markers',type:'scatter',
     marker:{size:11,color:'rgba(184,151,90,.75)',line:{color:'rgba(201,169,104,.9)',width:1}},
@@ -4190,18 +4213,24 @@ function renderInsMemoryAt(sliderVal){
       font:{family:'Inter, system-ui, sans-serif',size:12,color:'#E8EDF1'},align:'left'}};
   const L=baseLayout();
   L.xaxis.title={text:'Entità del fondo memory',font:{size:12,color:C.muted}};
-  L.xaxis.autorange=true;L.xaxis.zeroline=false;L.xaxis.tickformat='.1f';
+  // assi FISSI: il range X non cambia mentre si muove lo slider (i riferimenti non "ballano")
+  L.xaxis.range=[0,_insMemXMax];L.xaxis.autorange=false;L.xaxis.zeroline=false;L.xaxis.tickformat='.1f';
   L.yaxis.title={text:'Probabilità erogazione',font:{size:12,color:C.muted}};
   L.yaxis.range=[0,100];L.yaxis.autorange=false;L.yaxis.ticksuffix='%';
   L.hovermode='closest';L.showlegend=false;
   L.margin={l:64,r:24,t:16,b:54};
-  whenSized('chartInsMemory',()=>{try{Plotly.purge(host);Plotly.newPlot(host,[trace],L,PCFG);
-    // click su un punto → vai al certificato
+  // uso react (non purge+newPlot) così l'aggiornamento è fluido e NON perdo il click handler
+  whenSized('chartInsMemory',()=>{
     const gd=document.getElementById('chartInsMemory');
-    if(gd&&!gd._insClickBound){gd._insClickBound=true;
-      gd.on('plotly_click',ev=>{const pt=ev.points&&ev.points[0];
-        if(pt&&pt.customdata&&DATA.some(x=>x.isin===pt.customdata)){location.hash='#/'+encodeURIComponent(pt.customdata)+'/overview';}});}
-  }catch(e){}});
+    try{
+      if(gd && gd.data){Plotly.react(gd,[trace],L,PCFG);}
+      else{Plotly.newPlot(gd,[trace],L,PCFG);}
+      // click su un punto → vai al certificato (binding una volta sola)
+      if(gd&&!gd._insClickBound){gd._insClickBound=true;
+        gd.on('plotly_click',ev=>{const pt=ev.points&&ev.points[0];
+          if(pt&&pt.customdata&&DATA.some(x=>x.isin===pt.customdata)){location.hash='#/'+encodeURIComponent(pt.customdata)+'/overview';}});}
+    }catch(e){}
+  });
   // aggiorno badge data, contatore, etichetta slider
   document.getElementById('insMemDate').textContent=fmtDate(dataSel);
   document.getElementById('insMemCount').textContent=xs.length+' certificati';
@@ -4237,8 +4266,20 @@ function init(){
   renderProfile();
   document.getElementById('welcomeBtn').addEventListener('click',()=>{
     document.getElementById('welcomeOverlay').classList.add('hide');});
+  // Avviso mobile: una volta chiuso, non riappare per 7 giorni (frequenza settimanale).
+  const mn=document.getElementById('mobileNote');
   const mx=document.getElementById('mobileNoteX');
-  if(mx)mx.addEventListener('click',()=>document.getElementById('mobileNote').classList.add('hide'));
+  try{
+    const last=localStorage.getItem('mobileNoteDismissed');
+    if(last){
+      const giorni=(Date.now()-(+last))/(1000*60*60*24);
+      if(giorni<7&&mn)mn.classList.add('hide');   // chiuso da meno di una settimana → nascondo
+    }
+  }catch(e){}
+  if(mx)mx.addEventListener('click',()=>{
+    if(mn)mn.classList.add('hide');
+    try{localStorage.setItem('mobileNoteDismissed',String(Date.now()));}catch(e){}
+  });
   document.getElementById('banner').style.display=demoMode?'block':'none';
   const emittenti=uniq(DATA.map(r=>r.emittente).filter(Boolean));
   const strutture=uniq(DATA.map(r=>r.struttura).filter(Boolean));
