@@ -451,6 +451,16 @@
   .mem-block+.mem-block{margin-top:18px}
   .mem-lbl{font-family:"Inter",sans-serif;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:8px}
   .mem-plot{width:100%;height:230px}
+  /* toggle "Scopri Livelli di Barriera" nella pagina sottostante */
+  .barr-toggle{display:inline-flex;align-items:center;gap:7px;cursor:pointer;
+    font-family:"Inter",sans-serif;font-size:11.5px;color:var(--muted);user-select:none}
+  .barr-toggle input{appearance:none;-webkit-appearance:none;width:30px;height:17px;border-radius:9px;
+    background:var(--hair);position:relative;cursor:pointer;transition:background .15s;flex:none}
+  .barr-toggle input:checked{background:rgba(217,131,115,.6)}
+  .barr-toggle input::after{content:'';position:absolute;top:2px;left:2px;width:13px;height:13px;
+    border-radius:50%;background:var(--txt);transition:transform .15s}
+  .barr-toggle input:checked::after{transform:translateX(13px)}
+  .barr-toggle:hover{color:var(--txt)}
   .rend-seg button{font-size:11px}
   .mem-empty{text-align:center;padding:56px 20px;font-family:"Inter",sans-serif;font-size:15px;font-weight:600;color:var(--muted)}
   .mem-empty-sub{font-size:12.5px;font-weight:400;color:var(--faint);margin-top:8px}
@@ -1104,7 +1114,12 @@
       <div class="card chart-card">
         <div class="chart-head">
           <div class="t" id="sChartTitle">Prezzo storico</div>
-          <div class="hd-right" id="sChartControls"></div>
+          <div class="hd-right" id="sChartControls">
+            <label class="barr-toggle" id="barrToggleWrap">
+              <input type="checkbox" id="barrToggle" checked>
+              <span>Scopri Livelli di Barriera</span>
+            </label>
+          </div>
         </div>
         <div id="chartSott" class="plot ov-tall"></div>
       </div>
@@ -2667,6 +2682,7 @@ function renderHubSentiment(){
 
 /* ================= SCHEDA SOTTOSTANTE ================= */
 let currentSott=null, sottTab='prezzo';
+let sottShowBarriere=true;   // toggle "Scopri Livelli di Barriera", acceso di default
 
 // Trova i certificati (in DATA) che contengono la sigla del sottostante
 function certificatiConSottostante(sigla){
@@ -2682,6 +2698,16 @@ function openSottostante(sigla,fromHash){
     return;
   }
   currentSott=s;
+  // toggle "Scopri Livelli di Barriera": binding una volta sola, ridisegna il grafico
+  const barrTg=document.getElementById('barrToggle');
+  if(barrTg&&!barrTg._bound){
+    barrTg._bound=true;
+    barrTg.checked=sottShowBarriere;
+    barrTg.addEventListener('change',()=>{sottShowBarriere=barrTg.checked;renderSottChart();});
+  }
+  // il toggle ha senso solo nella vista prezzo: lo mostro/nascondo di conseguenza
+  const barrWrap=document.getElementById('barrToggleWrap');
+  if(barrWrap)barrWrap.style.display=(sottTab==='prezzo')?'':'none';
   document.getElementById('sTitle').textContent=nameOf(sigla)||sigla;
   document.getElementById('sSub').textContent='Sottostante · '+sigla;
   showView('sottostante');
@@ -2769,6 +2795,9 @@ function setSottTab(t){
   if(t==='prezzo'&&currentSott&&!asArr(currentSott.prezzo).length)t='rendimento';
   sottTab=t;
   document.querySelectorAll('#sottSubtabs button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.st===t?'true':'false'));
+  // il toggle barriere ha senso solo in vista prezzo
+  const barrWrap=document.getElementById('barrToggleWrap');
+  if(barrWrap)barrWrap.style.display=(t==='prezzo')?'':'none';
   renderSottChart();
   syncSottHeights();
 }
@@ -2806,6 +2835,46 @@ function renderSottChart(){
         font:{family:'Inter, system-ui, sans-serif',size:12,color:'#E8EDF1'},align:'left'}});
   }
 
+  // --- Righe orizzontali: barriera a scadenza dei certificati collegati ---
+  // Solo nella vista prezzo (sono valori in prezzo assoluto) e se il toggle è acceso.
+  let barrShapes=[];
+  if(sottTab==='prezzo'&&sottShowBarriere){
+    const sig=currentSott.sigla;
+    certificatiConSottostante(sig).forEach(c=>{
+      const b=c.barriere;
+      if(!b||!b.has||!Array.isArray(b.assets)||!Array.isArray(b.barriera_scadenza))return;
+      const idx=b.assets.indexOf(sig);
+      if(idx<0)return;
+      const lvl=b.barriera_scadenza[idx];
+      if(lvl==null||!isFinite(lvl))return;
+      // riga orizzontale sottilissima al livello di barriera
+      barrShapes.push({type:'line',xref:'paper',x0:0,x1:1,yref:'y',y0:lvl,y1:lvl,
+        line:{color:'rgba(217,131,115,.38)',width:0.8},layer:'below'});
+    });
+    // marcatori invisibili cliccabili sulle righe (per il tooltip + clic → certificato)
+    const barrPts=[];
+    certificatiConSottostante(sig).forEach(c=>{
+      const b=c.barriere;
+      if(!b||!b.has||!Array.isArray(b.assets)||!Array.isArray(b.barriera_scadenza))return;
+      const idx=b.assets.indexOf(sig);if(idx<0)return;
+      const lvl=b.barriera_scadenza[idx];
+      if(lvl==null||!isFinite(lvl))return;
+      barrPts.push({lvl,isin:c.isin,emit:c.emittente||'—',str:c.struttura||'—'});
+    });
+    if(barrPts.length){
+      // un punto a destra su ogni riga, per hover/clic (etichetta discreta)
+      const lastX=x[x.length-1];
+      traces.push({x:barrPts.map(()=>lastX),y:barrPts.map(p=>p.lvl),
+        customdata:barrPts.map(p=>[p.isin,p.emit,p.str,p.lvl]),
+        mode:'markers',type:'scatter',name:'barriere',
+        marker:{symbol:'line-ew',size:14,color:'rgba(217,131,115,.6)',
+          line:{color:'rgba(217,131,115,.6)',width:1}},
+        hovertemplate:'<b>%{customdata[0]}</b><br><span style="color:#8C9BA8">%{customdata[1]} · %{customdata[2]}</span><br>Barriera a scadenza&nbsp;&nbsp;<b>%{customdata[3]:.2f}</b><extra></extra>',
+        hoverlabel:{bgcolor:'rgba(18,24,32,.97)',bordercolor:'rgba(217,131,115,.5)',
+          font:{family:'Inter, system-ui, sans-serif',size:12,color:'#E8EDF1'},align:'left'}});
+    }
+  }
+
   document.getElementById('sChartTitle').textContent=titolo;
   const L=baseLayout();
   L.xaxis.autorange=true;
@@ -2822,6 +2891,7 @@ function renderSottChart(){
     L.yaxis2={domain:[0,0.055],range:[0,1],fixedrange:true,
       showgrid:false,zeroline:false,showticklabels:false,showline:false};
   }
+  if(barrShapes.length)L.shapes=(L.shapes||[]).concat(barrShapes);
   drawChartSott('chartSott',traces,L);
 }
 
@@ -2836,7 +2906,7 @@ function drawChartSott(id,traces,layout){
     // click sui segnalini delle date di emissione → apri il prodotto
     if(!gd._sottClickBound){
       gd.on('plotly_click',ev=>{const pt=ev.points&&ev.points[0];
-        if(pt&&pt.data&&pt.data.name==='emissioni'&&pt.customdata){
+        if(pt&&pt.data&&(pt.data.name==='emissioni'||pt.data.name==='barriere')&&pt.customdata){
           const isin=pt.customdata[0];
           if(DATA.some(x=>x.isin===isin))location.hash='#/'+encodeURIComponent(isin)+'/overview';}});
       gd._sottClickBound=true;
