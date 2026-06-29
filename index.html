@@ -470,6 +470,8 @@
   /* distanza percentuale dalla barriera accanto all'ultimo prezzo */
   .dist-neg{color:var(--neg);font-size:11px;font-weight:600}
   .dist-pos{color:var(--pos);font-size:11px;font-weight:600}
+  /* chip del worst-of evidenziato in Overview */
+  .chip-worst{border-color:rgba(217,131,115,.45)!important;color:var(--neg)!important}
   .rend-seg button{font-size:11px}
   .mem-empty{text-align:center;padding:56px 20px;font-family:"Inter",sans-serif;font-size:15px;font-weight:600;color:var(--muted)}
   .mem-empty-sub{font-size:12.5px;font-weight:400;color:var(--faint);margin-top:8px}
@@ -1668,14 +1670,18 @@ function renderMeta(r){const pmkt=lastNum(r.prezzo_mercato),pmod=lastNum(r.prezz
     const l=document.createElement('div');l.className='lab';l.textContent=lab;
     const v=document.createElement('div');v.className='v';
     if(val==='__chips__'){const c=document.createElement('div');c.className='chips';
+      const woSig=worstOfSigla(r);   // sigla del worst-of (null se ≤1 sottostante o non calcolabile)
       (r.sottostanti||[]).forEach(s=>{
-        const ch=document.createElement('span');ch.className='chip chip-link';
+        const ch=document.createElement('span');ch.className='chip chip-link'+(s===woSig?' chip-worst':'');
         ch.textContent=nameOf(s);ch.title='Apri scheda '+(nameOf(s)||s);
         ch.setAttribute('role','button');ch.tabIndex=0;
         const go=()=>{location.hash='#/sott/'+encodeURIComponent(s);};
         ch.addEventListener('click',go);
         ch.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go();}});
-        c.appendChild(ch);});
+        c.appendChild(ch);
+        // tag "Worst-of" accanto al chip del sottostante peggiore
+        if(s===woSig){const wt=document.createElement('span');wt.className='worst-tag';wt.textContent='Worst-of';c.appendChild(wt);}
+      });
       v.appendChild(c);}
     else{v.textContent=val;}row.appendChild(l);row.appendChild(v);host.appendChild(row);});}
 function asPerDate(field,n){if(field==null)return new Array(n).fill(null);
@@ -2319,14 +2325,14 @@ function renderRischioSerie(r){
 
 // ---- Vista Barriera: P(performance < K) per ogni sottostante ----
 function renderBarrieraProb(r){
-  const host=document.getElementById('chartBarrProb');if(!host)return;
   const bp=r&&r.barriera_prob;
-  const info=document.getElementById('barrProbInfo');
   const badge=document.getElementById('barrProbK');
   // badge K nel titolo
   if(badge)badge.textContent=(bp&&bp.K!=null&&isFinite(bp.K))?('K '+Math.round(bp.K*100)+'%'):'—';
-  // tabella sopra: K + prezzo barriera per asset (se disponibili da rec.barriere)
+  // tabella sopra (K + prezzo barriera + ultimo prezzo): disegnata SEMPRE, anche se il
+  // grafico non è ancora pronto. Va fatta prima del check su host.
   renderBarrProbInfo(r);
+  const host=document.getElementById('chartBarrProb');if(!host)return;
   if(!bp||!bp.has||!Array.isArray(bp.assets)||!bp.assets.length){
     host.innerHTML='<div class="mem-empty">Probabilità barriera non disponibile</div>';
     return;
