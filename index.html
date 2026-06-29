@@ -1116,7 +1116,7 @@
           <div class="t" id="sChartTitle">Prezzo storico</div>
           <div class="hd-right" id="sChartControls">
             <label class="barr-toggle" id="barrToggleWrap">
-              <input type="checkbox" id="barrToggle" checked>
+              <input type="checkbox" id="barrToggle">
               <span>Scopri Livelli di Barriera</span>
             </label>
           </div>
@@ -2682,7 +2682,7 @@ function renderHubSentiment(){
 
 /* ================= SCHEDA SOTTOSTANTE ================= */
 let currentSott=null, sottTab='prezzo';
-let sottShowBarriere=true;   // toggle "Scopri Livelli di Barriera", acceso di default
+let sottShowBarriere=false;   // toggle "Scopri Livelli di Barriera", spento di default
 
 // Trova i certificati (in DATA) che contengono la sigla del sottostante
 function certificatiConSottostante(sigla){
@@ -2836,43 +2836,30 @@ function renderSottChart(){
   }
 
   // --- Righe orizzontali: barriera a scadenza dei certificati collegati ---
-  // Solo nella vista prezzo (sono valori in prezzo assoluto) e se il toggle è acceso.
-  let barrShapes=[];
+  // Solo nella vista prezzo (valori in prezzo assoluto) e se il toggle è acceso.
+  // Le disegno come TRACCE di linea (non shapes) così sono interattive su tutta la lunghezza:
+  // l'hover trova la riga più vicina al cursore e il clic apre il certificato.
   if(sottTab==='prezzo'&&sottShowBarriere){
     const sig=currentSott.sigla;
-    certificatiConSottostante(sig).forEach(c=>{
-      const b=c.barriere;
-      if(!b||!b.has||!Array.isArray(b.assets)||!Array.isArray(b.barriera_scadenza))return;
-      const idx=b.assets.indexOf(sig);
-      if(idx<0)return;
-      const lvl=b.barriera_scadenza[idx];
-      if(lvl==null||!isFinite(lvl))return;
-      // riga orizzontale sottilissima al livello di barriera
-      barrShapes.push({type:'line',xref:'paper',x0:0,x1:1,yref:'y',y0:lvl,y1:lvl,
-        line:{color:'rgba(217,131,115,.38)',width:0.8},layer:'below'});
-    });
-    // marcatori invisibili cliccabili sulle righe (per il tooltip + clic → certificato)
-    const barrPts=[];
+    const xFull=x;   // tutte le date del grafico prezzo
     certificatiConSottostante(sig).forEach(c=>{
       const b=c.barriere;
       if(!b||!b.has||!Array.isArray(b.assets)||!Array.isArray(b.barriera_scadenza))return;
       const idx=b.assets.indexOf(sig);if(idx<0)return;
       const lvl=b.barriera_scadenza[idx];
       if(lvl==null||!isFinite(lvl))return;
-      barrPts.push({lvl,isin:c.isin,emit:c.emittente||'—',str:c.struttura||'—'});
-    });
-    if(barrPts.length){
-      // un punto a destra su ogni riga, per hover/clic (etichetta discreta)
-      const lastX=x[x.length-1];
-      traces.push({x:barrPts.map(()=>lastX),y:barrPts.map(p=>p.lvl),
-        customdata:barrPts.map(p=>[p.isin,p.emit,p.str,p.lvl]),
-        mode:'markers',type:'scatter',name:'barriere',
-        marker:{symbol:'line-ew',size:14,color:'rgba(217,131,115,.6)',
-          line:{color:'rgba(217,131,115,.6)',width:1}},
-        hovertemplate:'<b>%{customdata[0]}</b><br><span style="color:#8C9BA8">%{customdata[1]} · %{customdata[2]}</span><br>Barriera a scadenza&nbsp;&nbsp;<b>%{customdata[3]:.2f}</b><extra></extra>',
+      // linea orizzontale sottilissima su tutta la larghezza, interattiva
+      traces.push({
+        x:xFull,
+        y:xFull.map(()=>lvl),
+        customdata:xFull.map(()=>[c.isin,c.emittente||'—',c.struttura||'—',lvl]),
+        mode:'lines',type:'scatter',name:'barriere',
+        line:{color:'rgba(217,131,115,.35)',width:0.8},
         hoverlabel:{bgcolor:'rgba(18,24,32,.97)',bordercolor:'rgba(217,131,115,.5)',
-          font:{family:'Inter, system-ui, sans-serif',size:12,color:'#E8EDF1'},align:'left'}});
-    }
+          font:{family:'Inter, system-ui, sans-serif',size:12,color:'#E8EDF1'},align:'left'},
+        hovertemplate:'<b>%{customdata[0]}</b><br><span style="color:#8C9BA8">%{customdata[1]} · %{customdata[2]}</span><br>Barriera a scadenza&nbsp;&nbsp;<b>%{customdata[3]:.2f}</b><extra></extra>',
+        showlegend:false});
+    });
   }
 
   document.getElementById('sChartTitle').textContent=titolo;
@@ -2891,7 +2878,11 @@ function renderSottChart(){
     L.yaxis2={domain:[0,0.055],range:[0,1],fixedrange:true,
       showgrid:false,zeroline:false,showticklabels:false,showline:false};
   }
-  if(barrShapes.length)L.shapes=(L.shapes||[]).concat(barrShapes);
+  // con le barriere visibili uso hovermode 'closest': il tooltip segue la riga/punto più
+  // vicino al cursore (così si centra la barriera che interessa, non la data).
+  const hasBarriere=sottTab==='prezzo'&&sottShowBarriere&&
+    certificatiConSottostante(currentSott.sigla).some(c=>{const b=c.barriere;return b&&b.has&&Array.isArray(b.barriera_scadenza)&&b.assets.indexOf(currentSott.sigla)>=0;});
+  if(hasBarriere)L.hovermode='closest';
   drawChartSott('chartSott',traces,L);
 }
 
