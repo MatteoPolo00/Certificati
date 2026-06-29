@@ -2360,6 +2360,8 @@ function renderBarrProbInfo(r){
 
 // ---- Vista VaR (percentili rolling dei rendimenti simulati) ----
 let varAnn=false;   // false = non annualizzato, true = annualizzato
+let _varData=null;  // dati VaR del certificato corrente (per il toggle)
+let _varSegBound=false;
 function loadVar(r){
   // i dati VaR arrivano dallo stesso rendimento/ISIN.json (campo .var)
   const cached=rendCache[r.isin];
@@ -2375,24 +2377,33 @@ function loadVar(r){
 }
 
 function renderVar(v){
+  _varData=v;   // memorizzo i dati correnti per il toggle
   const host=document.getElementById('chartVar');if(!host)return;
   const full=v&&v.has&&v.full!==false;   // full=false → solo VaR5/VaR10 non ann.
-  // selettore non-ann / annualizzato: visibile solo se ho i dati annualizzati
   const seg=document.querySelector('.var-seg');
+  // il toggle è visibile SOLO se ci sono i dati annualizzati (full)
   if(seg)seg.style.display=full?'':'none';
   if(!full)varAnn=false;   // senza annualizzato forzo non-ann
+  // aggiorno lo stato visivo dei bottoni ad ogni render
   document.querySelectorAll('.var-seg button').forEach(b=>{
     b.setAttribute('aria-pressed',(b.dataset.va==='ann')===varAnn?'true':'false');
-    if(!b._bound){b._bound=true;b.addEventListener('click',()=>{varAnn=(b.dataset.va==='ann');renderVar(v);});}
   });
+  // binding UNA VOLTA SOLA: il click ridisegna usando _varData (sempre aggiornato)
+  if(seg&&!_varSegBound){
+    _varSegBound=true;
+    seg.querySelectorAll('button').forEach(b=>{
+      b.addEventListener('click',()=>{varAnn=(b.dataset.va==='ann');renderVar(_varData);});
+    });
+  }
   if(!v||!v.has){
     const L0=baseLayout();L0.xaxis.autorange=true;L0.yaxis.autorange=true;
     whenSized('chartVar',()=>{Plotly.purge(host);Plotly.newPlot(host,[{x:[],y:[]}],L0,PCFG);});
     return;
   }
   const dates=asArr(v.dates);
-  const p05=varAnn?asArr(v.var05_ann):asArr(v.var05);
-  const p10=varAnn?asArr(v.var10_ann):asArr(v.var10);
+  // se manca la versione annualizzata di una serie, ricado sulla non-annualizzata
+  const p05=(varAnn&&v.var05_ann)?asArr(v.var05_ann):asArr(v.var05);
+  const p10=(varAnn&&v.var10_ann)?asArr(v.var10_ann):asArr(v.var10);
   // colori coerenti col tuo grafico MATLAB: rosso VaR5, blu VaR10, scuro mediana
   const traces=[
     {x:dates,y:p05,mode:'lines',name:'VaR 5%',
@@ -2402,12 +2413,14 @@ function renderVar(v){
       line:{color:'rgba(90,150,200,.95)',width:2,shape:'spline',smoothing:0.3},
       hovertemplate:'VaR 10%%<br>%{x|%d %b %Y}<br><b>%{y:.2f}%%</b><extra></extra>'}
   ];
-  // la mediana c'è solo nei dati completi
+  // la mediana c'è solo nei dati completi; in annualizzato uso var50_ann se presente
   if(full){
-    const p50=varAnn?asArr(v.var50_ann):asArr(v.var50);
-    traces.push({x:dates,y:p50,mode:'lines',name:'Mediana',
-      line:{color:'rgba(200,205,210,.85)',width:2,shape:'spline',smoothing:0.3},
-      hovertemplate:'Mediana<br>%{x|%d %b %Y}<br><b>%{y:.2f}%%</b><extra></extra>'});
+    const p50=(varAnn&&v.var50_ann)?asArr(v.var50_ann):asArr(v.var50);
+    if(p50&&p50.length){
+      traces.push({x:dates,y:p50,mode:'lines',name:'Mediana',
+        line:{color:'rgba(200,205,210,.85)',width:2,shape:'spline',smoothing:0.3},
+        hovertemplate:'Mediana<br>%{x|%d %b %Y}<br><b>%{y:.2f}%%</b><extra></extra>'});
+    }
   }
   const L=baseLayout();
   L.xaxis.autorange=true;L.yaxis.autorange=true;L.yaxis.ticksuffix='%';
