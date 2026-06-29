@@ -451,6 +451,27 @@
   .mem-block+.mem-block{margin-top:18px}
   .mem-lbl{font-family:"Inter",sans-serif;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:8px}
   .mem-plot{width:100%;height:230px}
+  /* toggle "Scopri Livelli di Barriera" nella pagina sottostante */
+  .barr-toggle{display:inline-flex;align-items:center;gap:7px;cursor:pointer;
+    font-family:"Inter",sans-serif;font-size:11.5px;color:var(--muted);user-select:none}
+  .barr-toggle input{appearance:none;-webkit-appearance:none;width:30px;height:17px;border-radius:9px;
+    background:var(--hair);position:relative;cursor:pointer;transition:background .15s;flex:none}
+  .barr-toggle input:checked{background:rgba(217,131,115,.6)}
+  .barr-toggle input::after{content:'';position:absolute;top:2px;left:2px;width:13px;height:13px;
+    border-radius:50%;background:var(--txt);transition:transform .15s}
+  .barr-toggle input:checked::after{transform:translateX(13px)}
+  .barr-toggle:hover{color:var(--txt)}
+  /* etichetta Worst-of (peggior sottostante) */
+  .worst-tag{display:inline-block;font-family:"IBM Plex Mono",monospace;font-size:8.5px;font-weight:600;
+    letter-spacing:.06em;text-transform:uppercase;color:var(--neg);background:rgba(217,131,115,.12);
+    border:1px solid rgba(217,131,115,.35);border-radius:4px;padding:1px 5px;margin-left:6px;vertical-align:middle}
+  /* sigla del worst-of evidenziata nella lista sottostanti del Monitor */
+  .wo-sig{color:var(--neg);font-weight:600}
+  /* distanza percentuale dalla barriera accanto all'ultimo prezzo */
+  .dist-neg{color:var(--neg);font-size:11px;font-weight:600}
+  .dist-pos{color:var(--pos);font-size:11px;font-weight:600}
+  /* chip del worst-of evidenziato in Overview */
+  .chip-worst{border-color:rgba(217,131,115,.45)!important;color:var(--neg)!important}
   .rend-seg button{font-size:11px}
   .mem-empty{text-align:center;padding:56px 20px;font-family:"Inter",sans-serif;font-size:15px;font-weight:600;color:var(--muted)}
   .mem-empty-sub{font-size:12.5px;font-weight:400;color:var(--faint);margin-top:8px}
@@ -1069,7 +1090,7 @@
     <div class="subview" id="sv-barriera" hidden>
       <div id="barrProbInfo" class="barr-box" hidden></div>
       <div class="card chart-card">
-        <div class="chart-head"><div class="t">Probabilità di violazione della barriera <span class="badge" id="barrProbK">—</span></div></div>
+        <div class="chart-head"><div class="t">Probabilità di violazione della barriera a scadenza <span class="badge" id="barrProbK">—</span></div></div>
         <div id="chartBarrProb" class="plot ov-tall"></div>
       </div>
     </div>
@@ -1104,7 +1125,12 @@
       <div class="card chart-card">
         <div class="chart-head">
           <div class="t" id="sChartTitle">Prezzo storico</div>
-          <div class="hd-right" id="sChartControls"></div>
+          <div class="hd-right" id="sChartControls">
+            <label class="barr-toggle" id="barrToggleWrap">
+              <input type="checkbox" id="barrToggle">
+              <span>Scopri Livelli di Barriera</span>
+            </label>
+          </div>
         </div>
         <div id="chartSott" class="plot ov-tall"></div>
       </div>
@@ -1542,7 +1568,7 @@ function sliceByWindow(r,win){if(win==='all')return r;const months={'1m':1,'3m':
 /* ---------- stato ---------- */
 let DATA=DEMO,demoMode=true,current=null,win='all',subv='markup';
 const fState={q:'',e:'',s:'',u:'',f:'',da:'',a:''};
-const sortState={key:'scadenza',dir:'asc'};
+const sortState={key:'aggiorn',dir:'desc'};   // default: prima i prodotti aggiornati più di recente
 
 function matches(r){
   const q=fState.q.trim().toLowerCase();
@@ -1563,13 +1589,17 @@ const COLS=[
   {key:'emittente',label:'Emittente',cls:'clip',get:r=>esc(r.emittente||'—'),sort:r=>r.emittente||'',num:false},
   {key:'struttura',label:'Struttura',cls:'clip',get:r=>esc(r.struttura||'—'),sort:r=>r.struttura||'',num:false},
   {key:'rischio',label:'Rischio',cls:'num',html:true,get:r=>{const v=riskLast(r);return v==null?'<span class="mkna">—</span>':`<span class="risk-chip risk-${v}">${v}</span>`;},sort:r=>{const v=riskLast(r);return v==null?-1:v;},num:true},
-  {key:'sottostanti',label:'Sottostanti',cls:'dim',get:r=>esc((r.sottostanti||[]).join(', ')||'—'),tip:r=>(r.sottostanti||[]).map(nameOf).join(', '),sort:r=>(r.sottostanti||[]).join(','),num:false},
+  {key:'sottostanti',label:'Sottostanti',cls:'dim',get:r=>{
+    const sg=asArr(r.sottostanti);if(!sg.length)return '—';
+    const wo=worstOfSigla(r);
+    return sg.map(s=>s===wo?'<span class="wo-sig">'+esc(s)+'</span>':esc(s)).join(', ');
+  },tip:r=>(r.sottostanti||[]).map(nameOf).join(', '),sort:r=>(r.sottostanti||[]).join(','),num:false},
   {key:'scadenza',label:'Scadenza',cls:'',get:r=>esc(r.scadenza||'—'),sort:r=>r.scadenza||'',num:false},
   {key:'cedola',label:'Cedola',cls:'num',get:r=>fmtCedola(r.cedola),sort:r=>cedolaNum(r.cedola),num:true},
   {key:'frequenza',label:'Frequenza',cls:'',get:r=>esc(freqOf(r)),sort:r=>freqOf(r)||'',num:false},
   {key:'prezzo',label:'Prezzo',cls:'num',get:r=>{const v=lastNum(r.prezzo_mercato);return v==null?'—':v.toFixed(2);},sort:r=>lastNum(r.prezzo_mercato),num:true},
   {key:'markup',label:'Costo implicito',cls:'num',html:true,get:r=>{const v=lastNum(r.cost_premium);return v==null?'<span class="mkna">—</span>':`<span class="${v>=0?'mkpos':'mkneg'}">${fmtPct(v)}</span>`;},sort:r=>lastNum(r.cost_premium),num:true},
-  {key:'aggiorn',label:'Aggiorn.',cls:'',get:r=>esc(shortUpd(r.aggiornamento)),sort:r=>r.aggiornamento||'',num:false}
+  {key:'aggiorn',label:'Aggiorn.',cls:'',get:r=>esc(shortUpd(r.aggiornamento)),sort:r=>{const t=Date.parse(r.aggiornamento);return Number.isNaN(t)?-Infinity:t;},num:true}
 ];
 let pageSize=50,currentPage=1;
 
@@ -1640,14 +1670,18 @@ function renderMeta(r){const pmkt=lastNum(r.prezzo_mercato),pmod=lastNum(r.prezz
     const l=document.createElement('div');l.className='lab';l.textContent=lab;
     const v=document.createElement('div');v.className='v';
     if(val==='__chips__'){const c=document.createElement('div');c.className='chips';
+      const woSig=worstOfSigla(r);   // sigla del worst-of (null se ≤1 sottostante o non calcolabile)
       (r.sottostanti||[]).forEach(s=>{
-        const ch=document.createElement('span');ch.className='chip chip-link';
+        const ch=document.createElement('span');ch.className='chip chip-link'+(s===woSig?' chip-worst':'');
         ch.textContent=nameOf(s);ch.title='Apri scheda '+(nameOf(s)||s);
         ch.setAttribute('role','button');ch.tabIndex=0;
         const go=()=>{location.hash='#/sott/'+encodeURIComponent(s);};
         ch.addEventListener('click',go);
         ch.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go();}});
-        c.appendChild(ch);});
+        c.appendChild(ch);
+        // tag "Worst-of" accanto al chip del sottostante peggiore
+        if(s===woSig){const wt=document.createElement('span');wt.className='worst-tag';wt.textContent='Worst-of';c.appendChild(wt);}
+      });
       v.appendChild(c);}
     else{v.textContent=val;}row.appendChild(l);row.appendChild(v);host.appendChild(row);});}
 function asPerDate(field,n){if(field==null)return new Array(n).fill(null);
@@ -2291,14 +2325,14 @@ function renderRischioSerie(r){
 
 // ---- Vista Barriera: P(performance < K) per ogni sottostante ----
 function renderBarrieraProb(r){
-  const host=document.getElementById('chartBarrProb');if(!host)return;
   const bp=r&&r.barriera_prob;
-  const info=document.getElementById('barrProbInfo');
   const badge=document.getElementById('barrProbK');
   // badge K nel titolo
   if(badge)badge.textContent=(bp&&bp.K!=null&&isFinite(bp.K))?('K '+Math.round(bp.K*100)+'%'):'—';
-  // tabella sopra: K + prezzo barriera per asset (se disponibili da rec.barriere)
+  // tabella sopra (K + prezzo barriera + ultimo prezzo): disegnata SEMPRE, anche se il
+  // grafico non è ancora pronto. Va fatta prima del check su host.
   renderBarrProbInfo(r);
+  const host=document.getElementById('chartBarrProb');if(!host)return;
   if(!bp||!bp.has||!Array.isArray(bp.assets)||!bp.assets.length){
     host.innerHTML='<div class="mem-empty">Probabilità barriera non disponibile</div>';
     return;
@@ -2341,18 +2375,63 @@ function renderBarrieraProb(r){
 function renderBarrProbInfo(r){
   const host=document.getElementById('barrProbInfo');if(!host)return;
   const bp=r&&r.barriera_prob;
-  const b=r&&r.barriere;   // eventuali prezzi barriera per asset (richiede Settlement/Strike)
+  const b=r&&r.barriere;
   const kVal=(bp&&bp.K!=null)?bp.K:(b&&b.K!=null?b.K:null);
+  // elenco sottostanti del certificato (da barriera_prob.assets o da r.sottostanti)
+  let assetLabels=[];
+  if(bp&&Array.isArray(bp.assets)&&bp.assets.length)assetLabels=bp.assets.map(a=>a.label);
+  else assetLabels=asArr(r.sottostanti);
   if(kVal==null&&!(b&&b.has)){host.hidden=true;host.innerHTML='';return;}
   const kPct=(kVal!=null&&isFinite(kVal))?(Math.round(kVal*100)+'%'):'—';
   let html='<div class="barr-head">Barriera a scadenza · K = '+kPct+'</div>';
-  // se ho i prezzi barriera per asset (da Settlement×K), mostro la tabella
-  if(b&&b.has&&Array.isArray(b.assets)&&b.assets.length){
-    const bar=asArr(b.barriera_scadenza);
+  // mappa sigla → sottostante (per le serie prezzo, usate dal ripiego prezzo×K)
+  const sottMap={};(frontierSottostanti()||[]).forEach(s=>{sottMap[s.sigla]=s;});
+  // mappa ticker → ultimo prezzo (dalla timetable tt, fonte primaria per l'ultimo prezzo)
+  const upa=r&&r.ultimo_prezzo_asset;
+  const lastMap={};
+  if(upa&&upa.has&&Array.isArray(upa.tickers)&&Array.isArray(upa.prezzi)){
+    upa.tickers.forEach((tk,i)=>{lastMap[tk]=upa.prezzi[i];});
+  }
+  // calcolo prezzo barriera, ultimo prezzo e distanza normalizzata per ogni asset
+  const rows=assetLabels.map(sig=>{
+    const s=sottMap[sig];
+    const pv=s?asArr(s.prezzo):[];
+    const lvl=barrieraScadenzaPerSott(r,sig,pv,s?asArr(s.prezzo_dates):[]);
+    // ultimo prezzo: prima dalla mappa tt (per ticker), poi ripiego sulla serie prezzo frontiera
+    let last=(lastMap[sig]!=null&&isFinite(lastMap[sig]))?lastMap[sig]:null;
+    if(last==null){for(let i=pv.length-1;i>=0;i--){if(pv[i]!=null&&isFinite(pv[i])){last=pv[i];break;}}}
+    // distanza normalizzata da barriera: (prezzo - barriera)/barriera
+    let dist=null;
+    if(last!=null&&lvl!=null&&isFinite(lvl)&&lvl!==0)dist=(last-lvl)/lvl;
+    return {sig,lvl,last,dist};
+  });
+  const anyLvl=rows.some(x=>x.lvl!=null&&isFinite(x.lvl));
+  const anyLast=rows.some(x=>x.last!=null&&isFinite(x.last));
+  // worst-of: l'asset con distanza normalizzata MINIMA (più vicino/sotto barriera), solo se >1 sottostante
+  let worstSig=null;
+  if(rows.length>1){
+    let mn=Infinity;
+    rows.forEach(x=>{if(x.dist!=null&&isFinite(x.dist)&&x.dist<mn){mn=x.dist;worstSig=x.sig;}});
+  }
+  // la tabella appare se ho almeno un dato utile (barriera o ultimo prezzo)
+  if(anyLvl||anyLast){
     html+='<div class="barr-tablewrap"><table class="barr-table"><thead><tr>'
-      +'<th>Sottostante</th><th class="num">Prezzo barriera</th></tr></thead><tbody>';
-    b.assets.forEach((a,i)=>{const nm=nameOf(a)||a;
-      html+='<tr><td>'+esc(nm)+'</td><td class="num">'+(bar[i]==null||!isFinite(bar[i])?'—':(+bar[i]).toFixed(2))+'</td></tr>';});
+      +'<th>Sottostante</th><th class="num">Prezzo barriera</th><th class="num">Ultimo prezzo</th></tr></thead><tbody>';
+    rows.forEach(x=>{const nm=nameOf(x.sig)||x.sig;
+      const wo=(x.sig===worstSig)?' <span class="worst-tag">Worst-of</span>':'';
+      const barrTxt=(x.lvl==null||!isFinite(x.lvl))?'—':(+x.lvl).toFixed(2);
+      // ultimo prezzo + distanza % dalla barriera tra parentesi (0% = sulla barriera, -10% = 10% sotto)
+      let lastTxt='—';
+      if(x.last!=null&&isFinite(x.last)){
+        lastTxt=(+x.last).toFixed(2);
+        if(x.dist!=null&&isFinite(x.dist)){
+          const pct=x.dist*100;
+          const cls=pct<0?'dist-neg':'dist-pos';
+          const sign=pct>0?'+':'';
+          lastTxt+=' <span class="'+cls+'">('+sign+pct.toFixed(1)+'%)</span>';
+        }
+      }
+      html+='<tr><td>'+esc(nm)+wo+'</td><td class="num">'+barrTxt+'</td><td class="num">'+lastTxt+'</td></tr>';});
     html+='</tbody></table></div>';
   }
   host.innerHTML=html;host.hidden=false;
@@ -2667,10 +2746,64 @@ function renderHubSentiment(){
 
 /* ================= SCHEDA SOTTOSTANTE ================= */
 let currentSott=null, sottTab='prezzo';
+let sottShowBarriere=false;   // toggle "Scopri Livelli di Barriera", spento di default
 
 // Trova i certificati (in DATA) che contengono la sigla del sottostante
+// Calcola la sigla del "worst-of" di un certificato: il sottostante con distanza
+// normalizzata minima dalla barriera (prezzo-barriera)/barriera. Solo se >1 sottostante.
+// Il risultato è memorizzato nel record (_worstOf) per non ricalcolarlo ad ogni render.
+function worstOfSigla(cert){
+  if(cert._worstOf!==undefined)return cert._worstOf;   // cache (anche null)
+  const sigle=asArr(cert.sottostanti);
+  if(sigle.length<=1){cert._worstOf=null;return null;}
+  // serie prezzo dei sottostanti (mappa costruita una volta)
+  if(!worstOfSigla._map){worstOfSigla._map={};(frontierSottostanti()||[]).forEach(s=>{worstOfSigla._map[s.sigla]=s;});}
+  const M=worstOfSigla._map;
+  let worst=null,mn=Infinity;
+  sigle.forEach(sig=>{
+    const s=M[sig];if(!s)return;
+    const pv=asArr(s.prezzo);
+    const lvl=barrieraScadenzaPerSott(cert,sig,pv,asArr(s.prezzo_dates));
+    if(lvl==null||!isFinite(lvl)||lvl===0)return;
+    let last=null;for(let i=pv.length-1;i>=0;i--){if(pv[i]!=null&&isFinite(pv[i])){last=pv[i];break;}}
+    if(last==null)return;
+    const dist=(last-lvl)/lvl;
+    if(dist<mn){mn=dist;worst=sig;}
+  });
+  cert._worstOf=worst;return worst;
+}
+
 function certificatiConSottostante(sigla){
   return DATA.filter(c=>asArr(c.sottostanti).includes(sigla));
+}
+
+// Ricava la barriera a scadenza (in prezzo) di un certificato per un dato sottostante.
+// Priorità: 1) Strike (rec.barriere.barriera_scadenza) se disponibile;
+//           2) ripiego: prezzo del sottostante alla data di settlement × K,
+//              SOLO se quella data esatta esiste nella serie prezzo del sottostante.
+// Ritorna un numero (livello barriera) oppure null se non ricavabile.
+function barrieraScadenzaPerSott(cert, sigla, sottPrezzo, sottPrezzoDates){
+  const sig=sigla;
+  // 1) via Strike (solida)
+  const b=cert.barriere;
+  if(b&&b.has&&Array.isArray(b.assets)&&Array.isArray(b.barriera_scadenza)){
+    const idx=b.assets.indexOf(sig);
+    if(idx>=0){const lvl=b.barriera_scadenza[idx];
+      if(lvl!=null&&isFinite(lvl))return lvl;}
+  }
+  // 2) ripiego: prezzo alla data settlement × K
+  const K=(cert.barriera_prob&&cert.barriera_prob.K!=null)?cert.barriera_prob.K
+         :((b&&b.K!=null)?b.K:null);
+  const ds=cert.data_settlement;
+  if(K==null||!isFinite(K)||!ds)return null;
+  const pd=asArr(sottPrezzoDates),pv=asArr(sottPrezzo);
+  if(!pd.length||pd.length!==pv.length)return null;
+  // cerco la data di settlement ESATTA nella serie (no approssimazione)
+  const i=pd.indexOf(ds);
+  if(i<0)return null;
+  const px=pv[i];
+  if(px==null||!isFinite(px))return null;
+  return px*K;
 }
 
 function openSottostante(sigla,fromHash){
@@ -2682,6 +2815,16 @@ function openSottostante(sigla,fromHash){
     return;
   }
   currentSott=s;
+  // toggle "Scopri Livelli di Barriera": binding una volta sola, ridisegna il grafico
+  const barrTg=document.getElementById('barrToggle');
+  if(barrTg&&!barrTg._bound){
+    barrTg._bound=true;
+    barrTg.checked=sottShowBarriere;
+    barrTg.addEventListener('change',()=>{sottShowBarriere=barrTg.checked;renderSottChart();});
+  }
+  // il toggle ha senso solo nella vista prezzo: lo mostro/nascondo di conseguenza
+  const barrWrap=document.getElementById('barrToggleWrap');
+  if(barrWrap)barrWrap.style.display=(sottTab==='prezzo')?'':'none';
   document.getElementById('sTitle').textContent=nameOf(sigla)||sigla;
   document.getElementById('sSub').textContent='Sottostante · '+sigla;
   showView('sottostante');
@@ -2769,6 +2912,9 @@ function setSottTab(t){
   if(t==='prezzo'&&currentSott&&!asArr(currentSott.prezzo).length)t='rendimento';
   sottTab=t;
   document.querySelectorAll('#sottSubtabs button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.st===t?'true':'false'));
+  // il toggle barriere ha senso solo in vista prezzo
+  const barrWrap=document.getElementById('barrToggleWrap');
+  if(barrWrap)barrWrap.style.display=(t==='prezzo')?'':'none';
   renderSottChart();
   syncSottHeights();
 }
@@ -2806,6 +2952,33 @@ function renderSottChart(){
         font:{family:'Inter, system-ui, sans-serif',size:12,color:'#E8EDF1'},align:'left'}});
   }
 
+  // --- Righe orizzontali: barriera a scadenza dei certificati collegati ---
+  // Solo nella vista prezzo (valori in prezzo assoluto) e se il toggle è acceso.
+  // Le disegno come TRACCE di linea (non shapes) così sono interattive su tutta la lunghezza:
+  // l'hover trova la riga più vicina al cursore e il clic apre il certificato.
+  if(sottTab==='prezzo'&&sottShowBarriere){
+    const sig=currentSott.sigla;
+    const xFull=x;   // tutte le date del grafico prezzo
+    const pxSerie=asArr(currentSott.prezzo), pxDates=asArr(currentSott.prezzo_dates);
+    certificatiConSottostante(sig).forEach(c=>{
+      const lvl=barrieraScadenzaPerSott(c,sig,pxSerie,pxDates);
+      if(lvl==null||!isFinite(lvl))return;
+      // lista dei sottostanti del certificato (nomi estesi), per il tooltip
+      const sottList=asArr(c.sottostanti).map(s=>nameOf(s)||s).join(', ');
+      // linea orizzontale sottilissima su tutta la larghezza, interattiva
+      traces.push({
+        x:xFull,
+        y:xFull.map(()=>lvl),
+        customdata:xFull.map(()=>[c.isin,c.emittente||'—',c.struttura||'—',lvl,sottList]),
+        mode:'lines',type:'scatter',name:'barriere',
+        line:{color:'rgba(217,131,115,.35)',width:0.8},
+        hoverlabel:{bgcolor:'rgba(18,24,32,.97)',bordercolor:'rgba(217,131,115,.5)',
+          font:{family:'Inter, system-ui, sans-serif',size:12,color:'#E8EDF1'},align:'left'},
+        hovertemplate:'<b>%{customdata[0]}</b><br><span style="color:#8C9BA8">%{customdata[1]} · %{customdata[2]}</span><br>Sottostanti:&nbsp;%{customdata[4]}<br>Barriera a scadenza&nbsp;&nbsp;<b>%{customdata[3]:.2f}</b><extra></extra>',
+        showlegend:false});
+    });
+  }
+
   document.getElementById('sChartTitle').textContent=titolo;
   const L=baseLayout();
   L.xaxis.autorange=true;
@@ -2822,6 +2995,12 @@ function renderSottChart(){
     L.yaxis2={domain:[0,0.055],range:[0,1],fixedrange:true,
       showgrid:false,zeroline:false,showticklabels:false,showline:false};
   }
+  // con le barriere visibili uso hovermode 'closest': il tooltip segue la riga/punto più
+  // vicino al cursore (così si centra la barriera che interessa, non la data).
+  const hasBarriere=sottTab==='prezzo'&&sottShowBarriere&&
+    certificatiConSottostante(currentSott.sigla).some(c=>
+      barrieraScadenzaPerSott(c,currentSott.sigla,asArr(currentSott.prezzo),asArr(currentSott.prezzo_dates))!=null);
+  if(hasBarriere)L.hovermode='closest';
   drawChartSott('chartSott',traces,L);
 }
 
@@ -2836,7 +3015,7 @@ function drawChartSott(id,traces,layout){
     // click sui segnalini delle date di emissione → apri il prodotto
     if(!gd._sottClickBound){
       gd.on('plotly_click',ev=>{const pt=ev.points&&ev.points[0];
-        if(pt&&pt.data&&pt.data.name==='emissioni'&&pt.customdata){
+        if(pt&&pt.data&&(pt.data.name==='emissioni'||pt.data.name==='barriere')&&pt.customdata){
           const isin=pt.customdata[0];
           if(DATA.some(x=>x.isin===isin))location.hash='#/'+encodeURIComponent(isin)+'/overview';}});
       gd._sottClickBound=true;
