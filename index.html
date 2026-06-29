@@ -461,6 +461,12 @@
     border-radius:50%;background:var(--txt);transition:transform .15s}
   .barr-toggle input:checked::after{transform:translateX(13px)}
   .barr-toggle:hover{color:var(--txt)}
+  /* etichetta Worst-of (peggior sottostante) */
+  .worst-tag{display:inline-block;font-family:"IBM Plex Mono",monospace;font-size:8.5px;font-weight:600;
+    letter-spacing:.06em;text-transform:uppercase;color:var(--neg);background:rgba(217,131,115,.12);
+    border:1px solid rgba(217,131,115,.35);border-radius:4px;padding:1px 5px;margin-left:6px;vertical-align:middle}
+  /* sigla del worst-of evidenziata nella lista sottostanti del Monitor */
+  .wo-sig{color:var(--neg);font-weight:600}
   .rend-seg button{font-size:11px}
   .mem-empty{text-align:center;padding:56px 20px;font-family:"Inter",sans-serif;font-size:15px;font-weight:600;color:var(--muted)}
   .mem-empty-sub{font-size:12.5px;font-weight:400;color:var(--faint);margin-top:8px}
@@ -1557,7 +1563,7 @@ function sliceByWindow(r,win){if(win==='all')return r;const months={'1m':1,'3m':
 /* ---------- stato ---------- */
 let DATA=DEMO,demoMode=true,current=null,win='all',subv='markup';
 const fState={q:'',e:'',s:'',u:'',f:'',da:'',a:''};
-const sortState={key:'scadenza',dir:'asc'};
+const sortState={key:'aggiorn',dir:'desc'};   // default: prima i prodotti aggiornati più di recente
 
 function matches(r){
   const q=fState.q.trim().toLowerCase();
@@ -1578,13 +1584,17 @@ const COLS=[
   {key:'emittente',label:'Emittente',cls:'clip',get:r=>esc(r.emittente||'—'),sort:r=>r.emittente||'',num:false},
   {key:'struttura',label:'Struttura',cls:'clip',get:r=>esc(r.struttura||'—'),sort:r=>r.struttura||'',num:false},
   {key:'rischio',label:'Rischio',cls:'num',html:true,get:r=>{const v=riskLast(r);return v==null?'<span class="mkna">—</span>':`<span class="risk-chip risk-${v}">${v}</span>`;},sort:r=>{const v=riskLast(r);return v==null?-1:v;},num:true},
-  {key:'sottostanti',label:'Sottostanti',cls:'dim',get:r=>esc((r.sottostanti||[]).join(', ')||'—'),tip:r=>(r.sottostanti||[]).map(nameOf).join(', '),sort:r=>(r.sottostanti||[]).join(','),num:false},
+  {key:'sottostanti',label:'Sottostanti',cls:'dim',get:r=>{
+    const sg=asArr(r.sottostanti);if(!sg.length)return '—';
+    const wo=worstOfSigla(r);
+    return sg.map(s=>s===wo?'<span class="wo-sig">'+esc(s)+'</span>':esc(s)).join(', ');
+  },tip:r=>(r.sottostanti||[]).map(nameOf).join(', '),sort:r=>(r.sottostanti||[]).join(','),num:false},
   {key:'scadenza',label:'Scadenza',cls:'',get:r=>esc(r.scadenza||'—'),sort:r=>r.scadenza||'',num:false},
   {key:'cedola',label:'Cedola',cls:'num',get:r=>fmtCedola(r.cedola),sort:r=>cedolaNum(r.cedola),num:true},
   {key:'frequenza',label:'Frequenza',cls:'',get:r=>esc(freqOf(r)),sort:r=>freqOf(r)||'',num:false},
   {key:'prezzo',label:'Prezzo',cls:'num',get:r=>{const v=lastNum(r.prezzo_mercato);return v==null?'—':v.toFixed(2);},sort:r=>lastNum(r.prezzo_mercato),num:true},
   {key:'markup',label:'Costo implicito',cls:'num',html:true,get:r=>{const v=lastNum(r.cost_premium);return v==null?'<span class="mkna">—</span>':`<span class="${v>=0?'mkpos':'mkneg'}">${fmtPct(v)}</span>`;},sort:r=>lastNum(r.cost_premium),num:true},
-  {key:'aggiorn',label:'Aggiorn.',cls:'',get:r=>esc(shortUpd(r.aggiornamento)),sort:r=>r.aggiornamento||'',num:false}
+  {key:'aggiorn',label:'Aggiorn.',cls:'',get:r=>esc(shortUpd(r.aggiornamento)),sort:r=>{const t=Date.parse(r.aggiornamento);return Number.isNaN(t)?-Infinity:t;},num:true}
 ];
 let pageSize=50,currentPage=1;
 
@@ -2365,20 +2375,35 @@ function renderBarrProbInfo(r){
   if(kVal==null&&!(b&&b.has)){host.hidden=true;host.innerHTML='';return;}
   const kPct=(kVal!=null&&isFinite(kVal))?(Math.round(kVal*100)+'%'):'—';
   let html='<div class="barr-head">Barriera a scadenza · K = '+kPct+'</div>';
-  // mappa sigla → sottostante (per le serie prezzo, usate dal ripiego prezzo×K)
+  // mappa sigla → sottostante (per le serie prezzo, usate dal ripiego prezzo×K e per l'ultimo prezzo)
   const sottMap={};(frontierSottostanti()||[]).forEach(s=>{sottMap[s.sigla]=s;});
-  // calcolo il prezzo barriera per ogni asset (Strike se c'è, altrimenti prezzo×K)
+  // calcolo prezzo barriera, ultimo prezzo e distanza normalizzata per ogni asset
   const rows=assetLabels.map(sig=>{
     const s=sottMap[sig];
-    const lvl=barrieraScadenzaPerSott(r,sig,s?asArr(s.prezzo):[],s?asArr(s.prezzo_dates):[]);
-    return {sig,lvl};
+    const pv=s?asArr(s.prezzo):[];
+    const lvl=barrieraScadenzaPerSott(r,sig,pv,s?asArr(s.prezzo_dates):[]);
+    // ultimo prezzo = ultimo valore valido della serie prezzo (= ultima data del grafico)
+    let last=null;
+    for(let i=pv.length-1;i>=0;i--){if(pv[i]!=null&&isFinite(pv[i])){last=pv[i];break;}}
+    // distanza normalizzata da barriera: (prezzo - barriera)/barriera
+    let dist=null;
+    if(last!=null&&lvl!=null&&isFinite(lvl)&&lvl!==0)dist=(last-lvl)/lvl;
+    return {sig,lvl,last,dist};
   });
   const anyLvl=rows.some(x=>x.lvl!=null&&isFinite(x.lvl));
+  // worst-of: l'asset con distanza normalizzata MINIMA (più vicino/sotto barriera), solo se >1 sottostante
+  let worstSig=null;
+  if(rows.length>1){
+    let mn=Infinity;
+    rows.forEach(x=>{if(x.dist!=null&&isFinite(x.dist)&&x.dist<mn){mn=x.dist;worstSig=x.sig;}});
+  }
   if(anyLvl){
     html+='<div class="barr-tablewrap"><table class="barr-table"><thead><tr>'
-      +'<th>Sottostante</th><th class="num">Prezzo barriera</th></tr></thead><tbody>';
+      +'<th>Sottostante</th><th class="num">Prezzo barriera</th><th class="num">Ultimo prezzo</th></tr></thead><tbody>';
     rows.forEach(x=>{const nm=nameOf(x.sig)||x.sig;
-      html+='<tr><td>'+esc(nm)+'</td><td class="num">'+(x.lvl==null||!isFinite(x.lvl)?'—':(+x.lvl).toFixed(2))+'</td></tr>';});
+      const wo=(x.sig===worstSig)?' <span class="worst-tag">Worst-of</span>':'';
+      const lastTxt=(x.last==null||!isFinite(x.last))?'—':(+x.last).toFixed(2);
+      html+='<tr><td>'+esc(nm)+wo+'</td><td class="num">'+(x.lvl==null||!isFinite(x.lvl)?'—':(+x.lvl).toFixed(2))+'</td><td class="num">'+lastTxt+'</td></tr>';});
     html+='</tbody></table></div>';
   }
   host.innerHTML=html;host.hidden=false;
@@ -2696,6 +2721,30 @@ let currentSott=null, sottTab='prezzo';
 let sottShowBarriere=false;   // toggle "Scopri Livelli di Barriera", spento di default
 
 // Trova i certificati (in DATA) che contengono la sigla del sottostante
+// Calcola la sigla del "worst-of" di un certificato: il sottostante con distanza
+// normalizzata minima dalla barriera (prezzo-barriera)/barriera. Solo se >1 sottostante.
+// Il risultato è memorizzato nel record (_worstOf) per non ricalcolarlo ad ogni render.
+function worstOfSigla(cert){
+  if(cert._worstOf!==undefined)return cert._worstOf;   // cache (anche null)
+  const sigle=asArr(cert.sottostanti);
+  if(sigle.length<=1){cert._worstOf=null;return null;}
+  // serie prezzo dei sottostanti (mappa costruita una volta)
+  if(!worstOfSigla._map){worstOfSigla._map={};(frontierSottostanti()||[]).forEach(s=>{worstOfSigla._map[s.sigla]=s;});}
+  const M=worstOfSigla._map;
+  let worst=null,mn=Infinity;
+  sigle.forEach(sig=>{
+    const s=M[sig];if(!s)return;
+    const pv=asArr(s.prezzo);
+    const lvl=barrieraScadenzaPerSott(cert,sig,pv,asArr(s.prezzo_dates));
+    if(lvl==null||!isFinite(lvl)||lvl===0)return;
+    let last=null;for(let i=pv.length-1;i>=0;i--){if(pv[i]!=null&&isFinite(pv[i])){last=pv[i];break;}}
+    if(last==null)return;
+    const dist=(last-lvl)/lvl;
+    if(dist<mn){mn=dist;worst=sig;}
+  });
+  cert._worstOf=worst;return worst;
+}
+
 function certificatiConSottostante(sigla){
   return DATA.filter(c=>asArr(c.sottostanti).includes(sigla));
 }
