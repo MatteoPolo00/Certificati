@@ -467,6 +467,9 @@
     border:1px solid rgba(217,131,115,.35);border-radius:4px;padding:1px 5px;margin-left:6px;vertical-align:middle}
   /* sigla del worst-of evidenziata nella lista sottostanti del Monitor */
   .wo-sig{color:var(--neg);font-weight:600}
+  /* distanza percentuale dalla barriera accanto all'ultimo prezzo */
+  .dist-neg{color:var(--neg);font-size:11px;font-weight:600}
+  .dist-pos{color:var(--pos);font-size:11px;font-weight:600}
   .rend-seg button{font-size:11px}
   .mem-empty{text-align:center;padding:56px 20px;font-family:"Inter",sans-serif;font-size:15px;font-weight:600;color:var(--muted)}
   .mem-empty-sub{font-size:12.5px;font-weight:400;color:var(--faint);margin-top:8px}
@@ -2391,19 +2394,32 @@ function renderBarrProbInfo(r){
     return {sig,lvl,last,dist};
   });
   const anyLvl=rows.some(x=>x.lvl!=null&&isFinite(x.lvl));
+  const anyLast=rows.some(x=>x.last!=null&&isFinite(x.last));
   // worst-of: l'asset con distanza normalizzata MINIMA (più vicino/sotto barriera), solo se >1 sottostante
   let worstSig=null;
   if(rows.length>1){
     let mn=Infinity;
     rows.forEach(x=>{if(x.dist!=null&&isFinite(x.dist)&&x.dist<mn){mn=x.dist;worstSig=x.sig;}});
   }
-  if(anyLvl){
+  // la tabella appare se ho almeno un dato utile (barriera o ultimo prezzo)
+  if(anyLvl||anyLast){
     html+='<div class="barr-tablewrap"><table class="barr-table"><thead><tr>'
       +'<th>Sottostante</th><th class="num">Prezzo barriera</th><th class="num">Ultimo prezzo</th></tr></thead><tbody>';
     rows.forEach(x=>{const nm=nameOf(x.sig)||x.sig;
       const wo=(x.sig===worstSig)?' <span class="worst-tag">Worst-of</span>':'';
-      const lastTxt=(x.last==null||!isFinite(x.last))?'—':(+x.last).toFixed(2);
-      html+='<tr><td>'+esc(nm)+wo+'</td><td class="num">'+(x.lvl==null||!isFinite(x.lvl)?'—':(+x.lvl).toFixed(2))+'</td><td class="num">'+lastTxt+'</td></tr>';});
+      const barrTxt=(x.lvl==null||!isFinite(x.lvl))?'—':(+x.lvl).toFixed(2);
+      // ultimo prezzo + distanza % dalla barriera tra parentesi (0% = sulla barriera, -10% = 10% sotto)
+      let lastTxt='—';
+      if(x.last!=null&&isFinite(x.last)){
+        lastTxt=(+x.last).toFixed(2);
+        if(x.dist!=null&&isFinite(x.dist)){
+          const pct=x.dist*100;
+          const cls=pct<0?'dist-neg':'dist-pos';
+          const sign=pct>0?'+':'';
+          lastTxt+=' <span class="'+cls+'">('+sign+pct.toFixed(1)+'%)</span>';
+        }
+      }
+      html+='<tr><td>'+esc(nm)+wo+'</td><td class="num">'+barrTxt+'</td><td class="num">'+lastTxt+'</td></tr>';});
     html+='</tbody></table></div>';
   }
   host.innerHTML=html;host.hidden=false;
