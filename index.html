@@ -1079,7 +1079,7 @@
     <div class="subview" id="sv-barriera" hidden>
       <div id="barrProbInfo" class="barr-box" hidden></div>
       <div class="card chart-card">
-        <div class="chart-head"><div class="t">Probabilità di violazione della barriera <span class="badge" id="barrProbK">—</span></div></div>
+        <div class="chart-head"><div class="t">Probabilità di violazione della barriera a scadenza <span class="badge" id="barrProbK">—</span></div></div>
         <div id="chartBarrProb" class="plot ov-tall"></div>
       </div>
     </div>
@@ -2356,18 +2356,29 @@ function renderBarrieraProb(r){
 function renderBarrProbInfo(r){
   const host=document.getElementById('barrProbInfo');if(!host)return;
   const bp=r&&r.barriera_prob;
-  const b=r&&r.barriere;   // eventuali prezzi barriera per asset (richiede Settlement/Strike)
+  const b=r&&r.barriere;
   const kVal=(bp&&bp.K!=null)?bp.K:(b&&b.K!=null?b.K:null);
+  // elenco sottostanti del certificato (da barriera_prob.assets o da r.sottostanti)
+  let assetLabels=[];
+  if(bp&&Array.isArray(bp.assets)&&bp.assets.length)assetLabels=bp.assets.map(a=>a.label);
+  else assetLabels=asArr(r.sottostanti);
   if(kVal==null&&!(b&&b.has)){host.hidden=true;host.innerHTML='';return;}
   const kPct=(kVal!=null&&isFinite(kVal))?(Math.round(kVal*100)+'%'):'—';
   let html='<div class="barr-head">Barriera a scadenza · K = '+kPct+'</div>';
-  // se ho i prezzi barriera per asset (da Settlement×K), mostro la tabella
-  if(b&&b.has&&Array.isArray(b.assets)&&b.assets.length){
-    const bar=asArr(b.barriera_scadenza);
+  // mappa sigla → sottostante (per le serie prezzo, usate dal ripiego prezzo×K)
+  const sottMap={};(frontierSottostanti()||[]).forEach(s=>{sottMap[s.sigla]=s;});
+  // calcolo il prezzo barriera per ogni asset (Strike se c'è, altrimenti prezzo×K)
+  const rows=assetLabels.map(sig=>{
+    const s=sottMap[sig];
+    const lvl=barrieraScadenzaPerSott(r,sig,s?asArr(s.prezzo):[],s?asArr(s.prezzo_dates):[]);
+    return {sig,lvl};
+  });
+  const anyLvl=rows.some(x=>x.lvl!=null&&isFinite(x.lvl));
+  if(anyLvl){
     html+='<div class="barr-tablewrap"><table class="barr-table"><thead><tr>'
       +'<th>Sottostante</th><th class="num">Prezzo barriera</th></tr></thead><tbody>';
-    b.assets.forEach((a,i)=>{const nm=nameOf(a)||a;
-      html+='<tr><td>'+esc(nm)+'</td><td class="num">'+(bar[i]==null||!isFinite(bar[i])?'—':(+bar[i]).toFixed(2))+'</td></tr>';});
+    rows.forEach(x=>{const nm=nameOf(x.sig)||x.sig;
+      html+='<tr><td>'+esc(nm)+'</td><td class="num">'+(x.lvl==null||!isFinite(x.lvl)?'—':(+x.lvl).toFixed(2))+'</td></tr>';});
     html+='</tbody></table></div>';
   }
   host.innerHTML=html;host.hidden=false;
@@ -2689,6 +2700,35 @@ function certificatiConSottostante(sigla){
   return DATA.filter(c=>asArr(c.sottostanti).includes(sigla));
 }
 
+// Ricava la barriera a scadenza (in prezzo) di un certificato per un dato sottostante.
+// Priorità: 1) Strike (rec.barriere.barriera_scadenza) se disponibile;
+//           2) ripiego: prezzo del sottostante alla data di settlement × K,
+//              SOLO se quella data esatta esiste nella serie prezzo del sottostante.
+// Ritorna un numero (livello barriera) oppure null se non ricavabile.
+function barrieraScadenzaPerSott(cert, sigla, sottPrezzo, sottPrezzoDates){
+  const sig=sigla;
+  // 1) via Strike (solida)
+  const b=cert.barriere;
+  if(b&&b.has&&Array.isArray(b.assets)&&Array.isArray(b.barriera_scadenza)){
+    const idx=b.assets.indexOf(sig);
+    if(idx>=0){const lvl=b.barriera_scadenza[idx];
+      if(lvl!=null&&isFinite(lvl))return lvl;}
+  }
+  // 2) ripiego: prezzo alla data settlement × K
+  const K=(cert.barriera_prob&&cert.barriera_prob.K!=null)?cert.barriera_prob.K
+         :((b&&b.K!=null)?b.K:null);
+  const ds=cert.data_settlement;
+  if(K==null||!isFinite(K)||!ds)return null;
+  const pd=asArr(sottPrezzoDates),pv=asArr(sottPrezzo);
+  if(!pd.length||pd.length!==pv.length)return null;
+  // cerco la data di settlement ESATTA nella serie (no approssimazione)
+  const i=pd.indexOf(ds);
+  if(i<0)return null;
+  const px=pv[i];
+  if(px==null||!isFinite(px))return null;
+  return px*K;
+}
+
 function openSottostante(sigla,fromHash){
   const s=(frontierSottostanti()||[]).find(x=>x.sigla===sigla);
   if(!s){
@@ -2842,22 +2882,22 @@ function renderSottChart(){
   if(sottTab==='prezzo'&&sottShowBarriere){
     const sig=currentSott.sigla;
     const xFull=x;   // tutte le date del grafico prezzo
+    const pxSerie=asArr(currentSott.prezzo), pxDates=asArr(currentSott.prezzo_dates);
     certificatiConSottostante(sig).forEach(c=>{
-      const b=c.barriere;
-      if(!b||!b.has||!Array.isArray(b.assets)||!Array.isArray(b.barriera_scadenza))return;
-      const idx=b.assets.indexOf(sig);if(idx<0)return;
-      const lvl=b.barriera_scadenza[idx];
+      const lvl=barrieraScadenzaPerSott(c,sig,pxSerie,pxDates);
       if(lvl==null||!isFinite(lvl))return;
+      // lista dei sottostanti del certificato (nomi estesi), per il tooltip
+      const sottList=asArr(c.sottostanti).map(s=>nameOf(s)||s).join(', ');
       // linea orizzontale sottilissima su tutta la larghezza, interattiva
       traces.push({
         x:xFull,
         y:xFull.map(()=>lvl),
-        customdata:xFull.map(()=>[c.isin,c.emittente||'—',c.struttura||'—',lvl]),
+        customdata:xFull.map(()=>[c.isin,c.emittente||'—',c.struttura||'—',lvl,sottList]),
         mode:'lines',type:'scatter',name:'barriere',
         line:{color:'rgba(217,131,115,.35)',width:0.8},
         hoverlabel:{bgcolor:'rgba(18,24,32,.97)',bordercolor:'rgba(217,131,115,.5)',
           font:{family:'Inter, system-ui, sans-serif',size:12,color:'#E8EDF1'},align:'left'},
-        hovertemplate:'<b>%{customdata[0]}</b><br><span style="color:#8C9BA8">%{customdata[1]} · %{customdata[2]}</span><br>Barriera a scadenza&nbsp;&nbsp;<b>%{customdata[3]:.2f}</b><extra></extra>',
+        hovertemplate:'<b>%{customdata[0]}</b><br><span style="color:#8C9BA8">%{customdata[1]} · %{customdata[2]}</span><br>Sottostanti:&nbsp;%{customdata[4]}<br>Barriera a scadenza&nbsp;&nbsp;<b>%{customdata[3]:.2f}</b><extra></extra>',
         showlegend:false});
     });
   }
@@ -2881,7 +2921,8 @@ function renderSottChart(){
   // con le barriere visibili uso hovermode 'closest': il tooltip segue la riga/punto più
   // vicino al cursore (così si centra la barriera che interessa, non la data).
   const hasBarriere=sottTab==='prezzo'&&sottShowBarriere&&
-    certificatiConSottostante(currentSott.sigla).some(c=>{const b=c.barriere;return b&&b.has&&Array.isArray(b.barriera_scadenza)&&b.assets.indexOf(currentSott.sigla)>=0;});
+    certificatiConSottostante(currentSott.sigla).some(c=>
+      barrieraScadenzaPerSott(c,currentSott.sigla,asArr(currentSott.prezzo),asArr(currentSott.prezzo_dates))!=null);
   if(hasBarriere)L.hovermode='closest';
   drawChartSott('chartSott',traces,L);
 }
