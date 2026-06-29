@@ -472,6 +472,38 @@
   .dist-pos{color:var(--pos);font-size:11px;font-weight:600}
   /* chip del worst-of evidenziato in Overview */
   .chip-worst{border-color:rgba(217,131,115,.45)!important;color:var(--neg)!important}
+
+  /* ===== INSIGHTS ===== */
+  .ins-head{margin:8px 0 24px}
+  .ins-title{font-family:var(--serif);font-size:34px;font-weight:600;color:var(--txt);letter-spacing:-.01em;margin:0 0 6px}
+  .ins-lead{font-size:14px;color:var(--muted);margin:0;max-width:60ch}
+  .ins-mosaic{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+  .ins-tile{display:flex;align-items:center;gap:16px;text-align:left;width:100%;
+    background:var(--panel);border:1px solid var(--hair-soft);border-radius:14px;padding:20px;
+    cursor:pointer;transition:border-color .2s ease,transform .15s ease,box-shadow .2s ease;
+    appearance:none;font:inherit;color:inherit}
+  .ins-tile:hover{border-color:var(--brass);transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.25)}
+  .ins-tile-icon{flex:none;width:46px;height:46px;border-radius:11px;display:flex;align-items:center;justify-content:center;
+    background:var(--brass-soft);border:1px solid rgba(184,151,90,.25);color:var(--brass)}
+  .ins-tile-icon svg{width:24px;height:24px}
+  .ins-tile-body{flex:1;min-width:0}
+  .ins-tile-name{font-family:var(--serif);font-size:17px;font-weight:600;color:var(--txt);margin-bottom:3px}
+  .ins-tile-desc{font-size:12.5px;color:var(--muted);line-height:1.4}
+  .ins-tile-arrow{flex:none;color:var(--faint);font-size:18px;transition:transform .2s ease,color .2s ease}
+  .ins-tile:hover .ins-tile-arrow{color:var(--brass);transform:translateX(3px)}
+  .ins-tile-soon{opacity:.5;cursor:default;border-style:dashed}
+  .ins-tile-soon:hover{transform:none;border-color:var(--hair-soft);box-shadow:none}
+  .ins-anhead{display:flex;align-items:center;gap:18px;margin:4px 0 18px}
+  /* slider della timeline */
+  .ins-slider-wrap{display:flex;align-items:center;gap:16px;padding:16px 8px 6px}
+  .ins-slider-wrap input[type=range]{flex:1;-webkit-appearance:none;appearance:none;height:4px;border-radius:2px;
+    background:var(--hair);outline:none;cursor:pointer}
+  .ins-slider-wrap input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:16px;height:16px;
+    border-radius:50%;background:var(--brass);cursor:pointer;border:2px solid var(--panel);box-shadow:0 1px 4px rgba(0,0,0,.4)}
+  .ins-slider-wrap input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:var(--brass);
+    cursor:pointer;border:2px solid var(--panel)}
+  .ins-slider-label{flex:none;min-width:96px;text-align:right;font-family:'IBM Plex Mono',monospace;
+    font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
   .rend-seg button{font-size:11px}
   .mem-empty{text-align:center;padding:56px 20px;font-family:"Inter",sans-serif;font-size:15px;font-weight:600;color:var(--muted)}
   .mem-empty-sub{font-size:12.5px;font-weight:400;color:var(--faint);margin-top:8px}
@@ -736,6 +768,10 @@
     <button data-nav="frontier" aria-pressed="false">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20 L4 4"/><path d="M4 20 L20 20"/><path d="M5 16 Q10 8 20 6" stroke-dasharray="0.1 3.2"/><circle cx="8" cy="13" r="1.5" fill="currentColor" stroke="none"/><circle cx="13" cy="9.5" r="1.5" fill="currentColor" stroke="none"/><circle cx="17.5" cy="7" r="1.5" fill="currentColor" stroke="none"/></svg>
       <span>Efficient<br>Frontier</span>
+    </button>
+    <button data-nav="insights" aria-pressed="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="9" r="1.6" fill="currentColor" stroke="none"/><circle cx="14" cy="7" r="1.3" fill="currentColor" stroke="none" opacity="0.7"/><circle cx="16.5" cy="13" r="1.6" fill="currentColor" stroke="none"/><circle cx="10" cy="15" r="1.3" fill="currentColor" stroke="none" opacity="0.7"/><circle cx="6" cy="14.5" r="1.1" fill="currentColor" stroke="none" opacity="0.5"/><path d="M19 4.5 L19.6 6.2 L21.3 6.8 L19.6 7.4 L19 9.1 L18.4 7.4 L16.7 6.8 L18.4 6.2 Z" fill="currentColor" stroke="none" opacity="0.9"/></svg>
+      <span>Insights</span>
     </button>
   </nav>
   </div>
@@ -1173,8 +1209,55 @@
       <div class="card placeholder" id="anPlaceholder" hidden>Vista in arrivo.</div>
     </div>
   </section>
-<!-- pop-up benvenuto -->
-<div class="welcome-overlay" id="welcomeOverlay">
+
+  <!-- ================= INSIGHTS ================= -->
+  <section id="viewInsights" class="view">
+    <!-- Mosaico delle analisi -->
+    <div id="insightsHub">
+      <div class="ins-head">
+        <h1 class="ins-title">Insights</h1>
+        <p class="ins-lead">Analisi avanzate e aggregate sul mercato dei certificati.</p>
+      </div>
+      <div class="ins-mosaic">
+        <button class="ins-tile" data-ins="memory">
+          <div class="ins-tile-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="8" r="1.5" fill="currentColor" stroke="none"/><circle cx="14" cy="6" r="1.2" fill="currentColor" stroke="none" opacity="0.7"/><circle cx="16" cy="13" r="1.5" fill="currentColor" stroke="none"/><circle cx="10" cy="15" r="1.2" fill="currentColor" stroke="none" opacity="0.7"/><circle cx="6" cy="14" r="1" fill="currentColor" stroke="none" opacity="0.5"/></svg>
+          </div>
+          <div class="ins-tile-body">
+            <div class="ins-tile-name">Fondo memory</div>
+            <div class="ins-tile-desc">Entità del fondo accumulato e probabilità di erogazione, nel tempo.</div>
+          </div>
+          <div class="ins-tile-arrow">→</div>
+        </button>
+        <!-- altre tessere future: placeholder "in arrivo" -->
+        <div class="ins-tile ins-tile-soon">
+          <div class="ins-tile-body">
+            <div class="ins-tile-name">Altre analisi</div>
+            <div class="ins-tile-desc">In arrivo.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Vista analisi: Fondo memory -->
+    <div id="insMemoryView" hidden>
+      <div class="ins-anhead">
+        <button class="back" id="insBackBtn">← Insights</button>
+        <div class="prodtitle"><div class="mtitle">Fondo memory</div><div class="msub">Entità accumulata vs probabilità di erogazione</div></div>
+      </div>
+      <div class="card chart-card">
+        <div class="chart-head">
+          <div class="t">Mappa dei fondi memory <span class="badge" id="insMemDate">—</span></div>
+          <div class="hd-right"><span class="h" id="insMemCount"></span></div>
+        </div>
+        <div id="chartInsMemory" class="plot tall"></div>
+        <div class="ins-slider-wrap">
+          <input type="range" id="insMemSlider" min="0" max="100" value="100" step="1">
+          <div class="ins-slider-label" id="insMemSliderLabel">—</div>
+        </div>
+      </div>
+    </div>
+  </section>
   <div class="welcome-modal">
     <div class="welcome-logo">
       <svg width="28" height="28" viewBox="0 0 26 26">
@@ -2522,6 +2605,7 @@ function applyHash(){
   const raw=location.hash.replace(/^#\/?/,'');
   if(!raw){showView('monitor');return;}
   if(raw==='frontier'){showView('frontier');return;}
+  if(raw==='insights'){showView('insights');return;}
   if(raw==='sottostanti'){showView('sottostantihub');return;}
   const parts=raw.split('/');
   // rotta sottostante: #/sott/SIGLA
@@ -2544,15 +2628,18 @@ function showView(v){
   const vf=document.getElementById('viewFrontier');if(vf)vf.classList.toggle('active',v==='frontier');
   const vs=document.getElementById('viewSottostante');if(vs)vs.classList.toggle('active',v==='sottostante');
   const vh=document.getElementById('viewSottostantiHub');if(vh)vh.classList.toggle('active',v==='sottostantihub');
-  // nav: Monitor per monitor+product; Sottostanti per hub+scheda sottostante; Frontier per frontier
+  const vi=document.getElementById('viewInsights');if(vi)vi.classList.toggle('active',v==='insights');
+  // nav: Monitor per monitor+product; Sottostanti per hub+scheda sottostante; Frontier per frontier; Insights
   document.querySelectorAll('#mainnav button').forEach(b=>{
     let on=false;
     if(b.dataset.nav==='frontier')on=(v==='frontier');
     else if(b.dataset.nav==='sottostanti')on=(v==='sottostantihub'||v==='sottostante');
+    else if(b.dataset.nav==='insights')on=(v==='insights');
     else on=(v==='monitor'||v==='product');
     b.setAttribute('aria-pressed',on?'true':'false');});
   if(v==='frontier')openFrontier();
   if(v==='sottostantihub')openSottostantiHub();
+  if(v==='insights')openInsights();
   window.scrollTo({top:0,behavior:'instant'in document.documentElement.style?'instant':'auto'});
 }
 
@@ -4017,6 +4104,110 @@ function setupFrontierFilters(){
 }
 
 let frontierReady=false;
+// ================= INSIGHTS =================
+let _insReady=false, _insMemData=null, _insMemDates=null;
+
+function openInsights(){
+  // mostro il mosaico, nascondo le viste analisi
+  showInsightsHub();
+  if(!_insReady){
+    _insReady=true;
+    // tessera Fondo memory → apri l'analisi
+    document.querySelectorAll('.ins-tile[data-ins]').forEach(t=>{
+      t.addEventListener('click',()=>{const k=t.dataset.ins;if(k==='memory')openInsMemory();});
+    });
+    const back=document.getElementById('insBackBtn');
+    if(back)back.addEventListener('click',showInsightsHub);
+    // slider timeline
+    const sl=document.getElementById('insMemSlider');
+    if(sl)sl.addEventListener('input',()=>renderInsMemoryAt(+sl.value));
+  }
+}
+function showInsightsHub(){
+  const hub=document.getElementById('insightsHub');
+  const mv=document.getElementById('insMemoryView');
+  if(hub)hub.hidden=false;
+  if(mv)mv.hidden=true;
+}
+
+// ---- Analisi "Fondo memory": scatter entità vs probabilità erogazione, con slider date ----
+function openInsMemory(){
+  document.getElementById('insightsHub').hidden=true;
+  document.getElementById('insMemoryView').hidden=false;
+  buildInsMemoryData();
+  const sl=document.getElementById('insMemSlider');
+  if(sl){sl.value=sl.max;}            // parto dall'ultima data
+  renderInsMemoryAt(sl?+sl.value:100);
+  setTimeout(()=>{try{Plotly.Plots.resize('chartInsMemory');}catch(e){}},80);
+}
+
+// costruisce la timeline condivisa e, per ogni data, le coordinate dei certificati memory
+function buildInsMemoryData(){
+  if(_insMemData)return;   // già costruito
+  // certificati con effetto memory e accumulo
+  const certs=DATA.filter(c=>c.memory&&c.memory.has&&Array.isArray(c.memory.fondo)&&Array.isArray(c.memory.prob)&&Array.isArray(c.memory.dates));
+  // timeline condivisa: unione ordinata di tutte le date memory
+  const dateSet=new Set();
+  certs.forEach(c=>asArr(c.memory.dates).forEach(d=>dateSet.add(d)));
+  const dates=[...dateSet].sort();
+  // per ogni certificato preparo una mappa data→indice per lookup veloce
+  const prepared=certs.map(c=>{
+    const dd=asArr(c.memory.dates),fo=asArr(c.memory.fondo),pr=asArr(c.memory.prob);
+    const idx={};dd.forEach((d,i)=>{idx[d]=i;});
+    return {isin:c.isin,emit:c.emittente||'—',str:c.struttura||'—',dd,fo,pr,idx};
+  });
+  _insMemData=prepared;_insMemDates=dates;
+}
+
+// disegna lo scatter alla data corrispondente alla posizione dello slider (0..100)
+function renderInsMemoryAt(sliderVal){
+  const host=document.getElementById('chartInsMemory');if(!host)return;
+  if(!_insMemDates||!_insMemDates.length){
+    host.innerHTML='<div class="mem-empty">Nessun certificato con fondo memory disponibile</div>';
+    document.getElementById('insMemDate').textContent='—';
+    return;
+  }
+  // mappo lo slider (0..100) sull'indice della timeline
+  const n=_insMemDates.length;
+  const di=Math.min(n-1,Math.max(0,Math.round((sliderVal/100)*(n-1))));
+  const dataSel=_insMemDates[di];
+  // per ogni certificato, prendo entità (X) e prob erogazione (Y=1-prob) a quella data (se esiste)
+  const xs=[],ys=[],txt=[],isins=[];
+  _insMemData.forEach(c=>{
+    const i=c.idx[dataSel];
+    if(i==null)return;                       // questo certificato non ha quella data
+    const fondo=c.fo[i], probSvuot=c.pr[i];
+    if(fondo==null||!isFinite(fondo)||probSvuot==null||!isFinite(probSvuot))return;
+    xs.push(fondo);
+    ys.push((1-probSvuot)*100);              // probabilità EROGAZIONE = 1 - svuotamento, in %
+    isins.push(c.isin);
+    txt.push(`<b>${esc(c.isin)}</b><br><span style="color:#8C9BA8">${esc(c.emit)} · ${esc(c.str)}</span><br>Fondo&nbsp;&nbsp;<b>${(+fondo).toFixed(2)}</b><br>Prob. erogazione&nbsp;&nbsp;<b>${((1-probSvuot)*100).toFixed(1)}%</b>`);
+  });
+  const trace={x:xs,y:ys,customdata:isins,text:txt,mode:'markers',type:'scatter',
+    marker:{size:11,color:'rgba(184,151,90,.75)',line:{color:'rgba(201,169,104,.9)',width:1}},
+    hovertemplate:'%{text}<extra></extra>',
+    hoverlabel:{bgcolor:'rgba(18,24,32,.97)',bordercolor:'rgba(184,151,90,.5)',
+      font:{family:'Inter, system-ui, sans-serif',size:12,color:'#E8EDF1'},align:'left'}};
+  const L=baseLayout();
+  L.xaxis.title={text:'Entità del fondo memory',font:{size:12,color:C.muted}};
+  L.xaxis.autorange=true;L.xaxis.zeroline=false;L.xaxis.tickformat='.1f';
+  L.yaxis.title={text:'Probabilità erogazione',font:{size:12,color:C.muted}};
+  L.yaxis.range=[0,100];L.yaxis.autorange=false;L.yaxis.ticksuffix='%';
+  L.hovermode='closest';L.showlegend=false;
+  L.margin={l:64,r:24,t:16,b:54};
+  whenSized('chartInsMemory',()=>{try{Plotly.purge(host);Plotly.newPlot(host,[trace],L,PCFG);
+    // click su un punto → vai al certificato
+    const gd=document.getElementById('chartInsMemory');
+    if(gd&&!gd._insClickBound){gd._insClickBound=true;
+      gd.on('plotly_click',ev=>{const pt=ev.points&&ev.points[0];
+        if(pt&&pt.customdata&&DATA.some(x=>x.isin===pt.customdata)){location.hash='#/'+encodeURIComponent(pt.customdata)+'/overview';}});}
+  }catch(e){}});
+  // aggiorno badge data, contatore, etichetta slider
+  document.getElementById('insMemDate').textContent=fmtDate(dataSel);
+  document.getElementById('insMemCount').textContent=xs.length+' certificati';
+  document.getElementById('insMemSliderLabel').textContent=fmtDate(dataSel);
+}
+
 function openFrontier(){
   loadFrontier().then(()=>{
     if(!frontierReady){setupFrontierFilters();initFrontierSlider();bindMinimap();frontierReady=true;}
@@ -4099,6 +4290,7 @@ function init(){
   document.querySelectorAll('#mainnav button').forEach(b=>b.addEventListener('click',()=>{
     const nav=b.dataset.nav;
     if(nav==='frontier'){location.hash='#/frontier';}
+    else if(nav==='insights'){location.hash='#/insights';}
     else if(nav==='sottostanti'){location.hash='#/sottostanti';}
     else{location.hash='';}}));
 
