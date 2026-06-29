@@ -2384,16 +2384,22 @@ function renderBarrProbInfo(r){
   if(kVal==null&&!(b&&b.has)){host.hidden=true;host.innerHTML='';return;}
   const kPct=(kVal!=null&&isFinite(kVal))?(Math.round(kVal*100)+'%'):'—';
   let html='<div class="barr-head">Barriera a scadenza · K = '+kPct+'</div>';
-  // mappa sigla → sottostante (per le serie prezzo, usate dal ripiego prezzo×K e per l'ultimo prezzo)
+  // mappa sigla → sottostante (per le serie prezzo, usate dal ripiego prezzo×K)
   const sottMap={};(frontierSottostanti()||[]).forEach(s=>{sottMap[s.sigla]=s;});
+  // mappa ticker → ultimo prezzo (dalla timetable tt, fonte primaria per l'ultimo prezzo)
+  const upa=r&&r.ultimo_prezzo_asset;
+  const lastMap={};
+  if(upa&&upa.has&&Array.isArray(upa.tickers)&&Array.isArray(upa.prezzi)){
+    upa.tickers.forEach((tk,i)=>{lastMap[tk]=upa.prezzi[i];});
+  }
   // calcolo prezzo barriera, ultimo prezzo e distanza normalizzata per ogni asset
   const rows=assetLabels.map(sig=>{
     const s=sottMap[sig];
     const pv=s?asArr(s.prezzo):[];
     const lvl=barrieraScadenzaPerSott(r,sig,pv,s?asArr(s.prezzo_dates):[]);
-    // ultimo prezzo = ultimo valore valido della serie prezzo (= ultima data del grafico)
-    let last=null;
-    for(let i=pv.length-1;i>=0;i--){if(pv[i]!=null&&isFinite(pv[i])){last=pv[i];break;}}
+    // ultimo prezzo: prima dalla mappa tt (per ticker), poi ripiego sulla serie prezzo frontiera
+    let last=(lastMap[sig]!=null&&isFinite(lastMap[sig]))?lastMap[sig]:null;
+    if(last==null){for(let i=pv.length-1;i>=0;i--){if(pv[i]!=null&&isFinite(pv[i])){last=pv[i];break;}}}
     // distanza normalizzata da barriera: (prezzo - barriera)/barriera
     let dist=null;
     if(last!=null&&lvl!=null&&isFinite(lvl)&&lvl!==0)dist=(last-lvl)/lvl;
