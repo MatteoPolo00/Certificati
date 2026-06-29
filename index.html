@@ -988,7 +988,7 @@
         <div id="chartMarkup" class="plot mk"></div>
       </div>
       <div class="card chart-card">
-        <div class="chart-head"><div class="t">Prezzo di mercato vs modello</div><div class="hd-right"><span class="h">€ per certificato</span><button id="xlsPrice" class="xlsbtn" title="Scarica dati in Excel" aria-label="Scarica dati in Excel"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3" fill="#1D6F42"/><path d="M8.8 7.6l6.4 8.8M15.2 7.6l-6.4 8.8" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg></button></div></div>
+        <div class="chart-head"><div class="t">Prezzo di mercato vs Jensen</div><div class="hd-right"><span class="h">€ per certificato</span><button id="xlsPrice" class="xlsbtn" title="Scarica dati in Excel" aria-label="Scarica dati in Excel"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3" fill="#1D6F42"/><path d="M8.8 7.6l6.4 8.8M15.2 7.6l-6.4 8.8" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg></button></div></div>
         <div id="chartPrice" class="plot sm"></div>
       </div>
     </div>
@@ -1451,10 +1451,10 @@ function renderPrice(r){const x=r.dates;
      line:{color:'rgba(184,151,90,.95)',width:2,shape:'spline',smoothing:0.4},
      connectgaps:false,
      hovertemplate:'Mercato&nbsp;&nbsp;<b>%{y:.2f}</b><extra></extra>'},
-    {x,y:r.prezzo_modello,type:'scatter',mode:'lines',name:'Modello',
+    {x,y:r.prezzo_modello,type:'scatter',mode:'lines',name:'Jensen',
      line:{color:'rgba(90,150,200,.95)',width:2,shape:'spline',smoothing:0.4},
      connectgaps:false,
-     hovertemplate:'Modello&nbsp;&nbsp;<b>%{y:.2f}</b><extra></extra>'}
+     hovertemplate:'Jensen&nbsp;&nbsp;<b>%{y:.2f}</b><extra></extra>'}
   ];
   const L=baseLayout();
   L.showlegend=true;
@@ -2303,15 +2303,21 @@ function renderBarrieraProb(r){
     host.innerHTML='<div class="mem-empty">Probabilità barriera non disponibile</div>';
     return;
   }
-  const dates=asArr(bp.dates);
+  // dates può arrivare annidato ([[...]]) da jsonencode: lo "srotolo" finché è un array singolo che contiene un array
+  let dates=bp.dates;
+  while(Array.isArray(dates)&&dates.length===1&&Array.isArray(dates[0]))dates=dates[0];
+  dates=asArr(dates);
   const traces=[];
-  // una linea tratteggiata per ogni sottostante, colori distinti
-  const palette=['rgba(90,150,200,.9)','rgba(184,151,90,.9)','rgba(150,190,140,.9)','rgba(200,140,180,.9)','rgba(140,200,200,.9)'];
+  // una linea continua e morbida per ogni sottostante, colori distinti e ben leggibili
+  const palette=['rgba(90,150,200,.92)','rgba(201,164,92,.92)','rgba(111,191,143,.92)','rgba(205,140,180,.92)','rgba(140,200,200,.92)','rgba(217,154,108,.92)'];
   bp.assets.forEach((s,i)=>{
     const lab=nameOf(s.label)||s.label;
-    const prob100=asArr(s.valori).map(v=>(v==null?null:v*100));
+    // anche i valori potrebbero essere annidati: stesso srotolamento
+    let vv=s.valori;
+    while(Array.isArray(vv)&&vv.length===1&&Array.isArray(vv[0]))vv=vv[0];
+    const prob100=asArr(vv).map(v=>(v==null?null:v*100));
     traces.push({x:dates,y:prob100,mode:'lines',type:'scatter',name:lab,
-      line:{color:palette[i%palette.length],width:1.6,dash:'dash',shape:'spline',smoothing:0.3},
+      line:{color:palette[i%palette.length],width:1.8,shape:'spline',smoothing:0.4},
       hovertemplate:`<b>${esc(lab)}</b>&nbsp;&nbsp;%{y:.1f}%<extra></extra>`,
       connectgaps:false});
   });
@@ -2354,6 +2360,8 @@ function renderBarrProbInfo(r){
 
 // ---- Vista VaR (percentili rolling dei rendimenti simulati) ----
 let varAnn=false;   // false = non annualizzato, true = annualizzato
+let _varData=null;  // dati VaR del certificato corrente (per il toggle)
+let _varSegBound=false;
 function loadVar(r){
   // i dati VaR arrivano dallo stesso rendimento/ISIN.json (campo .var)
   const cached=rendCache[r.isin];
@@ -2369,24 +2377,33 @@ function loadVar(r){
 }
 
 function renderVar(v){
+  _varData=v;   // memorizzo i dati correnti per il toggle
   const host=document.getElementById('chartVar');if(!host)return;
   const full=v&&v.has&&v.full!==false;   // full=false → solo VaR5/VaR10 non ann.
-  // selettore non-ann / annualizzato: visibile solo se ho i dati annualizzati
   const seg=document.querySelector('.var-seg');
+  // il toggle è visibile SOLO se ci sono i dati annualizzati (full)
   if(seg)seg.style.display=full?'':'none';
   if(!full)varAnn=false;   // senza annualizzato forzo non-ann
+  // aggiorno lo stato visivo dei bottoni ad ogni render
   document.querySelectorAll('.var-seg button').forEach(b=>{
     b.setAttribute('aria-pressed',(b.dataset.va==='ann')===varAnn?'true':'false');
-    if(!b._bound){b._bound=true;b.addEventListener('click',()=>{varAnn=(b.dataset.va==='ann');renderVar(v);});}
   });
+  // binding UNA VOLTA SOLA: il click ridisegna usando _varData (sempre aggiornato)
+  if(seg&&!_varSegBound){
+    _varSegBound=true;
+    seg.querySelectorAll('button').forEach(b=>{
+      b.addEventListener('click',()=>{varAnn=(b.dataset.va==='ann');renderVar(_varData);});
+    });
+  }
   if(!v||!v.has){
     const L0=baseLayout();L0.xaxis.autorange=true;L0.yaxis.autorange=true;
     whenSized('chartVar',()=>{Plotly.purge(host);Plotly.newPlot(host,[{x:[],y:[]}],L0,PCFG);});
     return;
   }
   const dates=asArr(v.dates);
-  const p05=varAnn?asArr(v.var05_ann):asArr(v.var05);
-  const p10=varAnn?asArr(v.var10_ann):asArr(v.var10);
+  // se manca la versione annualizzata di una serie, ricado sulla non-annualizzata
+  const p05=(varAnn&&v.var05_ann)?asArr(v.var05_ann):asArr(v.var05);
+  const p10=(varAnn&&v.var10_ann)?asArr(v.var10_ann):asArr(v.var10);
   // colori coerenti col tuo grafico MATLAB: rosso VaR5, blu VaR10, scuro mediana
   const traces=[
     {x:dates,y:p05,mode:'lines',name:'VaR 5%',
@@ -2396,12 +2413,14 @@ function renderVar(v){
       line:{color:'rgba(90,150,200,.95)',width:2,shape:'spline',smoothing:0.3},
       hovertemplate:'VaR 10%%<br>%{x|%d %b %Y}<br><b>%{y:.2f}%%</b><extra></extra>'}
   ];
-  // la mediana c'è solo nei dati completi
+  // la mediana c'è solo nei dati completi; in annualizzato uso var50_ann se presente
   if(full){
-    const p50=varAnn?asArr(v.var50_ann):asArr(v.var50);
-    traces.push({x:dates,y:p50,mode:'lines',name:'Mediana',
-      line:{color:'rgba(200,205,210,.85)',width:2,shape:'spline',smoothing:0.3},
-      hovertemplate:'Mediana<br>%{x|%d %b %Y}<br><b>%{y:.2f}%%</b><extra></extra>'});
+    const p50=(varAnn&&v.var50_ann)?asArr(v.var50_ann):asArr(v.var50);
+    if(p50&&p50.length){
+      traces.push({x:dates,y:p50,mode:'lines',name:'Mediana',
+        line:{color:'rgba(200,205,210,.85)',width:2,shape:'spline',smoothing:0.3},
+        hovertemplate:'Mediana<br>%{x|%d %b %Y}<br><b>%{y:.2f}%%</b><extra></extra>'});
+    }
   }
   const L=baseLayout();
   L.xaxis.autorange=true;L.yaxis.autorange=true;L.yaxis.ticksuffix='%';
