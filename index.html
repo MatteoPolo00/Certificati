@@ -4266,8 +4266,19 @@ function syncControls(){
 /* ---------- init ---------- */
 function init(){
   renderProfile();
-  document.getElementById('welcomeBtn').addEventListener('click',()=>{
-    document.getElementById('welcomeOverlay').classList.add('hide');});
+  // WELCOME: deve apparire SOLO su mobile (accesso da telefono). Su desktop lo rimuovo
+  // completamente dal DOM, così non può comparire in nessun caso.
+  const wo=document.getElementById('welcomeOverlay');
+  const isMobile=window.matchMedia('(max-width:760px)').matches;
+  if(wo){
+    if(!isMobile){
+      wo.remove();   // desktop: via dal DOM, niente welcome
+    }else{
+      // mobile: il pulsante "Continua comunque" lo chiude in modo robusto
+      const wb=document.getElementById('welcomeBtn');
+      if(wb)wb.addEventListener('click',()=>{wo.style.display='none';wo.classList.add('hide');});
+    }
+  }
   // Avviso mobile: una volta chiuso, non riappare per 7 giorni (frequenza settimanale).
   const mn=document.getElementById('mobileNote');
   const mx=document.getElementById('mobileNoteX');
