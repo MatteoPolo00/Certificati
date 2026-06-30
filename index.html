@@ -472,6 +472,11 @@
   .dist-pos{color:var(--pos);font-size:11px;font-weight:600}
   /* chip del worst-of evidenziato in Overview */
   .chip-worst{border-color:rgba(217,131,115,.45)!important;color:var(--neg)!important}
+  /* variazione % vs settlement accanto al chip sottostante in Overview */
+  .chip-var{font-size:11.5px;font-weight:600;margin-right:4px;font-variant-numeric:tabular-nums;align-self:center}
+  /* nota esplicativa sotto il grafico autocall */
+  .ac-note{margin-top:12px;padding:10px 14px;font-size:12px;color:var(--muted);line-height:1.5;
+    background:var(--panel-2);border-left:2px solid var(--brass);border-radius:0 8px 8px 0}
 
   /* ===== INSIGHTS ===== */
   .ins-head{margin:8px 0 24px}
@@ -1037,6 +1042,7 @@
           <button data-w="1m" aria-pressed="false">1M</button>
           <button data-w="3m" aria-pressed="false">3M</button>
           <button data-w="6m" aria-pressed="false">6M</button>
+          <button data-w="1y" aria-pressed="false">1Y</button>
           <button data-w="all" aria-pressed="true">Tutto</button>
         </div>
       </div>
@@ -1100,7 +1106,16 @@
         </div>
       </div>
     </div>
-    <div class="subview" id="sv-autocall" hidden><div class="card placeholder">Vista <b>Autocall</b> — in arrivo.</div></div>
+    <div class="subview" id="sv-autocall" hidden>
+      <div class="card chart-card">
+        <div class="chart-head">
+          <div class="t">Probabilità di autocall <span class="badge" id="acTotBadge"></span></div>
+          <div class="hd-right"><span class="h">marginale e cumulata per data di osservazione</span></div>
+        </div>
+        <div id="chartAutocall" class="plot tall"></div>
+        <div class="ac-note" id="acNote"></div>
+      </div>
+    </div>
     <div class="subview" id="sv-rischio" hidden>
       <div class="card chart-card">
         <div class="chart-head"><div class="t">Misura di rischio dinamica <span class="badge">scala 1-7</span></div></div>
@@ -1643,7 +1658,7 @@ function freqOf(r){
   return '—';
 }
 function shortUpd(u){if(!u||u==='demo'||u==='n/d')return '—';return String(u).split(' ')[0];}
-function sliceByWindow(r,win){if(win==='all')return r;const months={'1m':1,'3m':3,'6m':6}[win];
+function sliceByWindow(r,win){if(win==='all')return r;const months={'1m':1,'3m':3,'6m':6,'1y':12}[win];
   const last=new Date(r.dates[r.dates.length-1]);const cut=new Date(last);cut.setMonth(cut.getMonth()-months);
   let s=r.dates.findIndex(d=>new Date(d)>=cut);if(s<0)s=0;const sl=a=>a.slice(s);
   return{...r,dates:sl(r.dates),prezzo_mercato:sl(r.prezzo_mercato),prezzo_modello:sl(r.prezzo_modello),
@@ -1763,6 +1778,14 @@ function renderMeta(r){const pmkt=lastNum(r.prezzo_mercato),pmod=lastNum(r.prezz
         ch.addEventListener('click',go);
         ch.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go();}});
         c.appendChild(ch);
+        // variazione % dell'ultimo prezzo rispetto al settlement, accanto al sottostante
+        const vp=varPctVsSettlement(r,s);
+        if(vp!=null&&isFinite(vp)){
+          const vs=document.createElement('span');
+          vs.className=vp<0?'chip-var dist-neg':'chip-var dist-pos';
+          vs.textContent=(vp>0?'+':'')+vp.toFixed(1)+'%';
+          c.appendChild(vs);
+        }
         // tag "Worst-of" accanto al chip del sottostante peggiore
         if(s===woSig){const wt=document.createElement('span');wt.className='worst-tag';wt.textContent='Worst-of';c.appendChild(wt);}
       });
@@ -1781,6 +1804,12 @@ function renderSchedaBarriere(r){
   const b=r.barriere;
   if(!b||!b.has||!Array.isArray(b.assets)||!b.assets.length){host.hidden=true;host.innerHTML='';return;}
   const assets=b.assets,set=asArr(b.settlement),bar=asArr(b.barriera_scadenza);
+  // mappa ticker → ultimo prezzo (dalla timetable tt) per la variazione % vs settlement
+  const upa=r.ultimo_prezzo_asset;
+  const lastMap={};
+  if(upa&&upa.has&&Array.isArray(upa.tickers)&&Array.isArray(upa.prezzi)){
+    upa.tickers.forEach((tk,i)=>{lastMap[tk]=upa.prezzi[i];});
+  }
   const kTxt=(b.K!=null&&isFinite(b.K))?(' · barriera '+Math.round(b.K*100)+'%'):'';
   let html='<div class="barr-head">Livelli di riferimento'+kTxt+'</div>';
   html+='<div class="barr-tablewrap"><table class="barr-table"><thead><tr>'
@@ -1788,8 +1817,17 @@ function renderSchedaBarriere(r){
     +'</tr></thead><tbody>';
   for(let a=0;a<assets.length;a++){
     const nm=nameOf(assets[a])||assets[a];
+    // prezzo settlement + variazione % dell'ultimo prezzo rispetto ad esso
+    let setTxt=(set[a]==null||!isFinite(set[a]))?'—':(+set[a]).toFixed(2);
+    const last=lastMap[assets[a]];
+    if(set[a]!=null&&isFinite(set[a])&&set[a]!==0&&last!=null&&isFinite(last)){
+      const varPct=((last-set[a])/set[a])*100;
+      const cls=varPct<0?'dist-neg':'dist-pos';
+      const sign=varPct>0?'+':'';
+      setTxt+=' <span class="'+cls+'">('+sign+varPct.toFixed(1)+'%)</span>';
+    }
     html+='<tr><td>'+esc(nm)+'</td>'
-      +'<td class="num">'+(set[a]==null||!isFinite(set[a])?'—':(+set[a]).toFixed(2))+'</td>'
+      +'<td class="num">'+setTxt+'</td>'
       +'<td class="num">'+(bar[a]==null||!isFinite(bar[a])?'—':(+bar[a]).toFixed(2))+'</td>'
       +'</tr>';
   }
@@ -2023,8 +2061,17 @@ function exportChart(which){if(!current)return;
     const lines=[head.join(';'),...rows.map(r=>r.map(c=>c==null?'':String(c).replace('.',',')).join(';'))];
     const blob=new Blob(['\ufeff'+lines.join('\n')],{type:'text/csv;charset=utf-8'});
     const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname+'.csv';a.click();URL.revokeObjectURL(a.href);}}
-function renderStats(w){const vals=(w.cost_premium||[]).filter(v=>v!=null&&!Number.isNaN(v));const now=lastNum(w.cost_premium);
+// renderStats(w, meanSource):
+//  - w          = slice corrente (per il "Markup attuale" = ultimo valore, sempre)
+//  - meanSource = slice su cui calcolare la MEDIA (all'apertura = ultimo anno/tutto;
+//                 al cambio timeframe = lo stesso w). Se omesso, usa w.
+function renderStats(w, meanSource){
+  const src=meanSource||w;
+  // Markup attuale = SEMPRE l'ultimo valore disponibile (non cambia col timeframe)
+  const now=lastNum((current&&current.cost_premium)||w.cost_premium);
   const elNow=document.getElementById('kpiNow');elNow.textContent=now==null?'n/d':fmtPct(now);elNow.className='n '+(now==null?'':(now>=0?'pos-t':'neg-t'));
+  // Media periodo = media sul periodo indicato da meanSource
+  const vals=(src.cost_premium||[]).filter(v=>v!=null&&!Number.isNaN(v));
   if(vals.length){const mean=vals.reduce((a,b)=>a+b,0)/vals.length;
     const elM=document.getElementById('kpiMean');elM.textContent=fmtPct(mean);elM.className='n '+(mean>=0?'pos-t':'neg-t');
     document.getElementById('kpiMeanSub').textContent=mean>=0?'in media a sconto':'in media a premio';
@@ -2374,10 +2421,17 @@ function drawTab(t){
     renderOverviewChart();
     renderKid(current.isin);
   }else if(t==='markup'){
-    const w=sliceByWindow(current,win);
+    // All'apertura/reset: grafico su "tutto"; media della card su ultimo anno (o tutto se più corto).
+    win='all';
+    document.querySelectorAll('#tabs button').forEach(x=>x.setAttribute('aria-pressed',x.dataset.w==='all'?'true':'false'));
+    const w=sliceByWindow(current,'all');
+    const w1y=sliceByWindow(current,'1y');   // ultimo anno (o tutto se la serie è più corta)
     renderMarkup(w);renderPrice(w);
+    renderStats(w, w1y);                       // markup attuale = ultimo valore; media = ultimo anno
   }else if(t==='rendimento'){
     loadRendimento(current);
+  }else if(t==='autocall'){
+    loadAutocall(current);
   }else if(t==='var'){
     loadVar(current);
   }else if(t==='rischio'){
@@ -2476,7 +2530,12 @@ function renderBarrProbInfo(r){
   if(upa&&upa.has&&Array.isArray(upa.tickers)&&Array.isArray(upa.prezzi)){
     upa.tickers.forEach((tk,i)=>{lastMap[tk]=upa.prezzi[i];});
   }
-  // calcolo prezzo barriera, ultimo prezzo e distanza normalizzata per ogni asset
+  // prezzo di settlement per asset (da r.barriere.settlement, allineato a barriere.assets)
+  const setMap={};
+  if(b&&b.has&&Array.isArray(b.assets)&&Array.isArray(b.settlement)){
+    b.assets.forEach((tk,i)=>{setMap[tk]=asArr(b.settlement)[i];});
+  }
+  // per ogni asset: settlement, ultimo prezzo, barriera, e variazione % (ultimo vs settlement)
   const rows=assetLabels.map(sig=>{
     const s=sottMap[sig];
     const pv=s?asArr(s.prezzo):[];
@@ -2484,38 +2543,40 @@ function renderBarrProbInfo(r){
     // ultimo prezzo: prima dalla mappa tt (per ticker), poi ripiego sulla serie prezzo frontiera
     let last=(lastMap[sig]!=null&&isFinite(lastMap[sig]))?lastMap[sig]:null;
     if(last==null){for(let i=pv.length-1;i>=0;i--){if(pv[i]!=null&&isFinite(pv[i])){last=pv[i];break;}}}
-    // distanza normalizzata da barriera: (prezzo - barriera)/barriera
-    let dist=null;
-    if(last!=null&&lvl!=null&&isFinite(lvl)&&lvl!==0)dist=(last-lvl)/lvl;
-    return {sig,lvl,last,dist};
+    const settle=(setMap[sig]!=null&&isFinite(setMap[sig]))?setMap[sig]:null;
+    // variazione % = performance dell'ultimo prezzo rispetto al settlement
+    let varPct=null;
+    if(last!=null&&settle!=null&&settle!==0)varPct=((last-settle)/settle)*100;
+    return {sig,lvl,last,settle,varPct};
   });
   const anyLvl=rows.some(x=>x.lvl!=null&&isFinite(x.lvl));
   const anyLast=rows.some(x=>x.last!=null&&isFinite(x.last));
-  // worst-of: l'asset con distanza normalizzata MINIMA (più vicino/sotto barriera), solo se >1 sottostante
+  const anySet=rows.some(x=>x.settle!=null&&isFinite(x.settle));
+  // worst-of: l'asset con la PERFORMANCE peggiore dal settlement (varPct minima), solo se >1 sottostante
   let worstSig=null;
   if(rows.length>1){
     let mn=Infinity;
-    rows.forEach(x=>{if(x.dist!=null&&isFinite(x.dist)&&x.dist<mn){mn=x.dist;worstSig=x.sig;}});
+    rows.forEach(x=>{if(x.varPct!=null&&isFinite(x.varPct)&&x.varPct<mn){mn=x.varPct;worstSig=x.sig;}});
   }
-  // la tabella appare se ho almeno un dato utile (barriera o ultimo prezzo)
-  if(anyLvl||anyLast){
+  // la tabella appare se ho almeno un dato utile
+  if(anyLvl||anyLast||anySet){
     html+='<div class="barr-tablewrap"><table class="barr-table"><thead><tr>'
-      +'<th>Sottostante</th><th class="num">Prezzo barriera</th><th class="num">Ultimo prezzo</th></tr></thead><tbody>';
+      +'<th>Sottostante</th><th class="num">Prezzo settlement</th><th class="num">Ultimo prezzo</th><th class="num">Prezzo barriera</th></tr></thead><tbody>';
     rows.forEach(x=>{const nm=nameOf(x.sig)||x.sig;
       const wo=(x.sig===worstSig)?' <span class="worst-tag">Worst-of</span>':'';
-      const barrTxt=(x.lvl==null||!isFinite(x.lvl))?'—':(+x.lvl).toFixed(2);
-      // ultimo prezzo + distanza % dalla barriera tra parentesi (0% = sulla barriera, -10% = 10% sotto)
-      let lastTxt='—';
-      if(x.last!=null&&isFinite(x.last)){
-        lastTxt=(+x.last).toFixed(2);
-        if(x.dist!=null&&isFinite(x.dist)){
-          const pct=x.dist*100;
-          const cls=pct<0?'dist-neg':'dist-pos';
-          const sign=pct>0?'+':'';
-          lastTxt+=' <span class="'+cls+'">('+sign+pct.toFixed(1)+'%)</span>';
+      // prezzo settlement + variazione % (ultimo vs settlement) tra parentesi
+      let setTxt='—';
+      if(x.settle!=null&&isFinite(x.settle)){
+        setTxt=(+x.settle).toFixed(2);
+        if(x.varPct!=null&&isFinite(x.varPct)){
+          const cls=x.varPct<0?'dist-neg':'dist-pos';
+          const sign=x.varPct>0?'+':'';
+          setTxt+=' <span class="'+cls+'">('+sign+x.varPct.toFixed(1)+'%)</span>';
         }
       }
-      html+='<tr><td>'+esc(nm)+wo+'</td><td class="num">'+barrTxt+'</td><td class="num">'+lastTxt+'</td></tr>';});
+      const lastTxt=(x.last==null||!isFinite(x.last))?'—':(+x.last).toFixed(2);
+      const barrTxt=(x.lvl==null||!isFinite(x.lvl))?'—':(+x.lvl).toFixed(2);
+      html+='<tr><td>'+esc(nm)+wo+'</td><td class="num">'+setTxt+'</td><td class="num">'+lastTxt+'</td><td class="num">'+barrTxt+'</td></tr>';});
     html+='</tbody></table></div>';
   }
   host.innerHTML=html;host.hidden=false;
@@ -2844,21 +2905,40 @@ function worstOfSigla(cert){
   if(cert._worstOf!==undefined)return cert._worstOf;   // cache (anche null)
   const sigle=asArr(cert.sottostanti);
   if(sigle.length<=1){cert._worstOf=null;return null;}
-  // serie prezzo dei sottostanti (mappa costruita una volta)
-  if(!worstOfSigla._map){worstOfSigla._map={};(frontierSottostanti()||[]).forEach(s=>{worstOfSigla._map[s.sigla]=s;});}
-  const M=worstOfSigla._map;
+  // worst-of = sottostante con la PERFORMANCE peggiore dal settlement (varPct minima)
   let worst=null,mn=Infinity;
   sigle.forEach(sig=>{
-    const s=M[sig];if(!s)return;
-    const pv=asArr(s.prezzo);
-    const lvl=barrieraScadenzaPerSott(cert,sig,pv,asArr(s.prezzo_dates));
-    if(lvl==null||!isFinite(lvl)||lvl===0)return;
-    let last=null;for(let i=pv.length-1;i>=0;i--){if(pv[i]!=null&&isFinite(pv[i])){last=pv[i];break;}}
-    if(last==null)return;
-    const dist=(last-lvl)/lvl;
-    if(dist<mn){mn=dist;worst=sig;}
+    const v=varPctVsSettlement(cert,sig);
+    if(v!=null&&isFinite(v)&&v<mn){mn=v;worst=sig;}
   });
   cert._worstOf=worst;return worst;
+}
+
+// Variazione % dell'ultimo prezzo rispetto al prezzo di settlement, per un dato sottostante.
+// (ultimo - settlement)/settlement * 100. Ritorna numero o null.
+function varPctVsSettlement(cert,sig){
+  const b=cert.barriere;
+  // prezzo settlement dell'asset (da barriere.settlement allineato a barriere.assets)
+  let settle=null;
+  if(b&&b.has&&Array.isArray(b.assets)&&Array.isArray(b.settlement)){
+    const i=b.assets.indexOf(sig);
+    if(i>=0)settle=asArr(b.settlement)[i];
+  }
+  if(settle==null||!isFinite(settle)||settle===0)return null;
+  // ultimo prezzo: da ultimo_prezzo_asset (per ticker), ripiego serie prezzo frontiera
+  let last=null;
+  const upa=cert.ultimo_prezzo_asset;
+  if(upa&&upa.has&&Array.isArray(upa.tickers)&&Array.isArray(upa.prezzi)){
+    const i=upa.tickers.indexOf(sig);
+    if(i>=0&&isFinite(upa.prezzi[i]))last=upa.prezzi[i];
+  }
+  if(last==null){
+    if(!worstOfSigla._map){worstOfSigla._map={};(frontierSottostanti()||[]).forEach(s=>{worstOfSigla._map[s.sigla]=s;});}
+    const s=worstOfSigla._map[sig];
+    if(s){const pv=asArr(s.prezzo);for(let i=pv.length-1;i>=0;i--){if(pv[i]!=null&&isFinite(pv[i])){last=pv[i];break;}}}
+  }
+  if(last==null)return null;
+  return ((last-settle)/settle)*100;
 }
 
 function certificatiConSottostante(sigla){
@@ -4105,6 +4185,69 @@ function setupFrontierFilters(){
 }
 
 let frontierReady=false;
+// ================= AUTOCALL =================
+// Carica una sola volta autocall.json (unico file con tutti i certificati, per ISIN)
+// e lo tiene in cache. Poi disegna marginale (barre) + cumulata (linea).
+let _autocallData=null, _autocallLoading=false;
+function loadAutocall(r){
+  const host=document.getElementById('chartAutocall');if(!host)return;
+  // demo: se non in produzione, mostro un messaggio (i dati reali vengono da autocall.json)
+  if(_autocallData){renderAutocall(r);return;}
+  if(_autocallLoading){return;}
+  _autocallLoading=true;
+  host.innerHTML='<div class="mem-empty">Caricamento dati autocall…</div>';
+  fetch('Autocall_aggregati/autocall.json')
+    .then(res=>{if(!res.ok)throw new Error('no file');return res.json();})
+    .then(data=>{_autocallData=data||{};_autocallLoading=false;renderAutocall(r);})
+    .catch(()=>{_autocallLoading=false;
+      host.innerHTML='<div class="mem-empty">Dati autocall non disponibili per questo certificato.</div>';
+      const tb=document.getElementById('acTotBadge');if(tb)tb.textContent='';
+      const nt=document.getElementById('acNote');if(nt)nt.textContent='';});
+}
+
+function renderAutocall(r){
+  const host=document.getElementById('chartAutocall');if(!host)return;
+  const tb=document.getElementById('acTotBadge');
+  const nt=document.getElementById('acNote');
+  // cerco il record per ISIN (la chiave nel JSON può essere l'ISIN o una versione "valida")
+  let rec=null;
+  if(_autocallData){
+    rec=_autocallData[r.isin];
+    if(!rec){const safe=r.isin.replace(/[^A-Za-z0-9]/g,'_');rec=_autocallData[safe];}
+  }
+  if(!rec||!Array.isArray(rec.date_oss)||!rec.date_oss.length){
+    host.innerHTML='<div class="mem-empty">Nessun dato di autocall per questo certificato.</div>';
+    if(tb)tb.textContent='';if(nt)nt.textContent='';return;
+  }
+  const dates=rec.date_oss;
+  const marg=asArr(rec.marginale);
+  const cum=asArr(rec.cumulata);
+  // badge: probabilità totale di autocall = ultima cumulata
+  const tot=cum.length?cum[cum.length-1]:null;
+  if(tb)tb.textContent=(tot!=null&&isFinite(tot))?('totale '+tot.toFixed(1)+'%'):'';
+  // barre = marginale; linea = cumulata
+  const barTrace={x:dates,y:marg,type:'bar',name:'Marginale',
+    marker:{color:'rgba(184,151,90,.55)',line:{color:'rgba(184,151,90,.9)',width:1}},
+    hovertemplate:'%{x}<br>Marginale&nbsp;&nbsp;<b>%{y:.1f}%</b><extra></extra>'};
+  const lineTrace={x:dates,y:cum,type:'scatter',mode:'lines+markers',name:'Cumulata',
+    line:{color:'rgba(90,150,200,.95)',width:2,shape:'spline',smoothing:0.6},
+    marker:{size:5,color:'rgba(90,150,200,.95)'},
+    hovertemplate:'%{x}<br>Cumulata&nbsp;&nbsp;<b>%{y:.1f}%</b><extra></extra>'};
+  const L=baseLayout();
+  L.xaxis.title={text:'Data di osservazione',font:{size:12,color:C.muted}};
+  L.xaxis.type='category';   // date come categorie (osservazioni discrete)
+  L.yaxis.title={text:'Probabilità',font:{size:12,color:C.muted}};
+  L.yaxis.range=[0,Math.min(100,Math.max(10,(Math.max(...cum.filter(isFinite),0))*1.15))];
+  L.yaxis.autorange=false;L.yaxis.ticksuffix='%';
+  L.hovermode='x unified';L.showlegend=true;
+  L.legend={orientation:'h',x:0,y:1.12,font:{size:11,color:C.muted},bgcolor:'rgba(0,0,0,0)'};
+  L.margin={l:60,r:24,t:40,b:70};
+  L.barmode='overlay';
+  whenSized('chartAutocall',()=>{try{Plotly.purge(host);Plotly.newPlot(host,[barTrace,lineTrace],L,PCFG);}catch(e){}});
+  // nota esplicativa
+  if(nt)nt.textContent='La marginale è la probabilità che l\'autocall scatti esattamente a quella data; la cumulata è la probabilità che sia già scattato entro quella data.';
+}
+
 // ================= INSIGHTS =================
 let _insReady=false, _insMemData=null, _insMemDates=null, _insMemXMax=1;
 
