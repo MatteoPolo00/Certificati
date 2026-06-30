@@ -522,6 +522,13 @@
     cursor:pointer;border:2px solid var(--panel)}
   .ins-slider-label{flex:none;min-width:96px;text-align:right;font-family:'IBM Plex Mono',monospace;
     font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+  /* switch standard/annualizzato nell'analisi autocall+rendimento */
+  .ret-switch{display:inline-flex;gap:0;border:1px solid var(--hair-soft);border-radius:8px;overflow:hidden;margin-right:12px}
+  .ret-switch button{appearance:none;cursor:pointer;background:transparent;border:none;
+    padding:6px 12px;color:var(--muted);font:inherit;font-size:11.5px;font-weight:500;transition:all .15s ease}
+  .ret-switch button:first-child{border-right:1px solid var(--hair-soft)}
+  .ret-switch button:hover{color:var(--txt)}
+  .ret-switch button.active{background:var(--brass-soft);color:var(--brass)}
   /* doppio slider per l'analisi autocall probabilità+rendimento */
   .ins-dualslider{padding:14px 8px 6px;display:flex;flex-direction:column;gap:12px}
   .ins-ds-row{display:flex;align-items:center;gap:14px}
@@ -1322,24 +1329,38 @@
     <div id="insAcRetView" hidden>
       <div class="ins-anhead">
         <button class="back" id="insAcRetBack">← Insights</button>
-        <div class="prodtitle"><div class="mtitle">Autocall: probabilità e rendimento</div><div class="msub">Probabilità di autocall entro T vs rendimento annualizzato realizzabile</div></div>
+        <div class="prodtitle"><div class="mtitle">Autocall: probabilità e rendimento</div><div class="msub">Probabilità di autocall entro T vs rendimento realizzabile</div></div>
       </div>
       <div class="card chart-card">
         <div class="chart-head">
           <div class="t">Mappa rischio-rendimento autocall</div>
-          <div class="hd-right"><span class="h" id="insAcRetCount"></span></div>
+          <div class="hd-right">
+            <div class="ret-switch" id="acRetSwitch">
+              <button data-mode="tot" class="active">Rendimento</button>
+              <button data-mode="ann">Annualizzato</button>
+            </div>
+            <span class="h" id="insAcRetCount"></span>
+          </div>
         </div>
         <div id="chartInsAcRet" class="plot tall"></div>
         <div class="ins-dualslider">
-          <div class="ins-ds-row">
-            <span class="ins-ds-lab">Data di riferimento</span>
-            <input type="range" id="insAcRetSlider1" min="0" max="100" value="0" step="1">
-            <span class="ins-ds-val" id="insAcRetVal1">—</span>
-          </div>
+          <!-- slider FINE (T): sempre visibile -->
           <div class="ins-ds-row">
             <span class="ins-ds-lab">Limite autocall (T)</span>
             <input type="range" id="insAcRetSlider2" min="0" max="100" value="100" step="1">
             <span class="ins-ds-val" id="insAcRetVal2">—</span>
+          </div>
+          <!-- bottone storico: sblocca lo slider di riferimento -->
+          <div class="ac-storico-wrap" id="acRetStoricoWrap">
+            <button class="ac-storico-btn" id="acRetStoricoBtn">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+              <span>Visualizza da una data storica</span>
+            </button>
+            <div class="ins-ds-row" id="acRetRifRow" hidden style="margin-top:12px">
+              <span class="ins-ds-lab">Data di riferimento</span>
+              <input type="range" id="insAcRetSlider1" min="0" max="100" value="100" step="1">
+              <span class="ins-ds-val" id="insAcRetVal1">—</span>
+            </div>
           </div>
         </div>
       </div>
@@ -4453,6 +4474,29 @@ function openInsights(){
     const s2=document.getElementById('insAcRetSlider2');
     if(s1)s1.addEventListener('input',()=>renderInsAcRet());
     if(s2)s2.addEventListener('input',()=>renderInsAcRet());
+    // bottone "visualizza da una data storica": sblocca lo slider di riferimento
+    const acRetBtn=document.getElementById('acRetStoricoBtn');
+    if(acRetBtn)acRetBtn.addEventListener('click',()=>{
+      const row=document.getElementById('acRetRifRow');
+      const nowHidden=row.hidden;
+      row.hidden=!nowHidden;
+      acRetBtn.classList.toggle('active',nowHidden);
+      if(!nowHidden){
+        // CHIUDO: riferimento torna a oggi (ultima data)
+        const s1b=document.getElementById('insAcRetSlider1');
+        if(s1b)s1b.value=s1b.max;
+      }
+      renderInsAcRet();
+    });
+    // switch standard/annualizzato
+    const sw=document.getElementById('acRetSwitch');
+    if(sw)sw.querySelectorAll('button').forEach(b=>{
+      b.addEventListener('click',()=>{
+        _acRetMode=b.dataset.mode;
+        sw.querySelectorAll('button').forEach(x=>x.classList.toggle('active',x===b));
+        renderInsAcRet();
+      });
+    });
   }
 }
 function showInsightsHub(){
@@ -4579,7 +4623,7 @@ function renderInsMemoryAt(sliderVal){
 //   incasso = 100 + (cedola_fissa × n_osservazioni da rif a T) + fondo_memory(T)
 //   costo   = prezzo di mercato del certificato alla data di riferimento
 //   rend_ann = (incasso/costo)^(365/giorni_rif_T) − 1
-let _acRetData=null, _acRetDates=null;
+let _acRetData=null, _acRetDates=null, _acRetMode='tot';   // 'tot'=standard, 'ann'=annualizzato
 function openInsAcRet(){
   document.getElementById('insightsHub').hidden=true;
   document.getElementById('insAcRetView').hidden=false;
@@ -4629,8 +4673,9 @@ function initAcRetSliders(){
   const s1=document.getElementById('insAcRetSlider1');
   const s2=document.getElementById('insAcRetSlider2');
   const n=_acRetDates?_acRetDates.length:0;
-  if(s1){s1.min=0;s1.max=Math.max(0,n-1);s1.value=0;}              // riferimento = prima data
-  if(s2){s2.min=0;s2.max=Math.max(0,n-1);s2.value=Math.max(0,n-1);} // limite T = ultima data
+  // riferimento = OGGI (ultima data) di default; T = ultima data
+  if(s1){s1.min=0;s1.max=Math.max(0,n-1);s1.value=Math.max(0,n-1);}
+  if(s2){s2.min=0;s2.max=Math.max(0,n-1);s2.value=Math.max(0,n-1);}
 }
 
 // helper: prezzo del certificato alla data più vicina a dataRif
@@ -4681,7 +4726,11 @@ function renderInsAcRet(){
     host.innerHTML='<div class="mem-empty">Nessun certificato con autocall disponibile.</div>';return;}
   const s1=document.getElementById('insAcRetSlider1');
   const s2=document.getElementById('insAcRetSlider2');
-  let i1=s1?+s1.value:0, i2=s2?+s2.value:_acRetDates.length-1;
+  // riferimento: se lo storico è CHIUSO, è sempre "oggi" (ultima data); altrimenti dallo slider
+  const rifRow=document.getElementById('acRetRifRow');
+  const storicoAperto=rifRow && !rifRow.hidden;
+  let i1=storicoAperto&&s1?+s1.value:(_acRetDates.length-1);
+  let i2=s2?+s2.value:_acRetDates.length-1;
   // vincolo: T (slider2) deve essere >= riferimento (slider1)
   if(i2<i1)i2=i1;
   const dataRif=_acRetDates[i1], dataT=_acRetDates[i2];
@@ -4701,16 +4750,19 @@ function renderInsAcRet(){
     const cedoleTot=c.ced*nOss;
     const memT=memoryAllaData(c.mem,dataT);
     const incasso=100+cedoleTot+memT;
-    // rendimento annualizzato (base 365)
+    // rendimento: standard (totale di periodo) o annualizzato (base 365), in base al modo
+    const rendTot=(incasso/P-1)*100;
     const rendAnn=(Math.pow(incasso/P,365/giorni)-1)*100;
+    const rend=(_acRetMode==='ann')?rendAnn:rendTot;
     // probabilità cumulata di autocall entro T (vista dal riferimento)
     const prob=cumulataAEntro(c.ac,dataRif,dataT);
     if(prob==null||!isFinite(prob))return;
     xs.push(prob);
-    ys.push(rendAnn);
+    ys.push(rend);
     isins.push(c.isin);
     const sottTxt=c.sott.length?c.sott.map(x=>nameOf(x)||x).join(', '):'—';
-    txt.push(`<b>${esc(c.isin)}</b><br><span style="color:#8C9BA8">${esc(c.emit)} · ${esc(c.str)}</span><br>Sottostanti:&nbsp;${esc(sottTxt)}<br>Prob. autocall entro T&nbsp;&nbsp;<b>${prob.toFixed(1)}%</b><br>Rendimento ann.&nbsp;&nbsp;<b>${rendAnn.toFixed(1)}%</b><br>Prezzo rif.&nbsp;&nbsp;${P.toFixed(2)} · Incasso&nbsp;${incasso.toFixed(2)}`);
+    const rendLab=(_acRetMode==='ann')?'Rendimento ann.':'Rendimento';
+    txt.push(`<b>${esc(c.isin)}</b><br><span style="color:#8C9BA8">${esc(c.emit)} · ${esc(c.str)}</span><br>Sottostanti:&nbsp;${esc(sottTxt)}<br>Prob. autocall entro T&nbsp;&nbsp;<b>${prob.toFixed(1)}%</b><br>${rendLab}&nbsp;&nbsp;<b>${rend.toFixed(1)}%</b><br>Prezzo rif.&nbsp;&nbsp;${P.toFixed(2)} · Incasso&nbsp;${incasso.toFixed(2)}`);
   });
   const trace={x:xs,y:ys,customdata:isins,text:txt,mode:'markers',type:'scatter',
     marker:{size:11,color:'rgba(184,151,90,.75)',line:{color:'rgba(201,169,104,.9)',width:1}},
@@ -4720,7 +4772,7 @@ function renderInsAcRet(){
   const L=baseLayout();
   L.xaxis.title={text:'Probabilità di autocall entro T',font:{size:12,color:C.muted}};
   L.xaxis.range=[0,100];L.xaxis.autorange=false;L.xaxis.ticksuffix='%';L.xaxis.zeroline=false;
-  L.yaxis.title={text:'Rendimento annualizzato',font:{size:12,color:C.muted}};
+  L.yaxis.title={text:(_acRetMode==='ann'?'Rendimento annualizzato':'Rendimento di periodo'),font:{size:12,color:C.muted}};
   L.yaxis.autorange=true;L.yaxis.ticksuffix='%';L.yaxis.zeroline=true;L.yaxis.zerolinecolor=C.hair;
   L.hovermode='closest';L.showlegend=false;
   L.margin={l:64,r:24,t:16,b:54};
