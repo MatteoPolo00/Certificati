@@ -4196,7 +4196,7 @@ function loadAutocall(r){
   if(_autocallLoading){return;}
   _autocallLoading=true;
   host.innerHTML='<div class="mem-empty">Caricamento dati autocall…</div>';
-  fetch('Autocall_aggregati/autocall.json')
+  fetch('autocall.json')
     .then(res=>{if(!res.ok)throw new Error('no file');return res.json();})
     .then(data=>{_autocallData=data||{};_autocallLoading=false;renderAutocall(r);})
     .catch(()=>{_autocallLoading=false;
@@ -4225,27 +4225,34 @@ function renderAutocall(r){
   // badge: probabilità totale di autocall = ultima cumulata
   const tot=cum.length?cum[cum.length-1]:null;
   if(tb)tb.textContent=(tot!=null&&isFinite(tot))?('totale '+tot.toFixed(1)+'%'):'';
-  // barre = marginale; linea = cumulata
-  const barTrace={x:dates,y:marg,type:'bar',name:'Marginale',
+  // barre = marginale (asse Y sinistro, scala propria); linea = cumulata (asse Y destro, 0-100%)
+  const barTrace={x:dates,y:marg,type:'bar',name:'Marginale',yaxis:'y',
     marker:{color:'rgba(184,151,90,.55)',line:{color:'rgba(184,151,90,.9)',width:1}},
     hovertemplate:'%{x}<br>Marginale&nbsp;&nbsp;<b>%{y:.1f}%</b><extra></extra>'};
-  const lineTrace={x:dates,y:cum,type:'scatter',mode:'lines+markers',name:'Cumulata',
+  const lineTrace={x:dates,y:cum,type:'scatter',mode:'lines+markers',name:'Cumulata',yaxis:'y2',
     line:{color:'rgba(90,150,200,.95)',width:2,shape:'spline',smoothing:0.6},
     marker:{size:5,color:'rgba(90,150,200,.95)'},
     hovertemplate:'%{x}<br>Cumulata&nbsp;&nbsp;<b>%{y:.1f}%</b><extra></extra>'};
   const L=baseLayout();
   L.xaxis.title={text:'Data di osservazione',font:{size:12,color:C.muted}};
   L.xaxis.type='category';   // date come categorie (osservazioni discrete)
-  L.yaxis.title={text:'Probabilità',font:{size:12,color:C.muted}};
-  L.yaxis.range=[0,Math.min(100,Math.max(10,(Math.max(...cum.filter(isFinite),0))*1.15))];
-  L.yaxis.autorange=false;L.yaxis.ticksuffix='%';
+  // asse Y sinistro = marginale, scala adattata al suo massimo (con margine)
+  const margMax=Math.max(...marg.filter(isFinite),0);
+  L.yaxis={title:{text:'Marginale',font:{size:12,color:'rgba(184,151,90,.95)'}},
+    range:[0,margMax>0?margMax*1.15:1],ticksuffix:'%',
+    gridcolor:C.hair,zeroline:false,tickfont:{size:10,color:'rgba(184,151,90,.85)'}};
+  // asse Y destro = cumulata, scala 0-100% (o fino al massimo+margine)
+  const cumMax=Math.max(...cum.filter(isFinite),0);
+  L.yaxis2={title:{text:'Cumulata',font:{size:12,color:'rgba(90,150,200,.95)'}},
+    range:[0,Math.min(100,Math.max(10,cumMax*1.15))],ticksuffix:'%',
+    overlaying:'y',side:'right',showgrid:false,zeroline:false,
+    tickfont:{size:10,color:'rgba(90,150,200,.85)'}};
   L.hovermode='x unified';L.showlegend=true;
   L.legend={orientation:'h',x:0,y:1.12,font:{size:11,color:C.muted},bgcolor:'rgba(0,0,0,0)'};
-  L.margin={l:60,r:24,t:40,b:70};
-  L.barmode='overlay';
+  L.margin={l:60,r:60,t:40,b:70};
   whenSized('chartAutocall',()=>{try{Plotly.purge(host);Plotly.newPlot(host,[barTrace,lineTrace],L,PCFG);}catch(e){}});
   // nota esplicativa
-  if(nt)nt.textContent='La marginale è la probabilità che l\'autocall scatti esattamente a quella data; la cumulata è la probabilità che sia già scattato entro quella data.';
+  if(nt)nt.textContent='La marginale (barre, asse sinistro) è la probabilità che l\'autocall scatti esattamente a quella data; la cumulata (linea, asse destro) è la probabilità che sia già scattato entro quella data.';
 }
 
 // ================= INSIGHTS =================
