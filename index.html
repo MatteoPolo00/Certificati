@@ -478,14 +478,17 @@
   .ac-note{margin-top:12px;padding:10px 14px;font-size:12px;color:var(--muted);line-height:1.5;
     background:var(--panel-2);border-left:2px solid var(--brass);border-radius:0 8px 8px 0}
   /* bottone per aprire lo slider della probabilità storica autocall */
-  .ac-storico-wrap{margin-top:8px}
-  .ac-storico-btn{display:inline-flex;align-items:center;gap:8px;appearance:none;cursor:pointer;
-    background:var(--panel-2);border:1px solid var(--hair-soft);border-radius:9px;
-    padding:9px 14px;color:var(--muted);font:inherit;font-size:12.5px;font-weight:500;
-    transition:border-color .2s ease,color .2s ease}
-  .ac-storico-btn:hover{border-color:var(--brass);color:var(--brass)}
-  .ac-storico-btn svg{color:var(--brass)}
-  .ac-storico-btn.active{border-color:var(--brass);color:var(--txt)}
+  .ac-storico-wrap{margin-top:12px}
+  .ac-storico-btn{display:inline-flex;align-items:center;gap:9px;appearance:none;cursor:pointer;
+    background:var(--panel-2);border:1px solid var(--faint);border-radius:10px;
+    padding:11px 18px;color:var(--muted);font:inherit;font-size:13px;font-weight:600;letter-spacing:.01em;
+    transition:all .2s ease;opacity:.78}
+  .ac-storico-btn:hover{border-color:var(--brass);color:var(--brass);opacity:1}
+  .ac-storico-btn svg{color:currentColor;transition:transform .2s ease}
+  /* stato ACCESO: slider aperto */
+  .ac-storico-btn.active{background:var(--brass-soft);border-color:var(--brass);color:var(--brass);
+    opacity:1;box-shadow:0 0 0 1px rgba(184,151,90,.25)}
+  .ac-storico-btn.active svg{transform:rotate(-12deg)}
 
   /* ===== INSIGHTS ===== */
   .ins-head{margin:8px 0 24px}
@@ -510,6 +513,7 @@
   .ins-anhead{display:flex;align-items:center;gap:18px;margin:4px 0 18px}
   /* slider della timeline */
   .ins-slider-wrap{display:flex;align-items:center;gap:16px;padding:16px 8px 6px}
+  .ins-slider-wrap[hidden]{display:none}
   .ins-slider-wrap input[type=range]{flex:1;-webkit-appearance:none;appearance:none;height:4px;border-radius:2px;
     background:var(--hair);outline:none;cursor:pointer}
   .ins-slider-wrap input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:16px;height:16px;
@@ -4333,6 +4337,24 @@ function renderAutocallSnap(k){
   L.hovermode='x unified';L.showlegend=true;
   L.legend={orientation:'h',x:0,y:1.12,font:{size:11,color:C.muted},bgcolor:'rgba(0,0,0,0)'};
   L.margin={l:60,r:60,t:40,b:70};
+  // BARRA VERTICALE ROSSA sulla data storica corrente (avanza con lo slider).
+  // La posiziono sulla categoria dell'asse X più vicina alla data storica: se la data
+  // storica coincide o è prima di una osservazione, metto la barra su quella posizione.
+  L.shapes=[];L.annotations=L.annotations||[];
+  if(dataStor!=='—'){
+    // trovo l'indice categoria: prima osservazione >= data storica (la "posizione nel tempo")
+    let pos=allDates.findIndex(d=>d>=dataStor);
+    // se la data storica è oltre l'ultima osservazione, la metto in fondo
+    if(pos<0)pos=allDates.length-1;
+    // se è prima della prima osservazione, la metto a inizio asse
+    // (uso un x leggermente prima della categoria con coordinata paper non serve: uso category)
+    const xcat=allDates[Math.max(0,pos)];
+    L.shapes.push({type:'line',xref:'x',yref:'paper',x0:xcat,x1:xcat,y0:0,y1:1,
+      line:{color:'rgba(217,83,79,.9)',width:2,dash:'solid'},layer:'above'});
+    L.annotations.push({xref:'x',yref:'paper',x:xcat,y:1.02,yanchor:'bottom',
+      text:'oggi: '+fmtDate(dataStor),showarrow:false,
+      font:{size:10,color:'rgba(217,83,79,.95)'},bgcolor:'rgba(18,24,32,.7)'});
+  }
   whenSized('chartAutocall',()=>{const gd=document.getElementById('chartAutocall');
     try{if(gd&&gd.data){Plotly.react(gd,[barTrace,lineTrace],L,PCFG);}else{Plotly.newPlot(gd,[barTrace,lineTrace],L,PCFG);}}catch(e){}});
   if(nt)nt.textContent='';
