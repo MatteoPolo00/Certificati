@@ -4283,9 +4283,12 @@ function prepareAutocall(r){
         const nowHidden=wrap.hidden;
         wrap.hidden=!nowHidden;
         btn.classList.toggle('active',nowHidden);
+        // ridisegno lo snapshot corrente: la barra rossa appare/sparisce in base allo slider aperto
+        const sl=document.getElementById('acSlider');
+        renderAutocallSnap(sl?+sl.value:(_acRec?_acRec.snapshots.length-1:0));
       });}
   }
-  renderAutocallSnap(n-1);   // all'apertura: ultima data storica
+  renderAutocallSnap(n-1);   // all'apertura: ultima data storica (slider chiuso → niente barra)
 }
 
 // disegna lo snapshot k (k-esima data storica), allineato all'asse X completo e fisso
@@ -4337,23 +4340,28 @@ function renderAutocallSnap(k){
   L.hovermode='x unified';L.showlegend=true;
   L.legend={orientation:'h',x:0,y:1.12,font:{size:11,color:C.muted},bgcolor:'rgba(0,0,0,0)'};
   L.margin={l:60,r:60,t:40,b:70};
-  // BARRA VERTICALE ROSSA sulla data storica corrente (avanza con lo slider).
-  // La posiziono sulla categoria dell'asse X più vicina alla data storica: se la data
-  // storica coincide o è prima di una osservazione, metto la barra su quella posizione.
-  L.shapes=[];L.annotations=L.annotations||[];
-  if(dataStor!=='—'){
-    // trovo l'indice categoria: prima osservazione >= data storica (la "posizione nel tempo")
-    let pos=allDates.findIndex(d=>d>=dataStor);
-    // se la data storica è oltre l'ultima osservazione, la metto in fondo
-    if(pos<0)pos=allDates.length-1;
-    // se è prima della prima osservazione, la metto a inizio asse
-    // (uso un x leggermente prima della categoria con coordinata paper non serve: uso category)
-    const xcat=allDates[Math.max(0,pos)];
-    L.shapes.push({type:'line',xref:'x',yref:'paper',x0:xcat,x1:xcat,y0:0,y1:1,
-      line:{color:'rgba(217,83,79,.9)',width:2,dash:'solid'},layer:'above'});
-    L.annotations.push({xref:'x',yref:'paper',x:xcat,y:1.02,yanchor:'bottom',
-      text:'oggi: '+fmtDate(dataStor),showarrow:false,
-      font:{size:10,color:'rgba(217,83,79,.95)'},bgcolor:'rgba(18,24,32,.7)'});
+  // BARRA VERTICALE ROSSA: appare SOLO quando lo slider storico è aperto (non nella vista
+  // statica dell'ultima data). Segna la data storica corrente, posizionandosi sulla prima
+  // osservazione "attiva" dello snapshot mostrato — così si muove al variare dello slider.
+  L.shapes=[];L.annotations=[];
+  const sliderWrap=document.getElementById('acSliderWrap');
+  const sliderAperto=sliderWrap && !sliderWrap.hidden;
+  if(sliderAperto && dataStor!=='—'){
+    // prima data di osservazione di QUESTO snapshot (la prima "attiva" da questa data storica)
+    const primaOss=sd.length?sd[0]:null;
+    // la posiziono sull'asse completo, alla categoria corrispondente
+    let xcat=primaOss;
+    // se la prima osservazione dello snapshot non è tra le categorie, ripiego sulla più vicina
+    if(xcat!=null && _acAllDates && _acAllDates.indexOf(xcat)<0){
+      const p=_acAllDates.findIndex(d=>d>=xcat);xcat=_acAllDates[p<0?0:p];
+    }
+    if(xcat!=null){
+      L.shapes.push({type:'line',xref:'x',yref:'paper',x0:xcat,x1:xcat,y0:0,y1:1,
+        line:{color:'rgba(217,83,79,.9)',width:2,dash:'solid'},layer:'above'});
+      L.annotations.push({xref:'x',yref:'paper',x:xcat,y:1.02,yanchor:'bottom',
+        text:fmtDate(dataStor),showarrow:false,
+        font:{size:10,color:'rgba(217,83,79,.95)'},bgcolor:'rgba(18,24,32,.7)'});
+    }
   }
   whenSized('chartAutocall',()=>{const gd=document.getElementById('chartAutocall');
     try{if(gd&&gd.data){Plotly.react(gd,[barTrace,lineTrace],L,PCFG);}else{Plotly.newPlot(gd,[barTrace,lineTrace],L,PCFG);}}catch(e){}});
