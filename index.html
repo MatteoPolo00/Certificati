@@ -522,6 +522,18 @@
     cursor:pointer;border:2px solid var(--panel)}
   .ins-slider-label{flex:none;min-width:96px;text-align:right;font-family:'IBM Plex Mono',monospace;
     font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+  /* doppio slider per l'analisi autocall probabilità+rendimento */
+  .ins-dualslider{padding:14px 8px 6px;display:flex;flex-direction:column;gap:12px}
+  .ins-ds-row{display:flex;align-items:center;gap:14px}
+  .ins-ds-lab{flex:none;min-width:150px;font-size:12px;color:var(--muted)}
+  .ins-ds-val{flex:none;min-width:96px;text-align:right;font-family:'IBM Plex Mono',monospace;
+    font-size:12px;color:var(--brass);font-variant-numeric:tabular-nums}
+  .ins-ds-row input[type=range]{flex:1;-webkit-appearance:none;appearance:none;height:4px;border-radius:2px;
+    background:var(--hair);outline:none;cursor:pointer}
+  .ins-ds-row input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:16px;height:16px;
+    border-radius:50%;background:var(--brass);cursor:pointer;border:2px solid var(--panel);box-shadow:0 1px 4px rgba(0,0,0,.4)}
+  .ins-ds-row input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:var(--brass);
+    cursor:pointer;border:2px solid var(--panel)}
   .rend-seg button{font-size:11px}
   .mem-empty{text-align:center;padding:56px 20px;font-family:"Inter",sans-serif;font-size:15px;font-weight:600;color:var(--muted)}
   .mem-empty-sub{font-size:12.5px;font-weight:400;color:var(--faint);margin-top:8px}
@@ -1267,6 +1279,16 @@
           </div>
           <div class="ins-tile-arrow">→</div>
         </button>
+        <button class="ins-tile" data-ins="acret">
+          <div class="ins-tile-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20 L4 4"/><path d="M4 20 L20 20"/><circle cx="9" cy="14" r="1.5" fill="currentColor" stroke="none"/><circle cx="13" cy="9" r="1.5" fill="currentColor" stroke="none"/><circle cx="17" cy="11" r="1.5" fill="currentColor" stroke="none"/></svg>
+          </div>
+          <div class="ins-tile-body">
+            <div class="ins-tile-name">Autocall: probabilità e rendimento</div>
+            <div class="ins-tile-desc">Probabilità di autocall entro una data e rendimento annualizzato realizzabile, per ogni certificato.</div>
+          </div>
+          <div class="ins-tile-arrow">→</div>
+        </button>
         <!-- altre tessere future: placeholder "in arrivo" -->
         <div class="ins-tile ins-tile-soon">
           <div class="ins-tile-body">
@@ -1292,6 +1314,33 @@
         <div class="ins-slider-wrap">
           <input type="range" id="insMemSlider" min="0" max="100" value="100" step="1">
           <div class="ins-slider-label" id="insMemSliderLabel">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Vista analisi: Autocall probabilità e rendimento -->
+    <div id="insAcRetView" hidden>
+      <div class="ins-anhead">
+        <button class="back" id="insAcRetBack">← Insights</button>
+        <div class="prodtitle"><div class="mtitle">Autocall: probabilità e rendimento</div><div class="msub">Probabilità di autocall entro T vs rendimento annualizzato realizzabile</div></div>
+      </div>
+      <div class="card chart-card">
+        <div class="chart-head">
+          <div class="t">Mappa rischio-rendimento autocall</div>
+          <div class="hd-right"><span class="h" id="insAcRetCount"></span></div>
+        </div>
+        <div id="chartInsAcRet" class="plot tall"></div>
+        <div class="ins-dualslider">
+          <div class="ins-ds-row">
+            <span class="ins-ds-lab">Data di riferimento</span>
+            <input type="range" id="insAcRetSlider1" min="0" max="100" value="0" step="1">
+            <span class="ins-ds-val" id="insAcRetVal1">—</span>
+          </div>
+          <div class="ins-ds-row">
+            <span class="ins-ds-lab">Limite autocall (T)</span>
+            <input type="range" id="insAcRetSlider2" min="0" max="100" value="100" step="1">
+            <span class="ins-ds-val" id="insAcRetVal2">—</span>
+          </div>
         </div>
       </div>
     </div>
@@ -4318,6 +4367,15 @@ function renderAutocallSnap(k){
   sd.forEach((d,i)=>{mapM[d]=sm[i];mapC[d]=sc[i];});
   const marg=allDates.map(d=>(d in mapM?mapM[d]:null));
   const cum =allDates.map(d=>(d in mapC?mapC[d]:null));
+  // se la cumulata è sempre 0 (o assente) → il prodotto non prevede autocall
+  const haAutocall=cum.some(v=>v!=null&&isFinite(v)&&v>0);
+  if(!haAutocall){
+    host.innerHTML='<div class="mem-empty">Tale prodotto non prevede l\'opzione Autocall.</div>';
+    if(tb)tb.textContent='';
+    const sw0=document.getElementById('acStoricoWrap');if(sw0)sw0.hidden=true;
+    if(nt)nt.textContent='';
+    return;
+  }
   // totale = ultima cumulata valida
   let tot=null;for(let i=cum.length-1;i>=0;i--){if(cum[i]!=null&&isFinite(cum[i])){tot=cum[i];break;}}
   if(tb)tb.textContent=(tot!=null&&isFinite(tot))?('totale '+tot.toFixed(1)+'%'):'';
@@ -4349,26 +4407,20 @@ function renderAutocallSnap(k){
     overlaying:'y',side:'right',showgrid:false,zeroline:false,
     tickfont:{size:10,color:'rgba(90,150,200,.85)'}};
   L.hovermode='x unified';L.showlegend=true;
-  L.legend={orientation:'h',x:0,y:1.12,font:{size:11,color:C.muted},bgcolor:'rgba(0,0,0,0)'};
-  L.margin={l:60,r:60,t:40,b:70};
-  // BARRA VERTICALE ROSSA come TRACE: la metto esattamente sul PRIMO PUNTO in cui inizia
-  // la linea blu (cumulata), cioè la prima data di osservazione con un valore valido nello
-  // snapshot corrente. Uso il NOME della categoria (stringa), non un indice numerico, così
-  // non compaiono categorie-fantasma sull'asse.
+  // legenda in BASSO
+  L.legend={orientation:'h',x:0.5,xanchor:'center',y:-0.18,yanchor:'top',
+    font:{size:11,color:C.muted},bgcolor:'rgba(0,0,0,0)'};
+  L.margin={l:60,r:60,t:24,b:92};
+  // barra verticale rossa sulla data dello slider (SENZA etichetta volante)
   L.annotations=[];
   const traces=[barTrace,lineTrace];
   const sliderWrap=document.getElementById('acSliderWrap');
   const sliderAperto=sliderWrap && !sliderWrap.hidden;
   if(sliderAperto && dataStor!=='—'){
-    // la barra cade ESATTAMENTE sulla data dello slider (data storica). Su asse temporale
-    // posso usare la data reale come coordinata X: barra ed etichetta coincidono per data.
     const yTop=Math.min(100,Math.max(10,_acCumMax*1.15));
     traces.push({x:[dataStor,dataStor],y:[0,yTop],type:'scatter',mode:'lines',yaxis:'y2',
       name:'data',showlegend:false,line:{color:'rgba(217,83,79,.95)',width:2},
       hovertemplate:fmtDate(dataStor)+'<extra></extra>'});
-    L.annotations.push({xref:'x',yref:'paper',x:dataStor,y:1.02,yanchor:'bottom',
-      text:fmtDate(dataStor),showarrow:false,
-      font:{size:10,color:'rgba(217,83,79,.95)'},bgcolor:'rgba(18,24,32,.7)'});
   }
   whenSized('chartAutocall',()=>{const gd=document.getElementById('chartAutocall');
     try{if(gd&&gd.data){Plotly.react(gd,traces,L,PCFG);}else{Plotly.newPlot(gd,traces,L,PCFG);}}catch(e){}});
@@ -4383,22 +4435,33 @@ function openInsights(){
   showInsightsHub();
   if(!_insReady){
     _insReady=true;
-    // tessera Fondo memory → apri l'analisi
+    // tessere → apri l'analisi corrispondente
     document.querySelectorAll('.ins-tile[data-ins]').forEach(t=>{
-      t.addEventListener('click',()=>{const k=t.dataset.ins;if(k==='memory')openInsMemory();});
+      t.addEventListener('click',()=>{const k=t.dataset.ins;
+        if(k==='memory')openInsMemory();
+        else if(k==='acret')openInsAcRet();});
     });
     const back=document.getElementById('insBackBtn');
     if(back)back.addEventListener('click',showInsightsHub);
-    // slider timeline
+    const back2=document.getElementById('insAcRetBack');
+    if(back2)back2.addEventListener('click',showInsightsHub);
+    // slider timeline memory
     const sl=document.getElementById('insMemSlider');
     if(sl)sl.addEventListener('input',()=>renderInsMemoryAt(+sl.value));
+    // doppio slider autocall+rendimento
+    const s1=document.getElementById('insAcRetSlider1');
+    const s2=document.getElementById('insAcRetSlider2');
+    if(s1)s1.addEventListener('input',()=>renderInsAcRet());
+    if(s2)s2.addEventListener('input',()=>renderInsAcRet());
   }
 }
 function showInsightsHub(){
   const hub=document.getElementById('insightsHub');
   const mv=document.getElementById('insMemoryView');
+  const av=document.getElementById('insAcRetView');
   if(hub)hub.hidden=false;
   if(mv)mv.hidden=true;
+  if(av)av.hidden=true;
 }
 
 // ---- Analisi "Fondo memory": scatter entità vs probabilità erogazione, con slider date ----
@@ -4508,6 +4571,166 @@ function renderInsMemoryAt(sliderVal){
   document.getElementById('insMemDate').textContent=fmtDate(dataSel);
   document.getElementById('insMemCount').textContent=xs.length+' certificati';
   document.getElementById('insMemSliderLabel').textContent=fmtDate(dataSel);
+}
+
+// ===== Analisi "Autocall: probabilità e rendimento" =====
+// Ogni punto = un certificato con autocall. X = prob. cumulata di autocall entro T (vista
+// dalla data di riferimento). Y = rendimento annualizzato se l'autocall scatta a T:
+//   incasso = 100 + (cedola_fissa × n_osservazioni da rif a T) + fondo_memory(T)
+//   costo   = prezzo di mercato del certificato alla data di riferimento
+//   rend_ann = (incasso/costo)^(365/giorni_rif_T) − 1
+let _acRetData=null, _acRetDates=null;
+function openInsAcRet(){
+  document.getElementById('insightsHub').hidden=true;
+  document.getElementById('insAcRetView').hidden=false;
+  // i dati autocall servono: se non caricati, li prendo e poi costruisco
+  if(!_autocallData){
+    fetch('autocall.json').then(r=>r.ok?r.json():{}).then(d=>{_autocallData=d||{};buildInsAcRet();initAcRetSliders();renderInsAcRet();
+      setTimeout(()=>{try{Plotly.Plots.resize('chartInsAcRet');}catch(e){}},80);})
+      .catch(()=>{buildInsAcRet();initAcRetSliders();renderInsAcRet();});
+  }else{
+    buildInsAcRet();initAcRetSliders();renderInsAcRet();
+    setTimeout(()=>{try{Plotly.Plots.resize('chartInsAcRet');}catch(e){}},80);
+  }
+}
+
+// costruisce la lista di certificati con autocall + la timeline condivisa di date di osservazione
+function buildInsAcRet(){
+  if(_acRetData)return;
+  const out=[];
+  const dateSet=new Set();
+  DATA.forEach(c=>{
+    if(!c.isin)return;
+    // record autocall del certificato (per ISIN o chiave "valida")
+    let ac=_autocallData?_autocallData[c.isin]:null;
+    if(!ac&&_autocallData){const safe=c.isin.replace(/[^A-Za-z0-9]/g,'_');ac=_autocallData[safe];}
+    if(!ac||!Array.isArray(ac.snapshots)||!ac.snapshots.length)return;
+    // deve avere effettivamente autocall (cumulata > 0 in qualche snapshot)
+    const haAc=ac.snapshots.some(sn=>asArr(sn.cumulata).some(v=>v!=null&&isFinite(v)&&v>0));
+    if(!haAc)return;
+    // cedola fissa del certificato
+    const ced=(c.cedola!=null&&isFinite(c.cedola))?+c.cedola:0;
+    // serie prezzo del certificato (per il prezzo alla data di riferimento)
+    const pmkt=asArr(c.prezzo_mercato), pdates=asArr(c.dates);
+    // fondo memory per data (se presente)
+    const mem=c.memory&&c.memory.has?{fondo:asArr(c.memory.fondo),dates:asArr(c.memory.dates)}:null;
+    // raccolgo le date di osservazione (uso l'ultimo snapshot = più completo per le date)
+    const lastSnap=ac.snapshots[ac.snapshots.length-1];
+    asArr(lastSnap.date_oss).forEach(d=>dateSet.add(d));
+    out.push({isin:c.isin,emit:c.emittente||'—',str:c.struttura||'—',sott:asArr(c.sottostanti),
+      ced,pmkt,pdates,mem,ac});
+  });
+  _acRetData=out;
+  _acRetDates=[...dateSet].sort();
+}
+
+// imposta i due slider sulle date di osservazione comuni
+function initAcRetSliders(){
+  const s1=document.getElementById('insAcRetSlider1');
+  const s2=document.getElementById('insAcRetSlider2');
+  const n=_acRetDates?_acRetDates.length:0;
+  if(s1){s1.min=0;s1.max=Math.max(0,n-1);s1.value=0;}              // riferimento = prima data
+  if(s2){s2.min=0;s2.max=Math.max(0,n-1);s2.value=Math.max(0,n-1);} // limite T = ultima data
+}
+
+// helper: prezzo del certificato alla data più vicina a dataRif
+function prezzoAllaData(pmkt,pdates,dataRif){
+  if(!pmkt.length||!pdates.length)return null;
+  // cerco la data esatta, altrimenti la più vicina
+  let best=null,bestDiff=Infinity;
+  const tr=Date.parse(dataRif);
+  for(let i=0;i<pdates.length;i++){
+    const v=pmkt[i];if(v==null||!isFinite(v))continue;
+    const diff=Math.abs(Date.parse(pdates[i])-tr);
+    if(diff<bestDiff){bestDiff=diff;best=v;}
+  }
+  return best;
+}
+// helper: fondo memory alla data più vicina a T (0 se non presente)
+function memoryAllaData(mem,dataT){
+  if(!mem||!mem.fondo.length)return 0;
+  let best=0,bestDiff=Infinity;
+  const tt=Date.parse(dataT);
+  for(let i=0;i<mem.dates.length;i++){
+    const v=mem.fondo[i];if(v==null||!isFinite(v))continue;
+    const diff=Math.abs(Date.parse(mem.dates[i])-tt);
+    if(diff<bestDiff){bestDiff=diff;best=v;}
+  }
+  return best;
+}
+// helper: cumulata di autocall a dataT, vista dallo snapshot più vicino a dataRif
+function cumulataAEntro(ac,dataRif,dataT){
+  if(!ac||!Array.isArray(ac.snapshots))return null;
+  // scelgo lo snapshot con data_storica più vicina a dataRif
+  const dstor=ac.date_storiche||[];
+  let si=0,bestDiff=Infinity;const tr=Date.parse(dataRif);
+  for(let i=0;i<dstor.length;i++){const diff=Math.abs(Date.parse(dstor[i])-tr);if(diff<bestDiff){bestDiff=diff;si=i;}}
+  const snap=ac.snapshots[si];if(!snap)return null;
+  const dd=asArr(snap.date_oss),cum=asArr(snap.cumulata);
+  // cumulata alla data di osservazione <= T più vicina (l'ultima che non supera T)
+  const tT=Date.parse(dataT);let val=null;
+  for(let i=0;i<dd.length;i++){if(Date.parse(dd[i])<=tT){if(cum[i]!=null&&isFinite(cum[i]))val=cum[i];}}
+  // se nessuna data <= T, prendo la prima cumulata
+  if(val==null&&cum.length){for(let i=0;i<cum.length;i++){if(cum[i]!=null&&isFinite(cum[i])){val=cum[i];break;}}}
+  return val;
+}
+
+function renderInsAcRet(){
+  const host=document.getElementById('chartInsAcRet');if(!host)return;
+  if(!_acRetData||!_acRetData.length||!_acRetDates||!_acRetDates.length){
+    host.innerHTML='<div class="mem-empty">Nessun certificato con autocall disponibile.</div>';return;}
+  const s1=document.getElementById('insAcRetSlider1');
+  const s2=document.getElementById('insAcRetSlider2');
+  let i1=s1?+s1.value:0, i2=s2?+s2.value:_acRetDates.length-1;
+  // vincolo: T (slider2) deve essere >= riferimento (slider1)
+  if(i2<i1)i2=i1;
+  const dataRif=_acRetDates[i1], dataT=_acRetDates[i2];
+  document.getElementById('insAcRetVal1').textContent=fmtDate(dataRif);
+  document.getElementById('insAcRetVal2').textContent=fmtDate(dataT);
+  const giorni=Math.max(1,(Date.parse(dataT)-Date.parse(dataRif))/(1000*60*60*24));
+  const xs=[],ys=[],txt=[],isins=[];
+  _acRetData.forEach(c=>{
+    // prezzo di mercato alla data di riferimento
+    const P=prezzoAllaData(c.pmkt,c.pdates,dataRif);
+    if(P==null||!isFinite(P)||P<=0)return;
+    // numero di osservazioni (date cedola) da riferimento (escluso) a T (incluso)
+    let nOss=0;
+    const tR=Date.parse(dataRif),tT=Date.parse(dataT);
+    _acRetDates.forEach(d=>{const td=Date.parse(d);if(td>tR&&td<=tT)nOss++;});
+    // incasso se autocall a T: 100 + cedole maturate + fondo memory a T
+    const cedoleTot=c.ced*nOss;
+    const memT=memoryAllaData(c.mem,dataT);
+    const incasso=100+cedoleTot+memT;
+    // rendimento annualizzato (base 365)
+    const rendAnn=(Math.pow(incasso/P,365/giorni)-1)*100;
+    // probabilità cumulata di autocall entro T (vista dal riferimento)
+    const prob=cumulataAEntro(c.ac,dataRif,dataT);
+    if(prob==null||!isFinite(prob))return;
+    xs.push(prob);
+    ys.push(rendAnn);
+    isins.push(c.isin);
+    const sottTxt=c.sott.length?c.sott.map(x=>nameOf(x)||x).join(', '):'—';
+    txt.push(`<b>${esc(c.isin)}</b><br><span style="color:#8C9BA8">${esc(c.emit)} · ${esc(c.str)}</span><br>Sottostanti:&nbsp;${esc(sottTxt)}<br>Prob. autocall entro T&nbsp;&nbsp;<b>${prob.toFixed(1)}%</b><br>Rendimento ann.&nbsp;&nbsp;<b>${rendAnn.toFixed(1)}%</b><br>Prezzo rif.&nbsp;&nbsp;${P.toFixed(2)} · Incasso&nbsp;${incasso.toFixed(2)}`);
+  });
+  const trace={x:xs,y:ys,customdata:isins,text:txt,mode:'markers',type:'scatter',
+    marker:{size:11,color:'rgba(184,151,90,.75)',line:{color:'rgba(201,169,104,.9)',width:1}},
+    hovertemplate:'%{text}<extra></extra>',
+    hoverlabel:{bgcolor:'rgba(18,24,32,.97)',bordercolor:'rgba(184,151,90,.5)',
+      font:{family:'Inter, system-ui, sans-serif',size:12,color:'#E8EDF1'},align:'left'}};
+  const L=baseLayout();
+  L.xaxis.title={text:'Probabilità di autocall entro T',font:{size:12,color:C.muted}};
+  L.xaxis.range=[0,100];L.xaxis.autorange=false;L.xaxis.ticksuffix='%';L.xaxis.zeroline=false;
+  L.yaxis.title={text:'Rendimento annualizzato',font:{size:12,color:C.muted}};
+  L.yaxis.autorange=true;L.yaxis.ticksuffix='%';L.yaxis.zeroline=true;L.yaxis.zerolinecolor=C.hair;
+  L.hovermode='closest';L.showlegend=false;
+  L.margin={l:64,r:24,t:16,b:54};
+  whenSized('chartInsAcRet',()=>{const gd=document.getElementById('chartInsAcRet');
+    try{if(gd&&gd.data){Plotly.react(gd,[trace],L,PCFG);}else{Plotly.newPlot(gd,[trace],L,PCFG);}
+      if(gd&&!gd._acRetClick){gd._acRetClick=true;
+        gd.on('plotly_click',ev=>{const pt=ev.points&&ev.points[0];
+          if(pt&&pt.customdata&&DATA.some(x=>x.isin===pt.customdata)){location.hash='#/'+encodeURIComponent(pt.customdata)+'/autocall';}});}
+    }catch(e){}});
+  document.getElementById('insAcRetCount').textContent=xs.length+' certificati';
 }
 
 function openFrontier(){
