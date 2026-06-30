@@ -477,6 +477,18 @@
   /* nota esplicativa sotto il grafico autocall */
   .ac-note{margin-top:12px;padding:10px 14px;font-size:12px;color:var(--muted);line-height:1.5;
     background:var(--panel-2);border-left:2px solid var(--brass);border-radius:0 8px 8px 0}
+  /* bottone per aprire lo slider della probabilità storica autocall */
+  .ac-storico-wrap{margin-top:12px}
+  .ac-storico-btn{display:inline-flex;align-items:center;gap:9px;appearance:none;cursor:pointer;
+    background:var(--panel-2);border:1px solid var(--faint);border-radius:10px;
+    padding:11px 18px;color:var(--muted);font:inherit;font-size:13px;font-weight:600;letter-spacing:.01em;
+    transition:all .2s ease;opacity:.78}
+  .ac-storico-btn:hover{border-color:var(--brass);color:var(--brass);opacity:1}
+  .ac-storico-btn svg{color:currentColor;transition:transform .2s ease}
+  /* stato ACCESO: slider aperto */
+  .ac-storico-btn.active{background:var(--brass-soft);border-color:var(--brass);color:var(--brass);
+    opacity:1;box-shadow:0 0 0 1px rgba(184,151,90,.25)}
+  .ac-storico-btn.active svg{transform:rotate(-12deg)}
 
   /* ===== INSIGHTS ===== */
   .ins-head{margin:8px 0 24px}
@@ -501,6 +513,7 @@
   .ins-anhead{display:flex;align-items:center;gap:18px;margin:4px 0 18px}
   /* slider della timeline */
   .ins-slider-wrap{display:flex;align-items:center;gap:16px;padding:16px 8px 6px}
+  .ins-slider-wrap[hidden]{display:none}
   .ins-slider-wrap input[type=range]{flex:1;-webkit-appearance:none;appearance:none;height:4px;border-radius:2px;
     background:var(--hair);outline:none;cursor:pointer}
   .ins-slider-wrap input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:16px;height:16px;
@@ -1113,9 +1126,15 @@
           <div class="hd-right"><span class="h" id="acDateLabel">marginale e cumulata per data di osservazione</span></div>
         </div>
         <div id="chartAutocall" class="plot tall"></div>
-        <div class="ins-slider-wrap" id="acSliderWrap" hidden>
-          <input type="range" id="acSlider" min="0" max="100" value="100" step="1">
-          <div class="ins-slider-label" id="acSliderLabel">—</div>
+        <div class="ac-storico-wrap" id="acStoricoWrap" hidden>
+          <button class="ac-storico-btn" id="acStoricoBtn">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+            <span>Visualizza probabilità storica Autocall</span>
+          </button>
+          <div class="ins-slider-wrap" id="acSliderWrap" hidden>
+            <input type="range" id="acSlider" min="0" max="100" value="100" step="1">
+            <div class="ins-slider-label" id="acSliderLabel">—</div>
+          </div>
         </div>
         <div class="ac-note" id="acNote"></div>
       </div>
@@ -4194,7 +4213,7 @@ let frontierReady=false;
 //   ISIN: { date_storiche:[...], snapshots:[{date_oss,marginale,cumulata}, ...] }
 // Lo slider in basso scorre le date storiche; di default mostra l'ultima.
 let _autocallData=null, _autocallLoading=false;
-let _acRec=null, _acBound=false;   // record corrente + binding slider
+let _acRec=null, _acBound=false, _acAllDates=null, _acMargMax=0, _acCumMax=0;   // record + asse X + max Y globali
 function loadAutocall(r){
   const host=document.getElementById('chartAutocall');if(!host)return;
   if(_autocallData){prepareAutocall(r);return;}
@@ -4213,13 +4232,14 @@ function loadAutocall(r){
 // prepara il record corrente, configura lo slider, mostra l'ultima data storica
 function prepareAutocall(r){
   const host=document.getElementById('chartAutocall');if(!host)return;
+  const stWrap=document.getElementById('acStoricoWrap');
   const sw=document.getElementById('acSliderWrap');
   let rec=null;
   if(_autocallData){
     rec=_autocallData[r.isin];
     if(!rec){const safe=r.isin.replace(/[^A-Za-z0-9]/g,'_');rec=_autocallData[safe];}
   }
-  // compatibilità: se il record è nel vecchio formato (date_oss diretto), lo avvolgo in 1 snapshot
+  // compatibilità: vecchio formato (date_oss diretto) → 1 snapshot
   if(rec&&!Array.isArray(rec.snapshots)&&Array.isArray(rec.date_oss)){
     rec={date_storiche:['—'],snapshots:[{date_oss:rec.date_oss,marginale:rec.marginale,cumulata:rec.cumulata}]};
   }
@@ -4227,23 +4247,51 @@ function prepareAutocall(r){
   if(!rec||!Array.isArray(rec.snapshots)||!rec.snapshots.length){
     host.innerHTML='<div class="mem-empty">Nessun dato di autocall per questo certificato.</div>';
     const tb=document.getElementById('acTotBadge');if(tb)tb.textContent='';
-    if(sw)sw.hidden=true;
+    if(stWrap)stWrap.hidden=true;
     const nt=document.getElementById('acNote');if(nt)nt.textContent='';
     return;
   }
-  // slider: una posizione per ogni data storica; mostro l'ultima (più recente) di default
+  // ASSE X COMPLETO: unione ordinata di TUTTE le date di osservazione di tutti gli snapshot.
+  // Così l'asse resta FISSO muovendo lo slider; cambiano solo i valori (barre + linea).
+  const dateSet=new Set();
+  rec.snapshots.forEach(sn=>asArr(sn.date_oss).forEach(d=>dateSet.add(d)));
+  _acAllDates=[...dateSet].sort();   // tutte le date di autocall, fisse
+  // massimi GLOBALI (su tutti gli snapshot) per fissare anche gli assi Y (niente "ballo")
+  let mM=0,mC=0;
+  rec.snapshots.forEach(sn=>{
+    asArr(sn.marginale).forEach(v=>{if(v!=null&&isFinite(v)&&v>mM)mM=v;});
+    asArr(sn.cumulata).forEach(v=>{if(v!=null&&isFinite(v)&&v>mC)mC=v;});
+  });
+  _acMargMax=mM;_acCumMax=mC;
+  // slider: una posizione per data storica; default = ultima (più recente)
   const n=rec.snapshots.length;
   const sl=document.getElementById('acSlider');
   if(sl){
-    sl.min=0;sl.max=n-1;sl.step=1;sl.value=n-1;   // ultima data storica
+    sl.min=0;sl.max=n-1;sl.step=1;sl.value=n-1;
     if(!_acBound){_acBound=true;
       sl.addEventListener('input',()=>renderAutocallSnap(+sl.value));}
   }
-  if(sw)sw.hidden=(n<=1);   // slider solo se c'è più di una data storica
-  renderAutocallSnap(n-1);
+  // bottone "Visualizza probabilità storica": appare solo se c'è più di una data storica.
+  // Lo slider parte NASCOSTO; si apre al clic sul bottone.
+  if(stWrap)stWrap.hidden=(n<=1);
+  if(sw)sw.hidden=true;               // slider nascosto di default
+  const btn=document.getElementById('acStoricoBtn');
+  if(btn){btn.classList.remove('active');
+    if(!btn._bound){btn._bound=true;
+      btn.addEventListener('click',()=>{
+        const wrap=document.getElementById('acSliderWrap');
+        const nowHidden=wrap.hidden;
+        wrap.hidden=!nowHidden;
+        btn.classList.toggle('active',nowHidden);
+        // ridisegno lo snapshot corrente: la barra rossa appare/sparisce in base allo slider aperto
+        const sl=document.getElementById('acSlider');
+        renderAutocallSnap(sl?+sl.value:(_acRec?_acRec.snapshots.length-1:0));
+      });}
+  }
+  renderAutocallSnap(n-1);   // all'apertura: ultima data storica (slider chiuso → niente barra)
 }
 
-// disegna lo snapshot k (k-esima data storica)
+// disegna lo snapshot k (k-esima data storica), allineato all'asse X completo e fisso
 function renderAutocallSnap(k){
   const host=document.getElementById('chartAutocall');if(!host||!_acRec)return;
   const snaps=_acRec.snapshots, dstor=_acRec.date_storiche||[];
@@ -4255,37 +4303,68 @@ function renderAutocallSnap(k){
   const slabel=document.getElementById('acSliderLabel');
   if(!snap||!Array.isArray(snap.date_oss)||!snap.date_oss.length){
     host.innerHTML='<div class="mem-empty">Nessun dato per questa data.</div>';return;}
-  const dates=snap.date_oss;
-  const marg=asArr(snap.marginale);
-  const cum=asArr(snap.cumulata);
-  const tot=cum.length?cum[cum.length-1]:null;
+  // asse X = TUTTE le date di autocall (fisso). Allineo i valori dello snapshot a queste date:
+  // per le date assenti in questo snapshot, valore null (barra/punto vuoto).
+  const allDates=_acAllDates||snap.date_oss;
+  const sm=asArr(snap.marginale), sc=asArr(snap.cumulata), sd=asArr(snap.date_oss);
+  const mapM={},mapC={};
+  sd.forEach((d,i)=>{mapM[d]=sm[i];mapC[d]=sc[i];});
+  const marg=allDates.map(d=>(d in mapM?mapM[d]:null));
+  const cum =allDates.map(d=>(d in mapC?mapC[d]:null));
+  // totale = ultima cumulata valida
+  let tot=null;for(let i=cum.length-1;i>=0;i--){if(cum[i]!=null&&isFinite(cum[i])){tot=cum[i];break;}}
   if(tb)tb.textContent=(tot!=null&&isFinite(tot))?('totale '+tot.toFixed(1)+'%'):'';
-  // etichetta della data storica corrente
+  // etichetta data storica
   const dataStor=dstor[k]||'—';
   if(dlab)dlab.textContent='analisi alla data storica '+(dataStor!=='—'?fmtDate(dataStor):'—');
   if(slabel)slabel.textContent=dataStor!=='—'?fmtDate(dataStor):'—';
-  const barTrace={x:dates,y:marg,type:'bar',name:'Probabilità Autocallable Marginale',yaxis:'y',
+  const barTrace={x:allDates,y:marg,type:'bar',name:'Probabilità Autocallable Marginale',yaxis:'y',
     marker:{color:'rgba(184,151,90,.55)',line:{color:'rgba(184,151,90,.9)',width:1}},
     hovertemplate:'%{x}<br>Marginale&nbsp;&nbsp;<b>%{y:.1f}%</b><extra></extra>'};
-  const lineTrace={x:dates,y:cum,type:'scatter',mode:'lines+markers',name:'Probabilità Autocallable Cumulata',yaxis:'y2',
+  const lineTrace={x:allDates,y:cum,type:'scatter',mode:'lines+markers',name:'Probabilità Autocallable Cumulata',yaxis:'y2',
     line:{color:'rgba(90,150,200,.95)',width:2,shape:'spline',smoothing:0.6},
-    marker:{size:5,color:'rgba(90,150,200,.95)'},
+    marker:{size:5,color:'rgba(90,150,200,.95)'},connectgaps:false,
     hovertemplate:'%{x}<br>Cumulata&nbsp;&nbsp;<b>%{y:.1f}%</b><extra></extra>'};
   const L=baseLayout();
   L.xaxis.title={text:'Data di osservazione',font:{size:12,color:C.muted}};
   L.xaxis.type='category';
-  const margMax=Math.max(...marg.filter(isFinite),0);
+  // asse Y sinistro = marginale. Scala fissa sul massimo GLOBALE (tutti gli snapshot),
+  // così non "balla" muovendo lo slider.
   L.yaxis={title:{text:'Probabilità Autocallable Marginale',font:{size:12,color:'rgba(184,151,90,.95)'}},
-    range:[0,margMax>0?margMax*1.15:1],ticksuffix:'%',
+    range:[0,_acMargMax>0?_acMargMax*1.15:1],ticksuffix:'%',
     gridcolor:C.hair,zeroline:false,tickfont:{size:10,color:'rgba(184,151,90,.85)'}};
-  const cumMax=Math.max(...cum.filter(isFinite),0);
   L.yaxis2={title:{text:'Probabilità Autocallable Cumulata',font:{size:12,color:'rgba(90,150,200,.95)'}},
-    range:[0,Math.min(100,Math.max(10,cumMax*1.15))],ticksuffix:'%',
+    range:[0,Math.min(100,Math.max(10,_acCumMax*1.15))],ticksuffix:'%',
     overlaying:'y',side:'right',showgrid:false,zeroline:false,
     tickfont:{size:10,color:'rgba(90,150,200,.85)'}};
   L.hovermode='x unified';L.showlegend=true;
   L.legend={orientation:'h',x:0,y:1.12,font:{size:11,color:C.muted},bgcolor:'rgba(0,0,0,0)'};
   L.margin={l:60,r:60,t:40,b:70};
+  // BARRA VERTICALE ROSSA: appare SOLO quando lo slider storico è aperto. Segna la data
+  // storica corrente, posizionata in modo PROPORZIONALE nel tempo: così si muove con
+  // continuità al variare dello slider, indipendentemente dalle categorie dell'asse X.
+  L.shapes=[];L.annotations=[];
+  const sliderWrap=document.getElementById('acSliderWrap');
+  const sliderAperto=sliderWrap && !sliderWrap.hidden;
+  if(sliderAperto && dataStor!=='—' && allDates.length){
+    // mappo le date (storica + osservazioni) a numeri (ms) per calcolare la posizione relativa
+    const t=s=>{const p=(''+s).split('-');return Date.UTC(+p[0],(+p[1])-1,+p[2]);};
+    const tStor=t(dataStor);
+    const tFirst=t(allDates[0]), tLast=t(allDates[allDates.length-1]);
+    // estendo il range a sinistra includendo la data storica più vecchia, così la barra
+    // ha spazio per muoversi anche quando la data storica precede la prima osservazione
+    const tMin=Math.min(tFirst, t((_acRec.date_storiche&&_acRec.date_storiche[0])||allDates[0]));
+    const span=(tLast - tMin)||1;
+    let frac=(tStor - tMin)/span;             // 0 = inizio asse, 1 = fine
+    frac=Math.min(1,Math.max(0,frac));
+    // converto la frazione in coordinata X categorica: indice interpolato sulle categorie
+    const xpos=frac*(allDates.length-1);      // posizione "continua" tra le categorie
+    L.shapes.push({type:'line',xref:'x',yref:'paper',x0:xpos,x1:xpos,y0:0,y1:1,
+      line:{color:'rgba(217,83,79,.9)',width:2,dash:'solid'},layer:'above'});
+    L.annotations.push({xref:'x',yref:'paper',x:xpos,y:1.02,yanchor:'bottom',
+      text:fmtDate(dataStor),showarrow:false,
+      font:{size:10,color:'rgba(217,83,79,.95)'},bgcolor:'rgba(18,24,32,.7)'});
+  }
   whenSized('chartAutocall',()=>{const gd=document.getElementById('chartAutocall');
     try{if(gd&&gd.data){Plotly.react(gd,[barTrace,lineTrace],L,PCFG);}else{Plotly.newPlot(gd,[barTrace,lineTrace],L,PCFG);}}catch(e){}});
   if(nt)nt.textContent='';
