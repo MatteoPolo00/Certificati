@@ -4216,7 +4216,9 @@ function renderInsMemoryAt(sliderVal){
   // assi FISSI: il range X non cambia mentre si muove lo slider (i riferimenti non "ballano")
   L.xaxis.range=[0,_insMemXMax];L.xaxis.autorange=false;L.xaxis.zeroline=false;L.xaxis.tickformat='.1f';
   L.yaxis.title={text:'Probabilità di sblocco',font:{size:12,color:C.muted}};
-  L.yaxis.range=[0,100];L.yaxis.autorange=false;L.yaxis.ticksuffix='%';
+  // asse Y invertito visivamente (range ribaltato): cambia la forma della nuvola,
+  // il dato resta Prob_svuotomemory diretta (non si applica 1−).
+  L.yaxis.range=[100,0];L.yaxis.autorange=false;L.yaxis.ticksuffix='%';
   L.hovermode='closest';L.showlegend=false;
   L.margin={l:64,r:24,t:16,b:54};
   // uso react (non purge+newPlot) così l'aggiornamento è fluido e NON perdo il click handler
