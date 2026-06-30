@@ -4624,7 +4624,7 @@ function renderInsMemoryAt(sliderVal){
 //   incasso = 100 + (cedola_fissa × n_osservazioni da rif a T) + fondo_memory(T)
 //   costo   = prezzo di mercato del certificato alla data di riferimento
 //   rend_ann = (incasso/costo)^(365/giorni_rif_T) − 1
-let _acRetData=null, _acRetDates=null, _acRetMode='tot';   // 'tot'=standard, 'ann'=annualizzato
+let _acRetData=null, _acRetStorDates=null, _acRetOssDates=null, _acRetMode='tot';   // 'tot'/'ann'
 function openInsAcRet(){
   document.getElementById('insightsHub').hidden=true;
   document.getElementById('insAcRetView').hidden=false;
@@ -4639,44 +4639,47 @@ function openInsAcRet(){
   }
 }
 
-// costruisce la lista di certificati con autocall + la timeline condivisa di date di osservazione
+// costruisce la lista di certificati con autocall + le due timeline condivise:
+//  - date STORICHE (per lo slider riferimento, passato→oggi)
+//  - date di OSSERVAZIONE (per lo slider T, futuro fino a scadenza)
 function buildInsAcRet(){
   if(_acRetData)return;
   const out=[];
-  const dateSet=new Set();
+  const storSet=new Set();   // date storiche (riferimento)
+  const ossSet=new Set();    // date di osservazione (T)
   DATA.forEach(c=>{
     if(!c.isin)return;
-    // record autocall del certificato (per ISIN o chiave "valida")
     let ac=_autocallData?_autocallData[c.isin]:null;
     if(!ac&&_autocallData){const safe=c.isin.replace(/[^A-Za-z0-9]/g,'_');ac=_autocallData[safe];}
     if(!ac||!Array.isArray(ac.snapshots)||!ac.snapshots.length)return;
-    // deve avere effettivamente autocall (cumulata > 0 in qualche snapshot)
     const haAc=ac.snapshots.some(sn=>asArr(sn.cumulata).some(v=>v!=null&&isFinite(v)&&v>0));
     if(!haAc)return;
-    // cedola fissa del certificato
     const ced=(c.cedola!=null&&isFinite(c.cedola))?+c.cedola:0;
-    // serie prezzo del certificato (per il prezzo alla data di riferimento)
     const pmkt=asArr(c.prezzo_mercato), pdates=asArr(c.dates);
-    // fondo memory per data (se presente)
     const mem=c.memory&&c.memory.has?{fondo:asArr(c.memory.fondo),dates:asArr(c.memory.dates)}:null;
-    // raccolgo le date di osservazione (uso l'ultimo snapshot = più completo per le date)
+    // date storiche del certificato (per il riferimento)
+    asArr(ac.date_storiche).forEach(d=>storSet.add(d));
+    // date di osservazione (uso l'ultimo snapshot = più completo)
     const lastSnap=ac.snapshots[ac.snapshots.length-1];
-    asArr(lastSnap.date_oss).forEach(d=>dateSet.add(d));
+    asArr(lastSnap.date_oss).forEach(d=>ossSet.add(d));
     out.push({isin:c.isin,emit:c.emittente||'—',str:c.struttura||'—',sott:asArr(c.sottostanti),
       ced,pmkt,pdates,mem,ac});
   });
   _acRetData=out;
-  _acRetDates=[...dateSet].sort();
+  _acRetStorDates=[...storSet].sort();   // riferimento (storiche)
+  _acRetOssDates=[...ossSet].sort();     // T (osservazioni)
 }
 
-// imposta i due slider sulle date di osservazione comuni
+// imposta i due slider: riferimento sulle date storiche, T sulle date di osservazione
 function initAcRetSliders(){
   const s1=document.getElementById('insAcRetSlider1');
   const s2=document.getElementById('insAcRetSlider2');
-  const n=_acRetDates?_acRetDates.length:0;
-  // riferimento = OGGI (ultima data) di default; T = ultima data
-  if(s1){s1.min=0;s1.max=Math.max(0,n-1);s1.value=Math.max(0,n-1);}
-  if(s2){s2.min=0;s2.max=Math.max(0,n-1);s2.value=Math.max(0,n-1);}
+  const nS=_acRetStorDates?_acRetStorDates.length:0;
+  const nO=_acRetOssDates?_acRetOssDates.length:0;
+  // riferimento = OGGI (ultima data storica disponibile) di default
+  if(s1){s1.min=0;s1.max=Math.max(0,nS-1);s1.value=Math.max(0,nS-1);}
+  // T = ultima osservazione (scadenza) di default
+  if(s2){s2.min=0;s2.max=Math.max(0,nO-1);s2.value=Math.max(0,nO-1);}
 }
 
 // helper: prezzo del certificato alla data più vicina a dataRif
@@ -4723,18 +4726,30 @@ function cumulataAEntro(ac,dataRif,dataT){
 
 function renderInsAcRet(){
   const host=document.getElementById('chartInsAcRet');if(!host)return;
-  if(!_acRetData||!_acRetData.length||!_acRetDates||!_acRetDates.length){
+  if(!_acRetData||!_acRetData.length||!_acRetOssDates||!_acRetOssDates.length){
     host.innerHTML='<div class="mem-empty">Nessun certificato con autocall disponibile.</div>';return;}
   const s1=document.getElementById('insAcRetSlider1');
   const s2=document.getElementById('insAcRetSlider2');
-  // riferimento: se lo storico è CHIUSO, è sempre "oggi" (ultima data); altrimenti dallo slider
+  // riferimento (date STORICHE): se storico chiuso → oggi (ultima storica); altrimenti slider
   const rifRow=document.getElementById('acRetRifRow');
   const storicoAperto=rifRow && !rifRow.hidden;
-  let i1=storicoAperto&&s1?+s1.value:(_acRetDates.length-1);
-  let i2=s2?+s2.value:_acRetDates.length-1;
-  // vincolo: T (slider2) deve essere >= riferimento (slider1)
-  if(i2<i1)i2=i1;
-  const dataRif=_acRetDates[i1], dataT=_acRetDates[i2];
+  const nS=_acRetStorDates.length;
+  let i1=storicoAperto&&s1?+s1.value:(nS-1);
+  i1=Math.min(nS-1,Math.max(0,i1));
+  const dataRif=_acRetStorDates[i1];
+  // T (date OSSERVAZIONE): deve essere >= dataRif. Limito lo slider alle osservazioni future al riferimento.
+  // trovo l'indice minimo di osservazione che è >= dataRif
+  const tRif=Date.parse(dataRif);
+  let minT=0;
+  while(minT<_acRetOssDates.length-1 && Date.parse(_acRetOssDates[minT])<tRif)minT++;
+  // aggiorno i limiti dello slider T in base al riferimento (T mobile da minT a fine)
+  if(s2){
+    s2.min=minT;s2.max=_acRetOssDates.length-1;
+    if(+s2.value<minT)s2.value=minT;
+  }
+  let i2=s2?+s2.value:_acRetOssDates.length-1;
+  i2=Math.min(_acRetOssDates.length-1,Math.max(minT,i2));
+  const dataT=_acRetOssDates[i2];
   document.getElementById('insAcRetVal1').textContent=fmtDate(dataRif);
   document.getElementById('insAcRetVal2').textContent=fmtDate(dataT);
   const giorni=Math.max(1,(Date.parse(dataT)-Date.parse(dataRif))/(1000*60*60*24));
@@ -4746,7 +4761,7 @@ function renderInsAcRet(){
     // numero di osservazioni (date cedola) da riferimento (escluso) a T (incluso)
     let nOss=0;
     const tR=Date.parse(dataRif),tT=Date.parse(dataT);
-    _acRetDates.forEach(d=>{const td=Date.parse(d);if(td>tR&&td<=tT)nOss++;});
+    _acRetOssDates.forEach(d=>{const td=Date.parse(d);if(td>tR&&td<=tT)nOss++;});
     // incasso se autocall a T: 100 + cedole maturate + fondo memory a T
     const cedoleTot=c.ced*nOss;
     const memT=memoryAllaData(c.mem,dataT);
