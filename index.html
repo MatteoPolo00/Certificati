@@ -4762,10 +4762,12 @@ function renderInsAcRet(){
     let nOss=0;
     const tR=Date.parse(dataRif),tT=Date.parse(dataT);
     _acRetOssDates.forEach(d=>{const td=Date.parse(d);if(td>tR&&td<=tT)nOss++;});
-    // incasso se autocall a T: 100 + cedole maturate + fondo memory a T
+    // incasso se autocall a T: 100 + cedole previste tra R e T + fondo memory accumulato a R.
+    // NB: il fondo memory si prende alla DATA DI RIFERIMENTO (quello già accumulato "oggi"),
+    // poi si sommano le cedole che maturano da R fino a T.
     const cedoleTot=c.ced*nOss;
-    const memT=memoryAllaData(c.mem,dataT);
-    const incasso=100+cedoleTot+memT;
+    const memR=memoryAllaData(c.mem,dataRif);
+    const incasso=100+cedoleTot+memR;
     // rendimento: standard (totale di periodo) o annualizzato (base 365), in base al modo
     const rendTot=(incasso/P-1)*100;
     const rendAnn=(Math.pow(incasso/P,365/giorni)-1)*100;
