@@ -4283,9 +4283,16 @@ function prepareAutocall(r){
         const nowHidden=wrap.hidden;
         wrap.hidden=!nowHidden;
         btn.classList.toggle('active',nowHidden);
-        // ridisegno lo snapshot corrente: la barra rossa appare/sparisce in base allo slider aperto
         const sl=document.getElementById('acSlider');
-        renderAutocallSnap(sl?+sl.value:(_acRec?_acRec.snapshots.length-1:0));
+        if(nowHidden){
+          // APRO lo storico: ridisegno lo snapshot corrente dello slider (con barra)
+          renderAutocallSnap(sl?+sl.value:(_acRec?_acRec.snapshots.length-1:0));
+        }else{
+          // CHIUDO lo storico: torno ESATTAMENTE allo stato iniziale (ultima data, niente barra)
+          const last=_acRec?_acRec.snapshots.length-1:0;
+          if(sl)sl.value=last;
+          renderAutocallSnap(last);
+        }
       });}
   }
   renderAutocallSnap(n-1);   // all'apertura: ultima data storica (slider chiuso → niente barra)
@@ -4327,7 +4334,11 @@ function renderAutocallSnap(k){
     hovertemplate:'%{x}<br>Cumulata&nbsp;&nbsp;<b>%{y:.1f}%</b><extra></extra>'};
   const L=baseLayout();
   L.xaxis.title={text:'Data di osservazione',font:{size:12,color:C.muted}};
-  L.xaxis.type='category';
+  // asse X TEMPORALE (date reali), non categorico: così la barra rossa può cadere sulla
+  // data esatta dello slider (che è una data storica, non una data di osservazione) e
+  // tutto resta allineato per data vera.
+  L.xaxis.type='date';
+  L.xaxis.autorange=true;   // zoom ottimale automatico (come all'apertura della scheda)
   // asse Y sinistro = marginale. Scala fissa sul massimo GLOBALE (tutti gli snapshot),
   // così non "balla" muovendo lo slider.
   L.yaxis={title:{text:'Probabilità Autocallable Marginale',font:{size:12,color:'rgba(184,151,90,.95)'}},
@@ -4348,24 +4359,16 @@ function renderAutocallSnap(k){
   const traces=[barTrace,lineTrace];
   const sliderWrap=document.getElementById('acSliderWrap');
   const sliderAperto=sliderWrap && !sliderWrap.hidden;
-  if(sliderAperto){
-    // primo punto in cui la cumulata DIVENTA POSITIVA (la linea blu "stacca da zero"):
-    // è lì che inizia concretamente la probabilità di autocall in questo snapshot.
-    let xcat=null;
-    for(let i=0;i<allDates.length;i++){
-      if(cum[i]!=null&&isFinite(cum[i])&&cum[i]>0){xcat=allDates[i];break;}
-    }
-    // ripiego: se la cumulata è sempre 0, uso la prima data con valore valido
-    if(xcat==null){for(let i=0;i<allDates.length;i++){if(cum[i]!=null&&isFinite(cum[i])){xcat=allDates[i];break;}}}
-    if(xcat!=null){
-      const yTop=Math.min(100,Math.max(10,_acCumMax*1.15));
-      traces.push({x:[xcat,xcat],y:[0,yTop],type:'scatter',mode:'lines',yaxis:'y2',
-        name:'inizio',showlegend:false,line:{color:'rgba(217,83,79,.95)',width:2},
-        hovertemplate:'inizio probabilità'+(dataStor!=='—'?(' · '+fmtDate(dataStor)):'')+'<extra></extra>'});
-      L.annotations.push({xref:'x',yref:'paper',x:xcat,y:1.02,yanchor:'bottom',
-        text:dataStor!=='—'?fmtDate(dataStor):'',showarrow:false,
-        font:{size:10,color:'rgba(217,83,79,.95)'},bgcolor:'rgba(18,24,32,.7)'});
-    }
+  if(sliderAperto && dataStor!=='—'){
+    // la barra cade ESATTAMENTE sulla data dello slider (data storica). Su asse temporale
+    // posso usare la data reale come coordinata X: barra ed etichetta coincidono per data.
+    const yTop=Math.min(100,Math.max(10,_acCumMax*1.15));
+    traces.push({x:[dataStor,dataStor],y:[0,yTop],type:'scatter',mode:'lines',yaxis:'y2',
+      name:'data',showlegend:false,line:{color:'rgba(217,83,79,.95)',width:2},
+      hovertemplate:fmtDate(dataStor)+'<extra></extra>'});
+    L.annotations.push({xref:'x',yref:'paper',x:dataStor,y:1.02,yanchor:'bottom',
+      text:fmtDate(dataStor),showarrow:false,
+      font:{size:10,color:'rgba(217,83,79,.95)'},bgcolor:'rgba(18,24,32,.7)'});
   }
   whenSized('chartAutocall',()=>{const gd=document.getElementById('chartAutocall');
     try{if(gd&&gd.data){Plotly.react(gd,traces,L,PCFG);}else{Plotly.newPlot(gd,traces,L,PCFG);}}catch(e){}});
