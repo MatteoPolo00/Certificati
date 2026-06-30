@@ -4340,29 +4340,37 @@ function renderAutocallSnap(k){
   L.hovermode='x unified';L.showlegend=true;
   L.legend={orientation:'h',x:0,y:1.12,font:{size:11,color:C.muted},bgcolor:'rgba(0,0,0,0)'};
   L.margin={l:60,r:60,t:40,b:70};
-  // BARRA VERTICALE ROSSA: appare SOLO quando lo slider storico è aperto. La allineo al
-  // punto dove INIZIA la parte attiva (prima osservazione con valore nello snapshot), che è
-  // dove parte la linea blu — quel punto si muove tra snapshot, quindi la barra si muove.
+  // BARRA VERTICALE ROSSA come TRACE (non shape): Plotly.react aggiorna sempre i trace,
+  // mentre NON aggiorna in modo affidabile le shapes del layout (causa del "blocco").
+  // Calcolo la posizione X interpolata della data storica tra le date di osservazione.
   L.shapes=[];L.annotations=[];
+  const traces=[barTrace,lineTrace];
   const sliderWrap=document.getElementById('acSliderWrap');
   const sliderAperto=sliderWrap && !sliderWrap.hidden;
-  if(sliderAperto && dataStor!=='—'){
-    // indice della prima categoria (sull'asse completo) che ha un valore di cumulata in questo snapshot
-    let idx=-1;
-    for(let i=0;i<allDates.length;i++){if(cum[i]!=null&&isFinite(cum[i])){idx=i;break;}}
-    // se non trovo valori, ripiego sulla prima data di osservazione dello snapshot
-    if(idx<0 && sd.length){idx=allDates.indexOf(sd[0]);}
-    if(idx>=0){
-      const xcat=allDates[idx];
-      L.shapes.push({type:'line',xref:'x',yref:'paper',x0:xcat,x1:xcat,y0:0,y1:1,
-        line:{color:'rgba(217,83,79,.9)',width:2,dash:'solid'},layer:'above'});
-      L.annotations.push({xref:'x',yref:'paper',x:xcat,y:1.02,yanchor:'bottom',
-        text:fmtDate(dataStor),showarrow:false,
-        font:{size:10,color:'rgba(217,83,79,.95)'},bgcolor:'rgba(18,24,32,.7)'});
+  if(sliderAperto && dataStor!=='—' && allDates.length){
+    const toMs=str=>{const p=(''+str).split('-');return Date.UTC(+p[0],(+p[1])-1,+p[2]);};
+    const tStor=toMs(dataStor);
+    let xpos;
+    if(tStor<=toMs(allDates[0])){xpos=0;}
+    else if(tStor>=toMs(allDates[allDates.length-1])){xpos=allDates.length-1;}
+    else{xpos=allDates.length-1;
+      for(let i=0;i<allDates.length-1;i++){
+        const a=toMs(allDates[i]), b=toMs(allDates[i+1]);
+        if(tStor>=a && tStor<=b){xpos=i+((b>a)?(tStor-a)/(b-a):0);break;}
+      }
     }
+    // trace della linea verticale rossa: due punti (basso/alto) sull'asse cumulata (y2)
+    traces.push({x:[xpos,xpos],y:[0,Math.min(100,Math.max(10,_acCumMax*1.15))],
+      type:'scatter',mode:'lines',yaxis:'y2',name:'data storica',showlegend:false,
+      line:{color:'rgba(217,83,79,.95)',width:2},
+      hovertemplate:'data storica '+fmtDate(dataStor)+'<extra></extra>'});
+    // etichetta sopra la barra
+    L.annotations.push({xref:'x',yref:'paper',x:xpos,y:1.02,yanchor:'bottom',
+      text:fmtDate(dataStor),showarrow:false,
+      font:{size:10,color:'rgba(217,83,79,.95)'},bgcolor:'rgba(18,24,32,.7)'});
   }
   whenSized('chartAutocall',()=>{const gd=document.getElementById('chartAutocall');
-    try{if(gd&&gd.data){Plotly.react(gd,[barTrace,lineTrace],L,PCFG);}else{Plotly.newPlot(gd,[barTrace,lineTrace],L,PCFG);}}catch(e){}});
+    try{if(gd&&gd.data){Plotly.react(gd,traces,L,PCFG);}else{Plotly.newPlot(gd,traces,L,PCFG);}}catch(e){}});
   if(nt)nt.textContent='';
 }
 
