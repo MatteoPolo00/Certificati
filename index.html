@@ -4340,30 +4340,26 @@ function renderAutocallSnap(k){
   L.hovermode='x unified';L.showlegend=true;
   L.legend={orientation:'h',x:0,y:1.12,font:{size:11,color:C.muted},bgcolor:'rgba(0,0,0,0)'};
   L.margin={l:60,r:60,t:40,b:70};
-  // BARRA VERTICALE ROSSA: appare SOLO quando lo slider storico è aperto. Segna la data
-  // storica corrente, posizionata in modo PROPORZIONALE nel tempo: così si muove con
-  // continuità al variare dello slider, indipendentemente dalle categorie dell'asse X.
+  // BARRA VERTICALE ROSSA: appare SOLO quando lo slider storico è aperto. La allineo al
+  // punto dove INIZIA la parte attiva (prima osservazione con valore nello snapshot), che è
+  // dove parte la linea blu — quel punto si muove tra snapshot, quindi la barra si muove.
   L.shapes=[];L.annotations=[];
   const sliderWrap=document.getElementById('acSliderWrap');
   const sliderAperto=sliderWrap && !sliderWrap.hidden;
-  if(sliderAperto && dataStor!=='—' && allDates.length){
-    // mappo le date (storica + osservazioni) a numeri (ms) per calcolare la posizione relativa
-    const t=s=>{const p=(''+s).split('-');return Date.UTC(+p[0],(+p[1])-1,+p[2]);};
-    const tStor=t(dataStor);
-    const tFirst=t(allDates[0]), tLast=t(allDates[allDates.length-1]);
-    // estendo il range a sinistra includendo la data storica più vecchia, così la barra
-    // ha spazio per muoversi anche quando la data storica precede la prima osservazione
-    const tMin=Math.min(tFirst, t((_acRec.date_storiche&&_acRec.date_storiche[0])||allDates[0]));
-    const span=(tLast - tMin)||1;
-    let frac=(tStor - tMin)/span;             // 0 = inizio asse, 1 = fine
-    frac=Math.min(1,Math.max(0,frac));
-    // converto la frazione in coordinata X categorica: indice interpolato sulle categorie
-    const xpos=frac*(allDates.length-1);      // posizione "continua" tra le categorie
-    L.shapes.push({type:'line',xref:'x',yref:'paper',x0:xpos,x1:xpos,y0:0,y1:1,
-      line:{color:'rgba(217,83,79,.9)',width:2,dash:'solid'},layer:'above'});
-    L.annotations.push({xref:'x',yref:'paper',x:xpos,y:1.02,yanchor:'bottom',
-      text:fmtDate(dataStor),showarrow:false,
-      font:{size:10,color:'rgba(217,83,79,.95)'},bgcolor:'rgba(18,24,32,.7)'});
+  if(sliderAperto && dataStor!=='—'){
+    // indice della prima categoria (sull'asse completo) che ha un valore di cumulata in questo snapshot
+    let idx=-1;
+    for(let i=0;i<allDates.length;i++){if(cum[i]!=null&&isFinite(cum[i])){idx=i;break;}}
+    // se non trovo valori, ripiego sulla prima data di osservazione dello snapshot
+    if(idx<0 && sd.length){idx=allDates.indexOf(sd[0]);}
+    if(idx>=0){
+      const xcat=allDates[idx];
+      L.shapes.push({type:'line',xref:'x',yref:'paper',x0:xcat,x1:xcat,y0:0,y1:1,
+        line:{color:'rgba(217,83,79,.9)',width:2,dash:'solid'},layer:'above'});
+      L.annotations.push({xref:'x',yref:'paper',x:xcat,y:1.02,yanchor:'bottom',
+        text:fmtDate(dataStor),showarrow:false,
+        font:{size:10,color:'rgba(217,83,79,.95)'},bgcolor:'rgba(18,24,32,.7)'});
+    }
   }
   whenSized('chartAutocall',()=>{const gd=document.getElementById('chartAutocall');
     try{if(gd&&gd.data){Plotly.react(gd,[barTrace,lineTrace],L,PCFG);}else{Plotly.newPlot(gd,[barTrace,lineTrace],L,PCFG);}}catch(e){}});
