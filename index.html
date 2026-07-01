@@ -524,6 +524,12 @@
     font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
   /* switch standard/annualizzato nell'analisi autocall+rendimento */
   .ret-switch{display:inline-flex;gap:0;border:1px solid var(--hair-soft);border-radius:8px;overflow:hidden;margin-right:12px}
+  /* badge "N oltre scala · espandi" cliccabile */
+  .acret-oob{appearance:none;cursor:pointer;background:rgba(217,131,115,.12);border:1px solid rgba(217,131,115,.4);
+    border-radius:8px;padding:5px 11px;color:var(--neg);font:inherit;font-size:11px;font-weight:600;
+    margin-right:12px;transition:all .15s ease}
+  .acret-oob:hover{background:rgba(217,131,115,.2);border-color:var(--neg)}
+  .acret-oob.active{background:var(--brass-soft);border-color:var(--brass);color:var(--brass)}
   .ret-switch button{appearance:none;cursor:pointer;background:transparent;border:none;
     padding:6px 12px;color:var(--muted);font:inherit;font-size:11.5px;font-weight:500;transition:all .15s ease}
   .ret-switch button:first-child{border-right:1px solid var(--hair-soft)}
@@ -1336,6 +1342,7 @@
         <div class="chart-head">
           <div class="t">Mappa rischio-rendimento autocall</div>
           <div class="hd-right">
+            <button class="acret-oob" id="acRetOob" hidden>0 oltre scala · espandi</button>
             <div class="ret-switch" id="acRetSwitch">
               <button data-mode="tot" class="active">Rendimento</button>
               <button data-mode="ann">Annualizzato</button>
@@ -4494,10 +4501,14 @@ function openInsights(){
     if(sw)sw.querySelectorAll('button').forEach(b=>{
       b.addEventListener('click',()=>{
         _acRetMode=b.dataset.mode;
+        _acRetExpanded=false;   // cambiando modo, torno alla vista limitata
         sw.querySelectorAll('button').forEach(x=>x.classList.toggle('active',x===b));
         renderInsAcRet();
       });
     });
+    // badge "oltre scala": alterna vista limitata / espansa
+    const oob=document.getElementById('acRetOob');
+    if(oob)oob.addEventListener('click',()=>{_acRetExpanded=!_acRetExpanded;renderInsAcRet();});
   }
 }
 function showInsightsHub(){
@@ -4624,7 +4635,7 @@ function renderInsMemoryAt(sliderVal){
 //   incasso = 100 + (cedola_fissa × n_osservazioni da rif a T) + fondo_memory(T)
 //   costo   = prezzo di mercato del certificato alla data di riferimento
 //   rend_ann = (incasso/costo)^(365/giorni_rif_T) − 1
-let _acRetData=null, _acRetStorDates=null, _acRetOssDates=null, _acRetMode='tot';   // 'tot'/'ann'
+let _acRetData=null, _acRetStorDates=null, _acRetOssDates=null, _acRetMode='tot', _acRetExpanded=false;
 function openInsAcRet(){
   document.getElementById('insightsHub').hidden=true;
   document.getElementById('insAcRetView').hidden=false;
@@ -4818,8 +4829,27 @@ function renderInsAcRet(){
     hoverlabel:{bgcolor:'rgba(18,24,32,.97)',bordercolor:'rgba(184,151,90,.5)',
       font:{family:'Inter, system-ui, sans-serif',size:12,color:'#E8EDF1'},align:'left'}};
   const L=baseLayout();
+  // limite asse rendimento (X): 60% se non annualizzato, 150% se annualizzato
+  const xMax=(_acRetMode==='ann')?150:60;
+  // conto quanti certificati escono dal limite (rendimento > xMax)
+  const fuoriScala=xs.filter(v=>v>xMax).length;
+  // badge "N oltre scala": appare solo se ci sono fuori-scala E non sono già espansi
+  const oob=document.getElementById('acRetOob');
+  if(oob){
+    if(fuoriScala>0){
+      oob.hidden=false;
+      oob.textContent=_acRetExpanded?('vista limitata ('+xMax+'%)'):(fuoriScala+' oltre scala · espandi');
+      oob.classList.toggle('active',_acRetExpanded);
+    }else{oob.hidden=true;_acRetExpanded=false;}
+  }
   L.xaxis.title={text:(_acRetMode==='ann'?'Rendimento annualizzato':'Rendimento di periodo'),font:{size:12,color:C.muted}};
-  L.xaxis.autorange=true;L.xaxis.ticksuffix='%';L.xaxis.zeroline=true;L.xaxis.zerolinecolor=C.hair;
+  if(_acRetExpanded&&fuoriScala>0){
+    // vista espansa: mostro tutti (autorange), incluso i fuori scala
+    L.xaxis.autorange=true;
+  }else{
+    L.xaxis.range=[Math.min(0,Math.min(...xs,0)),xMax];L.xaxis.autorange=false;
+  }
+  L.xaxis.ticksuffix='%';L.xaxis.zeroline=true;L.xaxis.zerolinecolor=C.hair;
   L.yaxis.title={text:'Probabilità di autocall entro T',font:{size:12,color:C.muted}};
   L.yaxis.range=[0,100];L.yaxis.autorange=false;L.yaxis.ticksuffix='%';L.yaxis.zeroline=false;
   L.hovermode='closest';L.showlegend=false;
