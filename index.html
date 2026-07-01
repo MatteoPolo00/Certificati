@@ -4663,7 +4663,7 @@ function buildInsAcRet(){
     const lastSnap=ac.snapshots[ac.snapshots.length-1];
     asArr(lastSnap.date_oss).forEach(d=>ossSet.add(d));
     out.push({isin:c.isin,emit:c.emittente||'—',str:c.struttura||'—',sott:asArr(c.sottostanti),
-      ced,pmkt,pdates,mem,ac});
+      ced,pmkt,pdates,mem,ac,scad:c.scadenza||null});
   });
   _acRetData=out;
   _acRetStorDates=[...storSet].sort();   // riferimento (storiche)
@@ -4684,8 +4684,13 @@ function initAcRetSliders(){
 
 // helper: prezzo del certificato alla data più vicina a dataRif
 function prezzoAllaData(pmkt,pdates,dataRif){
+  const info=prezzoAllaDataInfo(pmkt,pdates,dataRif);
+  return info?info.val:null;
+}
+// come sopra, ma restituisce anche la distanza in giorni dalla data richiesta
+// (serve per capire se il prodotto ESISTEVA davvero a quella data)
+function prezzoAllaDataInfo(pmkt,pdates,dataRif){
   if(!pmkt.length||!pdates.length)return null;
-  // cerco la data esatta, altrimenti la più vicina
   let best=null,bestDiff=Infinity;
   const tr=Date.parse(dataRif);
   for(let i=0;i<pdates.length;i++){
@@ -4693,7 +4698,8 @@ function prezzoAllaData(pmkt,pdates,dataRif){
     const diff=Math.abs(Date.parse(pdates[i])-tr);
     if(diff<bestDiff){bestDiff=diff;best=v;}
   }
-  return best;
+  if(best==null)return null;
+  return {val:best,diffDays:bestDiff/(1000*60*60*24)};
 }
 // helper: fondo memory alla data più vicina a T (0 se non presente)
 function memoryAllaData(mem,dataT){
@@ -4755,9 +4761,15 @@ function renderInsAcRet(){
   const giorni=Math.max(1,(Date.parse(dataT)-Date.parse(dataRif))/(1000*60*60*24));
   const xs=[],ys=[],txt=[],isins=[];
   _acRetData.forEach(c=>{
-    // prezzo di mercato alla data di riferimento
-    const P=prezzoAllaData(c.pmkt,c.pdates,dataRif);
+    // FILTRO 1 — il prodotto deve ESISTERE alla data di riferimento: deve avere un prezzo
+    // storico registrato entro ~1 settimana dalla data R. Se non ce l'ha, alla data R non
+    // era ancora quotato (o non c'è dato) → lo escludo.
+    const pInfo=prezzoAllaDataInfo(c.pmkt,c.pdates,dataRif);
+    if(!pInfo||pInfo.diffDays>8)return;    // tolleranza ~1 settimana
+    const P=pInfo.val;
     if(P==null||!isFinite(P)||P<=0)return;
+    // FILTRO 2 — il prodotto non deve essere SCADUTO a T: scadenza > T.
+    if(c.scad){const tScad=Date.parse(c.scad);if(isFinite(tScad)&&tScad<=Date.parse(dataT))return;}
     // numero di osservazioni (date cedola) da riferimento (escluso) a T (incluso).
     // USO LE DATE DEL CERTIFICATO SPECIFICO (non l'unione globale), altrimenti conterei
     // cedole di altri certificati con osservazioni a date diverse.
