@@ -4891,8 +4891,8 @@ function renderInsAcRet(){
   let i2=s2?+s2.value:_acRetOssDates.length-1;
   i2=Math.min(_acRetOssDates.length-1,Math.max(minT,i2));
   const dataT=_acRetOssDates[i2];
-  document.getElementById('insAcRetVal1').textContent=fmtDate(dataRif);
-  document.getElementById('insAcRetVal2').textContent=fmtDate(dataT);
+  const _v1=document.getElementById('insAcRetVal1');if(_v1)_v1.textContent=fmtDate(dataRif);
+  const _v2=document.getElementById('insAcRetVal2');if(_v2)_v2.textContent=fmtDate(dataT);
   const giorni=Math.max(1,(Date.parse(dataT)-Date.parse(dataRif))/(1000*60*60*24));
   const xs=[],ys=[],txt=[],isins=[];
   let _dbgTot=0,_dbgNoPrezzo=0,_dbgLontano=0,_dbgScaduto=0,_dbgNoProb=0,_dbgOk=0;
