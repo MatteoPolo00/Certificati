@@ -4801,6 +4801,8 @@ function renderInsAcRet(){
     // probabilità cumulata di autocall entro T (vista dal riferimento)
     const prob=cumulataAEntro(c.ac,dataRif,dataT);
     if(prob==null||!isFinite(prob)){_dbgNoProb++;return;}
+    // escludo i certificati con probabilità di autocall pari a 0 (non hanno senso in questa mappa)
+    if(prob<=0){_dbgNoProb++;return;}
     _dbgOk++;
     xs.push(rend);
     ys.push(prob);
