@@ -4760,25 +4760,32 @@ function renderInsAcRet(){
   document.getElementById('insAcRetVal2').textContent=fmtDate(dataT);
   const giorni=Math.max(1,(Date.parse(dataT)-Date.parse(dataRif))/(1000*60*60*24));
   const xs=[],ys=[],txt=[],isins=[];
+  let _dbgTot=0,_dbgNoPrezzo=0,_dbgLontano=0,_dbgScaduto=0,_dbgNoProb=0,_dbgOk=0;
   _acRetData.forEach(c=>{
+    _dbgTot++;
     // FILTRO 1 — il prodotto deve ESISTERE alla data di riferimento: deve avere un prezzo
     // storico registrato entro ~1 settimana dalla data R. Se non ce l'ha, alla data R non
     // era ancora quotato (o non c'è dato) → lo escludo.
     const pInfo=prezzoAllaDataInfo(c.pmkt,c.pdates,dataRif);
-    if(!pInfo||pInfo.diffDays>8)return;    // tolleranza ~1 settimana
+    if(!pInfo){_dbgNoPrezzo++;return;}
+    if(pInfo.diffDays>8){_dbgLontano++;return;}    // tolleranza ~1 settimana
     const P=pInfo.val;
-    if(P==null||!isFinite(P)||P<=0)return;
+    if(P==null||!isFinite(P)||P<=0){_dbgNoPrezzo++;return;}
     // FILTRO 2 — il prodotto non deve essere SCADUTO a T: scadenza > T.
-    if(c.scad){const tScad=Date.parse(c.scad);if(isFinite(tScad)&&tScad<=Date.parse(dataT))return;}
+    if(c.scad){const tScad=Date.parse(c.scad);if(isFinite(tScad)&&tScad<=Date.parse(dataT)){_dbgScaduto++;return;}}
     // numero di osservazioni (date cedola) da riferimento (escluso) a T (incluso).
-    // USO LE DATE DEL CERTIFICATO SPECIFICO (non l'unione globale), altrimenti conterei
-    // cedole di altri certificati con osservazioni a date diverse.
+    // USO LE DATE DELLO SNAPSHOT CORRISPONDENTE AL RIFERIMENTO: da una data storica passata
+    // le osservazioni future sono diverse (di più) rispetto a oggi. Usare sempre l'ultimo
+    // snapshot farebbe contare 0 cedole per riferimenti nel passato.
     let nOss=0;
     const tR=Date.parse(dataRif),tT=Date.parse(dataT);
-    // date di osservazione proprie del certificato (dall'ultimo snapshot, il più completo)
     let dateCert=[];
     if(c.ac&&Array.isArray(c.ac.snapshots)&&c.ac.snapshots.length){
-      dateCert=asArr(c.ac.snapshots[c.ac.snapshots.length-1].date_oss);
+      // scelgo lo snapshot con data storica più vicina al riferimento
+      const dstor=asArr(c.ac.date_storiche);
+      let si=c.ac.snapshots.length-1,bd=Infinity;
+      for(let k=0;k<dstor.length;k++){const df=Math.abs(Date.parse(dstor[k])-tR);if(df<bd){bd=df;si=k;}}
+      dateCert=asArr(c.ac.snapshots[si].date_oss);
     }
     dateCert.forEach(d=>{const td=Date.parse(d);if(td>tR&&td<=tT)nOss++;});
     // incasso se autocall a T: 100 + cedole previste tra R e T + fondo memory accumulato a R.
@@ -4793,7 +4800,8 @@ function renderInsAcRet(){
     const rend=(_acRetMode==='ann')?rendAnn:rendTot;
     // probabilità cumulata di autocall entro T (vista dal riferimento)
     const prob=cumulataAEntro(c.ac,dataRif,dataT);
-    if(prob==null||!isFinite(prob))return;
+    if(prob==null||!isFinite(prob)){_dbgNoProb++;return;}
+    _dbgOk++;
     xs.push(prob);
     ys.push(rend);
     isins.push(c.isin);
@@ -4801,6 +4809,7 @@ function renderInsAcRet(){
     const rendLab=(_acRetMode==='ann')?'Rendimento ann.':'Rendimento';
     txt.push(`<b>${esc(c.isin)}</b><br><span style="color:#8C9BA8">${esc(c.emit)} · ${esc(c.str)}</span><br>Sottostanti:&nbsp;${esc(sottTxt)}<br>Prob. autocall entro T&nbsp;&nbsp;<b>${prob.toFixed(1)}%</b><br>${rendLab}&nbsp;&nbsp;<b>${rend.toFixed(1)}%</b><br>Prezzo rif.&nbsp;&nbsp;${P.toFixed(2)} · Incasso&nbsp;${incasso.toFixed(2)}<br><span style="color:#56646F">cedola ${c.ced.toFixed(2)} × ${nOss} oss = ${cedoleTot.toFixed(2)} · memory ${memR.toFixed(2)}</span>`);
   });
+  console.log(`[AcRet] R=${dataRif} T=${dataT} | tot=${_dbgTot} ok=${_dbgOk} | scartati: noPrezzo=${_dbgNoPrezzo} prezzoLontano=${_dbgLontano} scaduto=${_dbgScaduto} noProb=${_dbgNoProb}`);
   const trace={x:xs,y:ys,customdata:isins,text:txt,mode:'markers',type:'scatter',
     marker:{size:11,color:'rgba(184,151,90,.75)',line:{color:'rgba(201,169,104,.9)',width:1}},
     hovertemplate:'%{text}<extra></extra>',
