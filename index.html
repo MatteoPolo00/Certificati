@@ -4675,6 +4675,7 @@ function renderInsMemoryAt(sliderVal){
 //   costo   = prezzo di mercato del certificato alla data di riferimento
 //   rend_ann = (incasso/costo)^(365/giorni_rif_T) − 1
 let _acRetData=null, _acRetStorDates=null, _acRetOssDates=null, _acRetMode='tot', _acRetExpanded=false;
+let _acRetVisible=[], _acRetCurRif=null, _acRetHoverIsin=null;   // per la scia al passaggio del mouse
 function openInsAcRet(){
   document.getElementById('insightsHub').hidden=true;
   document.getElementById('insAcRetView').hidden=false;
@@ -4864,6 +4865,31 @@ function updateRangeFill(){
   if(lb&&_acRetTimeline)lb.textContent=fmtDate(_acRetTimeline[+rB.value]);
 }
 
+// calcola (probabilità, rendimento) di un certificato c a una data T, dato il riferimento.
+// Ritorna {prob, rend, incasso, P, nOss, memR} oppure null se non calcolabile/valido.
+function acRetPunto(c, dataRif, dataT, mode){
+  const pInfo=prezzoAllaDataInfo(c.pmkt,c.pdates,dataRif);
+  if(!pInfo||pInfo.diffDays>8)return null;
+  const P=pInfo.val;if(P==null||!isFinite(P)||P<=0)return null;
+  if(c.scad){const tS=Date.parse(c.scad);if(isFinite(tS)&&tS<=Date.parse(dataT))return null;}
+  const tR=Date.parse(dataRif),tT=Date.parse(dataT);
+  let dateCert=[];
+  if(c.ac&&Array.isArray(c.ac.snapshots)&&c.ac.snapshots.length){
+    const dstor=asArr(c.ac.date_storiche);
+    let si=c.ac.snapshots.length-1,bd=Infinity;
+    for(let k=0;k<dstor.length;k++){const df=Math.abs(Date.parse(dstor[k])-tR);if(df<bd){bd=df;si=k;}}
+    dateCert=asArr(c.ac.snapshots[si].date_oss);
+  }
+  let nOss=0;dateCert.forEach(d=>{const td=Date.parse(d);if(td>tR&&td<=tT)nOss++;});
+  const memR=memoryAllaData(c.mem,dataRif);
+  const incasso=100+c.ced*nOss+memR;
+  const giorni=Math.max(1,(tT-tR)/(1000*60*60*24));
+  const rend=(mode==='ann')?(Math.pow(incasso/P,365/giorni)-1)*100:(incasso/P-1)*100;
+  const prob=cumulataAEntro(c.ac,dataRif,dataT);
+  if(prob==null||!isFinite(prob)||prob<=0)return null;
+  return {prob,rend,incasso,P,nOss,memR};
+}
+
 function renderInsAcRet(){
   const host=document.getElementById('chartInsAcRet');if(!host)return;
   if(!_acRetData||!_acRetData.length||!_acRetOssDates||!_acRetOssDates.length){
@@ -4894,7 +4920,7 @@ function renderInsAcRet(){
   const _v1=document.getElementById('insAcRetVal1');if(_v1)_v1.textContent=fmtDate(dataRif);
   const _v2=document.getElementById('insAcRetVal2');if(_v2)_v2.textContent=fmtDate(dataT);
   const giorni=Math.max(1,(Date.parse(dataT)-Date.parse(dataRif))/(1000*60*60*24));
-  const xs=[],ys=[],txt=[],isins=[];
+  const xs=[],ys=[],txt=[],isins=[],visibili=[];
   let _dbgTot=0,_dbgNoPrezzo=0,_dbgLontano=0,_dbgScaduto=0,_dbgNoProb=0,_dbgOk=0;
   _acRetData.forEach(c=>{
     _dbgTot++;
@@ -4942,13 +4968,18 @@ function renderInsAcRet(){
     xs.push(rend);
     ys.push(prob);
     isins.push(c.isin);
+    visibili.push(c);   // certificato visibile (per la traiettoria/scia)
     const sottTxt=c.sott.length?c.sott.map(x=>nameOf(x)||x).join(', '):'—';
     const rendLab=(_acRetMode==='ann')?'Rendimento ann.':'Rendimento';
     txt.push(`<b>${esc(c.isin)}</b><br><span style="color:#8C9BA8">${esc(c.emit)} · ${esc(c.str)}</span><br>Sottostanti:&nbsp;${esc(sottTxt)}<br>Prob. autocall entro T&nbsp;&nbsp;<b>${prob.toFixed(1)}%</b><br>${rendLab}&nbsp;&nbsp;<b>${rend.toFixed(1)}%</b><br>Prezzo rif.&nbsp;&nbsp;${P.toFixed(2)} · Incasso&nbsp;${incasso.toFixed(2)}<br><span style="color:#56646F">cedola ${c.ced.toFixed(2)} × ${nOss} oss = ${cedoleTot.toFixed(2)} · memory ${memR.toFixed(2)}</span>`);
   });
-  console.log(`[AcRet] R=${dataRif} T=${dataT} | tot=${_dbgTot} ok=${_dbgOk} | scartati: noPrezzo=${_dbgNoPrezzo} prezzoLontano=${_dbgLontano} scaduto=${_dbgScaduto} noProb=${_dbgNoProb}`);
-  const trace={x:xs,y:ys,customdata:isins,text:txt,mode:'markers',type:'scatter',
-    marker:{size:11,color:'rgba(184,151,90,.75)',line:{color:'rgba(201,169,104,.9)',width:1}},
+  // salvo i certificati visibili (per le traiettorie/scia al passaggio del mouse)
+  _acRetVisible=visibili;
+  _acRetCurRif=dataRif;
+  const trace={x:xs,y:ys,customdata:isins,text:txt,mode:'markers',type:'scatter',name:'certificati',
+    marker:{size:12,color:'rgba(184,151,90,.72)',
+      line:{color:'rgba(232,214,180,.85)',width:1.2},
+      symbol:'circle'},
     hovertemplate:'%{text}<extra></extra>',
     hoverlabel:{bgcolor:'rgba(18,24,32,.97)',bordercolor:'rgba(184,151,90,.5)',
       font:{family:'Inter, system-ui, sans-serif',size:12,color:'#E8EDF1'},align:'left'}};
@@ -4978,13 +5009,55 @@ function renderInsAcRet(){
   L.yaxis.range=[0,100];L.yaxis.autorange=false;L.yaxis.ticksuffix='%';L.yaxis.zeroline=false;
   L.hovermode='closest';L.showlegend=false;
   L.margin={l:64,r:24,t:16,b:54};
+  // costruisco le trace: eventuale SCIA (traiettoria del certificato puntato) sotto ai punti
+  const traces=buildAcRetTraces(trace);
   whenSized('chartInsAcRet',()=>{const gd=document.getElementById('chartInsAcRet');
-    try{if(gd&&gd.data){Plotly.react(gd,[trace],L,PCFG);}else{Plotly.newPlot(gd,[trace],L,PCFG);}
+    try{if(gd&&gd.data){Plotly.react(gd,traces,L,PCFG);}else{Plotly.newPlot(gd,traces,L,PCFG);}
       if(gd&&!gd._acRetClick){gd._acRetClick=true;
         gd.on('plotly_click',ev=>{const pt=ev.points&&ev.points[0];
-          if(pt&&pt.customdata&&DATA.some(x=>x.isin===pt.customdata)){location.hash='#/'+encodeURIComponent(pt.customdata)+'/autocall';}});}
+          if(pt&&pt.customdata&&DATA.some(x=>x.isin===pt.customdata)){location.hash='#/'+encodeURIComponent(pt.customdata)+'/autocall';}});
+        // HOVER: al passaggio su un punto, mostro la scia (traiettoria) di quel certificato
+        gd.on('plotly_hover',ev=>{const pt=ev.points&&ev.points[0];
+          if(pt&&pt.customdata&&pt.customdata!==_acRetHoverIsin){
+            _acRetHoverIsin=pt.customdata;redrawAcRetTraces();}});
+        gd.on('plotly_unhover',()=>{if(_acRetHoverIsin){_acRetHoverIsin=null;redrawAcRetTraces();}});
+      }
     }catch(e){}});
   document.getElementById('insAcRetCount').textContent=xs.length+' certificati';
+}
+
+// costruisce le trace del grafico: [scia?, punti]. La scia è la traiettoria del certificato
+// puntato al variare di T (da oggi/riferimento fino a scadenza), evidente; gli altri restano
+// solo punti. Ritorna un array di trace con i punti sempre in cima (cliccabili).
+function buildAcRetTraces(pointsTrace){
+  const out=[];
+  if(_acRetHoverIsin){
+    const c=_acRetVisible.find(x=>x.isin===_acRetHoverIsin);
+    if(c){
+      // traiettoria: variando T su tutte le osservazioni future al riferimento
+      const tR=Date.parse(_acRetCurRif);
+      const fut=(_acRetOssDates||[]).filter(d=>Date.parse(d)>tR);
+      const tx=[],ty=[];
+      fut.forEach(dT=>{const p=acRetPunto(c,_acRetCurRif,dT,_acRetMode);if(p){tx.push(p.rend);ty.push(p.prob);}});
+      if(tx.length>1){
+        // scia sfumata (cometa): linea sottile che collega le posizioni al variare di T
+        out.push({x:tx,y:ty,mode:'lines+markers',type:'scatter',name:'traiettoria',
+          line:{color:'rgba(184,151,90,.55)',width:2,shape:'spline',smoothing:0.7},
+          marker:{size:5,color:'rgba(184,151,90,.35)'},hoverinfo:'skip',showlegend:false});
+      }
+    }
+  }
+  out.push(pointsTrace);   // i punti sempre sopra (cliccabili e hover)
+  return out;
+}
+// ridisegna solo le trace (per la scia all'hover) senza ricostruire tutto il layout
+function redrawAcRetTraces(){
+  const gd=document.getElementById('chartInsAcRet');if(!gd||!gd.data)return;
+  // la trace dei punti è l'ultima costruita nel render precedente: la recupero dal grafico
+  const pointsTrace=gd.data.find(t=>t.name==='certificati');
+  if(!pointsTrace)return;
+  const traces=buildAcRetTraces(pointsTrace);
+  try{Plotly.react(gd,traces,gd.layout,PCFG);}catch(e){}
 }
 
 function openFrontier(){
