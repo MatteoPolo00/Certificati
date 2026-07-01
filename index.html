@@ -522,6 +522,25 @@
     cursor:pointer;border:2px solid var(--panel)}
   .ins-slider-label{flex:none;min-width:96px;text-align:right;font-family:'IBM Plex Mono',monospace;
     font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+  /* range slider a doppio cursore (riferimento ↔ T) per l'analisi storica */
+  .ins-rangewrap{padding:6px 8px 4px}
+  .ins-range-labels{display:flex;justify-content:space-between;margin-bottom:14px;font-size:12px;color:var(--muted)}
+  .ins-range-labels b{color:var(--brass);font-family:'IBM Plex Mono',monospace;font-weight:600}
+  .ins-range-lab-b{text-align:right}
+  .ins-range{position:relative;height:26px}
+  .ins-range-track{position:absolute;top:11px;left:0;right:0;height:4px;border-radius:2px;background:var(--hair)}
+  .ins-range-fill{position:absolute;top:11px;height:4px;border-radius:2px;background:var(--brass);opacity:.55}
+  /* i due input occupano lo stesso spazio; solo le maniglie sono cliccabili */
+  .ins-range input[type=range]{position:absolute;top:0;left:0;width:100%;height:26px;margin:0;
+    -webkit-appearance:none;appearance:none;background:transparent;pointer-events:none}
+  .ins-range input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
+    width:18px;height:18px;border-radius:50%;background:var(--brass);cursor:pointer;pointer-events:auto;
+    border:2px solid var(--panel);box-shadow:0 1px 5px rgba(0,0,0,.5);margin-top:4px}
+  .ins-range input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:var(--brass);
+    cursor:pointer;pointer-events:auto;border:2px solid var(--panel);box-shadow:0 1px 5px rgba(0,0,0,.5)}
+  /* la maniglia A (riferimento) leggermente distinta da B (T) */
+  #acRetRangeA::-webkit-slider-thumb{background:var(--brass-bright,#C9A968)}
+  #acRetRangeB::-webkit-slider-thumb{background:var(--brass)}
   /* switch standard/annualizzato nell'analisi autocall+rendimento */
   .ret-switch{display:inline-flex;gap:0;border:1px solid var(--hair-soft);border-radius:8px;overflow:hidden;margin-right:12px}
   /* badge "N oltre scala · espandi" cliccabile */
@@ -1352,23 +1371,33 @@
         </div>
         <div id="chartInsAcRet" class="plot tall"></div>
         <div class="ins-dualslider">
-          <!-- slider FINE (T): sempre visibile -->
-          <div class="ins-ds-row">
+          <!-- slider logico del riferimento (stato, pilotato dal range doppio; non visibile) -->
+          <input type="range" id="insAcRetSlider1" min="0" max="100" value="100" step="1" hidden style="display:none">
+          <!-- MODALITÀ BASE: solo slider T (riferimento = oggi) -->
+          <div class="ins-ds-row" id="acRetSingleRow">
             <span class="ins-ds-lab">Limite autocall (T)</span>
             <input type="range" id="insAcRetSlider2" min="0" max="100" value="100" step="1">
             <span class="ins-ds-val" id="insAcRetVal2">—</span>
           </div>
-          <!-- bottone storico: sblocca lo slider di riferimento -->
+          <!-- MODALITÀ STORICA: range slider a doppio cursore (riferimento ↔ T) -->
+          <div class="ins-rangewrap" id="acRetRangeWrap" hidden>
+            <div class="ins-range-labels">
+              <span class="ins-range-lab-a">Riferimento <b id="acRetRangeValA">—</b></span>
+              <span class="ins-range-lab-b"><b id="acRetRangeValB">—</b> Limite T</span>
+            </div>
+            <div class="ins-range" id="acRetRange">
+              <div class="ins-range-track"></div>
+              <div class="ins-range-fill" id="acRetRangeFill"></div>
+              <input type="range" id="acRetRangeA" min="0" max="100" value="0" step="1">
+              <input type="range" id="acRetRangeB" min="0" max="100" value="100" step="1">
+            </div>
+          </div>
+          <!-- bottone storico: alterna base ↔ range doppio -->
           <div class="ac-storico-wrap" id="acRetStoricoWrap">
             <button class="ac-storico-btn" id="acRetStoricoBtn">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
               <span>Visualizza da una data storica</span>
             </button>
-            <div class="ins-ds-row" id="acRetRifRow" hidden style="margin-top:12px">
-              <span class="ins-ds-lab">Data di riferimento</span>
-              <input type="range" id="insAcRetSlider1" min="0" max="100" value="100" step="1">
-              <span class="ins-ds-val" id="insAcRetVal1">—</span>
-            </div>
           </div>
         </div>
       </div>
@@ -4482,20 +4511,30 @@ function openInsights(){
     const s2=document.getElementById('insAcRetSlider2');
     if(s1)s1.addEventListener('input',()=>renderInsAcRet());
     if(s2)s2.addEventListener('input',()=>renderInsAcRet());
-    // bottone "visualizza da una data storica": sblocca lo slider di riferimento
+    // bottone "visualizza da una data storica": alterna slider singolo T ↔ range doppio
     const acRetBtn=document.getElementById('acRetStoricoBtn');
     if(acRetBtn)acRetBtn.addEventListener('click',()=>{
-      const row=document.getElementById('acRetRifRow');
-      const nowHidden=row.hidden;
-      row.hidden=!nowHidden;
-      acRetBtn.classList.toggle('active',nowHidden);
-      if(!nowHidden){
-        // CHIUDO: riferimento torna a oggi (ultima data)
+      const single=document.getElementById('acRetSingleRow');
+      const range=document.getElementById('acRetRangeWrap');
+      const apriRange=range.hidden;   // se era nascosto, lo apro
+      range.hidden=!apriRange;
+      single.hidden=apriRange;
+      acRetBtn.classList.toggle('active',apriRange);
+      if(apriRange){
+        // entro in modalità storica: inizializzo il range (A=riferimento attuale, B=T attuale)
+        syncRangeFromSliders();
+      }else{
+        // torno alla base: riferimento = oggi
         const s1b=document.getElementById('insAcRetSlider1');
         if(s1b)s1b.value=s1b.max;
       }
       renderInsAcRet();
     });
+    // range slider doppio: i due cursori A (riferimento) e B (T)
+    const rA=document.getElementById('acRetRangeA');
+    const rB=document.getElementById('acRetRangeB');
+    if(rA)rA.addEventListener('input',()=>onRangeInput('A'));
+    if(rB)rB.addEventListener('input',()=>onRangeInput('B'));
     // switch standard/annualizzato
     const sw=document.getElementById('acRetSwitch');
     if(sw)sw.querySelectorAll('button').forEach(b=>{
@@ -4741,15 +4780,100 @@ function cumulataAEntro(ac,dataRif,dataT){
   return val;
 }
 
+// ===== Range slider doppio (riferimento ↔ T) per l'analisi storica =====
+// I due cursori vivono su una TIMELINE UNICA = date storiche + date di osservazione unite
+// e ordinate. Il cursore A (riferimento) si muove nella parte "storica" (≤ oggi), il cursore
+// B (T) nella parte "futura" (≥ oggi). Vincolo: A ≤ oggi ≤ B, e A ≤ B.
+let _acRetTimeline=null, _acRetOggiIdx=0;
+function buildAcRetTimeline(){
+  const set=new Set();
+  (_acRetStorDates||[]).forEach(d=>set.add(d));
+  (_acRetOssDates||[]).forEach(d=>set.add(d));
+  _acRetTimeline=[...set].sort();
+  // indice di "oggi" = ultima data storica sulla timeline unica
+  const oggi=(_acRetStorDates&&_acRetStorDates.length)?_acRetStorDates[_acRetStorDates.length-1]:null;
+  _acRetOggiIdx=oggi?_acRetTimeline.indexOf(oggi):(_acRetTimeline.length-1);
+  if(_acRetOggiIdx<0)_acRetOggiIdx=_acRetTimeline.length-1;
+}
+// imposta il range dai valori correnti dei due slider "logici" (riferimento e T)
+function syncRangeFromSliders(){
+  if(!_acRetTimeline)buildAcRetTimeline();
+  const rA=document.getElementById('acRetRangeA');
+  const rB=document.getElementById('acRetRangeB');
+  const n=_acRetTimeline.length;
+  if(rA){rA.min=0;rA.max=n-1;}
+  if(rB){rB.min=0;rB.max=n-1;}
+  // A = riferimento corrente (oggi di default), B = T corrente (ultima osservazione)
+  const s1=document.getElementById('insAcRetSlider1');
+  const s2=document.getElementById('insAcRetSlider2');
+  // traduco gli indici (su liste separate) in indici sulla timeline unica
+  const dRif=(_acRetStorDates&&s1)?_acRetStorDates[Math.min(_acRetStorDates.length-1,+s1.value)]:null;
+  const dT=(_acRetOssDates&&s2)?_acRetOssDates[Math.min(_acRetOssDates.length-1,+s2.value)]:null;
+  if(rA&&dRif!=null)rA.value=Math.max(0,_acRetTimeline.indexOf(dRif));
+  if(rB&&dT!=null)rB.value=Math.max(_acRetOggiIdx,_acRetTimeline.indexOf(dT));
+  updateRangeFill();
+}
+// gestisce lo spostamento di un cursore, con i vincoli
+function onRangeInput(which){
+  const rA=document.getElementById('acRetRangeA');
+  const rB=document.getElementById('acRetRangeB');
+  let a=+rA.value, b=+rB.value;
+  // vincoli: A non oltre oggi; B non prima di oggi; A ≤ B
+  if(which==='A'){
+    if(a>_acRetOggiIdx)a=_acRetOggiIdx;   // il riferimento non può superare oggi
+    if(a>b)a=b;
+    rA.value=a;
+  }else{
+    if(b<_acRetOggiIdx)b=_acRetOggiIdx;   // T non può essere prima di oggi
+    if(b<a)b=a;
+    rB.value=b;
+  }
+  // traduco gli indici timeline nei valori dei due slider logici
+  const dA=_acRetTimeline[+rA.value], dB=_acRetTimeline[+rB.value];
+  // riferimento (slider1) = data storica più vicina a dA
+  const s1=document.getElementById('insAcRetSlider1');
+  if(s1&&_acRetStorDates){
+    let bi=_acRetStorDates.length-1,bd=Infinity;const t=Date.parse(dA);
+    _acRetStorDates.forEach((d,i)=>{const df=Math.abs(Date.parse(d)-t);if(df<bd){bd=df;bi=i;}});
+    s1.value=bi;
+  }
+  // T (slider2) = osservazione più vicina a dB
+  const s2=document.getElementById('insAcRetSlider2');
+  if(s2&&_acRetOssDates){
+    let bi=_acRetOssDates.length-1,bd=Infinity;const t=Date.parse(dB);
+    _acRetOssDates.forEach((d,i)=>{const df=Math.abs(Date.parse(d)-t);if(df<bd){bd=df;bi=i;}});
+    s2.value=bi;
+  }
+  updateRangeFill();
+  renderInsAcRet();
+}
+// aggiorna la fascia evidenziata tra i due cursori
+function updateRangeFill(){
+  const rA=document.getElementById('acRetRangeA');
+  const rB=document.getElementById('acRetRangeB');
+  const fill=document.getElementById('acRetRangeFill');
+  if(!rA||!rB||!fill)return;
+  const max=+rA.max||1;
+  const pA=(+rA.value/max)*100, pB=(+rB.value/max)*100;
+  fill.style.left=Math.min(pA,pB)+'%';
+  fill.style.width=Math.abs(pB-pA)+'%';
+  // aggiorno anche le etichette del range
+  const la=document.getElementById('acRetRangeValA');
+  const lb=document.getElementById('acRetRangeValB');
+  if(la&&_acRetTimeline)la.textContent=fmtDate(_acRetTimeline[+rA.value]);
+  if(lb&&_acRetTimeline)lb.textContent=fmtDate(_acRetTimeline[+rB.value]);
+}
+
 function renderInsAcRet(){
   const host=document.getElementById('chartInsAcRet');if(!host)return;
   if(!_acRetData||!_acRetData.length||!_acRetOssDates||!_acRetOssDates.length){
     host.innerHTML='<div class="mem-empty">Nessun certificato con autocall disponibile.</div>';return;}
   const s1=document.getElementById('insAcRetSlider1');
   const s2=document.getElementById('insAcRetSlider2');
-  // riferimento (date STORICHE): se storico chiuso → oggi (ultima storica); altrimenti slider
-  const rifRow=document.getElementById('acRetRifRow');
-  const storicoAperto=rifRow && !rifRow.hidden;
+  // riferimento (date STORICHE): se la modalità storica (range doppio) è CHIUSA → oggi;
+  // se è aperta, il riferimento viene dallo slider logico 1 (pilotato dal cursore A).
+  const rangeWrap=document.getElementById('acRetRangeWrap');
+  const storicoAperto=rangeWrap && !rangeWrap.hidden;
   const nS=_acRetStorDates.length;
   let i1=storicoAperto&&s1?+s1.value:(nS-1);
   i1=Math.min(nS-1,Math.max(0,i1));
