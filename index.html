@@ -5032,12 +5032,25 @@ function renderInsAcRet(){
 function buildAcRetTraces(pointsTrace){
   const out=[];
   const tR=Date.parse(_acRetCurRif);
-  const fut=(_acRetOssDates||[]).filter(d=>Date.parse(d)>tR);
+  // date T candidate = osservazioni PROPRIE del certificato, future rispetto al riferimento
+  const traiettoria=(c)=>{
+    // uso le date di osservazione del certificato (snapshot vicino al riferimento)
+    let dd=[];
+    if(c.ac&&Array.isArray(c.ac.snapshots)&&c.ac.snapshots.length){
+      const dstor=asArr(c.ac.date_storiche);
+      let si=c.ac.snapshots.length-1,bd=Infinity;
+      for(let k=0;k<dstor.length;k++){const df=Math.abs(Date.parse(dstor[k])-tR);if(df<bd){bd=df;si=k;}}
+      dd=asArr(c.ac.snapshots[si].date_oss);
+    }
+    const fut=dd.filter(d=>Date.parse(d)>tR);
+    const tx=[],ty=[];
+    fut.forEach(dT=>{const p=acRetPunto(c,_acRetCurRif,dT,_acRetMode);if(p){tx.push(p.rend);ty.push(p.prob);}});
+    return {tx,ty};
+  };
   // 1) scie sottilissime di TUTTI i certificati visibili (traiettorie di base)
   (_acRetVisible||[]).forEach(c=>{
     if(c.isin===_acRetHoverIsin)return;   // il puntato lo disegno dopo (evidente)
-    const tx=[],ty=[];
-    fut.forEach(dT=>{const p=acRetPunto(c,_acRetCurRif,dT,_acRetMode);if(p){tx.push(p.rend);ty.push(p.prob);}});
+    const {tx,ty}=traiettoria(c);
     if(tx.length>1){
       out.push({x:tx,y:ty,mode:'lines',type:'scatter',name:'scia',
         line:{color:'rgba(184,151,90,.13)',width:1,shape:'spline',smoothing:0.6},
@@ -5048,8 +5061,7 @@ function buildAcRetTraces(pointsTrace){
   if(_acRetHoverIsin){
     const c=(_acRetVisible||[]).find(x=>x.isin===_acRetHoverIsin);
     if(c){
-      const tx=[],ty=[];
-      fut.forEach(dT=>{const p=acRetPunto(c,_acRetCurRif,dT,_acRetMode);if(p){tx.push(p.rend);ty.push(p.prob);}});
+      const {tx,ty}=traiettoria(c);
       if(tx.length>1){
         out.push({x:tx,y:ty,mode:'lines+markers',type:'scatter',name:'scia-hover',
           line:{color:'rgba(184,151,90,.7)',width:2.5,shape:'spline',smoothing:0.7},
