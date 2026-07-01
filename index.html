@@ -4758,10 +4758,17 @@ function renderInsAcRet(){
     // prezzo di mercato alla data di riferimento
     const P=prezzoAllaData(c.pmkt,c.pdates,dataRif);
     if(P==null||!isFinite(P)||P<=0)return;
-    // numero di osservazioni (date cedola) da riferimento (escluso) a T (incluso)
+    // numero di osservazioni (date cedola) da riferimento (escluso) a T (incluso).
+    // USO LE DATE DEL CERTIFICATO SPECIFICO (non l'unione globale), altrimenti conterei
+    // cedole di altri certificati con osservazioni a date diverse.
     let nOss=0;
     const tR=Date.parse(dataRif),tT=Date.parse(dataT);
-    _acRetOssDates.forEach(d=>{const td=Date.parse(d);if(td>tR&&td<=tT)nOss++;});
+    // date di osservazione proprie del certificato (dall'ultimo snapshot, il più completo)
+    let dateCert=[];
+    if(c.ac&&Array.isArray(c.ac.snapshots)&&c.ac.snapshots.length){
+      dateCert=asArr(c.ac.snapshots[c.ac.snapshots.length-1].date_oss);
+    }
+    dateCert.forEach(d=>{const td=Date.parse(d);if(td>tR&&td<=tT)nOss++;});
     // incasso se autocall a T: 100 + cedole previste tra R e T + fondo memory accumulato a R.
     // NB: il fondo memory si prende alla DATA DI RIFERIMENTO (quello già accumulato "oggi"),
     // poi si sommano le cedole che maturano da R fino a T.
