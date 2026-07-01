@@ -4787,7 +4787,7 @@ function renderInsAcRet(){
     isins.push(c.isin);
     const sottTxt=c.sott.length?c.sott.map(x=>nameOf(x)||x).join(', '):'—';
     const rendLab=(_acRetMode==='ann')?'Rendimento ann.':'Rendimento';
-    txt.push(`<b>${esc(c.isin)}</b><br><span style="color:#8C9BA8">${esc(c.emit)} · ${esc(c.str)}</span><br>Sottostanti:&nbsp;${esc(sottTxt)}<br>Prob. autocall entro T&nbsp;&nbsp;<b>${prob.toFixed(1)}%</b><br>${rendLab}&nbsp;&nbsp;<b>${rend.toFixed(1)}%</b><br>Prezzo rif.&nbsp;&nbsp;${P.toFixed(2)} · Incasso&nbsp;${incasso.toFixed(2)}`);
+    txt.push(`<b>${esc(c.isin)}</b><br><span style="color:#8C9BA8">${esc(c.emit)} · ${esc(c.str)}</span><br>Sottostanti:&nbsp;${esc(sottTxt)}<br>Prob. autocall entro T&nbsp;&nbsp;<b>${prob.toFixed(1)}%</b><br>${rendLab}&nbsp;&nbsp;<b>${rend.toFixed(1)}%</b><br>Prezzo rif.&nbsp;&nbsp;${P.toFixed(2)} · Incasso&nbsp;${incasso.toFixed(2)}<br><span style="color:#56646F">cedola ${c.ced.toFixed(2)} × ${nOss} oss = ${cedoleTot.toFixed(2)} · memory ${memR.toFixed(2)}</span>`);
   });
   const trace={x:xs,y:ys,customdata:isins,text:txt,mode:'markers',type:'scatter',
     marker:{size:11,color:'rgba(184,151,90,.75)',line:{color:'rgba(201,169,104,.9)',width:1}},
