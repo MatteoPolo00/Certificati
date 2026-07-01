@@ -4802,8 +4802,8 @@ function renderInsAcRet(){
     const prob=cumulataAEntro(c.ac,dataRif,dataT);
     if(prob==null||!isFinite(prob)){_dbgNoProb++;return;}
     _dbgOk++;
-    xs.push(prob);
-    ys.push(rend);
+    xs.push(rend);
+    ys.push(prob);
     isins.push(c.isin);
     const sottTxt=c.sott.length?c.sott.map(x=>nameOf(x)||x).join(', '):'—';
     const rendLab=(_acRetMode==='ann')?'Rendimento ann.':'Rendimento';
@@ -4816,10 +4816,10 @@ function renderInsAcRet(){
     hoverlabel:{bgcolor:'rgba(18,24,32,.97)',bordercolor:'rgba(184,151,90,.5)',
       font:{family:'Inter, system-ui, sans-serif',size:12,color:'#E8EDF1'},align:'left'}};
   const L=baseLayout();
-  L.xaxis.title={text:'Probabilità di autocall entro T',font:{size:12,color:C.muted}};
-  L.xaxis.range=[0,100];L.xaxis.autorange=false;L.xaxis.ticksuffix='%';L.xaxis.zeroline=false;
-  L.yaxis.title={text:(_acRetMode==='ann'?'Rendimento annualizzato':'Rendimento di periodo'),font:{size:12,color:C.muted}};
-  L.yaxis.autorange=true;L.yaxis.ticksuffix='%';L.yaxis.zeroline=true;L.yaxis.zerolinecolor=C.hair;
+  L.xaxis.title={text:(_acRetMode==='ann'?'Rendimento annualizzato':'Rendimento di periodo'),font:{size:12,color:C.muted}};
+  L.xaxis.autorange=true;L.xaxis.ticksuffix='%';L.xaxis.zeroline=true;L.xaxis.zerolinecolor=C.hair;
+  L.yaxis.title={text:'Probabilità di autocall entro T',font:{size:12,color:C.muted}};
+  L.yaxis.range=[0,100];L.yaxis.autorange=false;L.yaxis.ticksuffix='%';L.yaxis.zeroline=false;
   L.hovermode='closest';L.showlegend=false;
   L.margin={l:64,r:24,t:16,b:54};
   whenSized('chartInsAcRet',()=>{const gd=document.getElementById('chartInsAcRet');
