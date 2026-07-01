@@ -5026,38 +5026,55 @@ function renderInsAcRet(){
   document.getElementById('insAcRetCount').textContent=xs.length+' certificati';
 }
 
-// costruisce le trace del grafico: [scia?, punti]. La scia è la traiettoria del certificato
-// puntato al variare di T (da oggi/riferimento fino a scadenza), evidente; gli altri restano
-// solo punti. Ritorna un array di trace con i punti sempre in cima (cliccabili).
+// costruisce le trace: [scie sottili di TUTTI, scia evidente del puntato, punti].
+// Ogni scia = traiettoria del certificato al variare di T (dal riferimento a scadenza).
+// Le scie di base sono sottilissime e discrete; quella del certificato sotto il mouse è evidente.
 function buildAcRetTraces(pointsTrace){
   const out=[];
+  const tR=Date.parse(_acRetCurRif);
+  const fut=(_acRetOssDates||[]).filter(d=>Date.parse(d)>tR);
+  // 1) scie sottilissime di TUTTI i certificati visibili (traiettorie di base)
+  (_acRetVisible||[]).forEach(c=>{
+    if(c.isin===_acRetHoverIsin)return;   // il puntato lo disegno dopo (evidente)
+    const tx=[],ty=[];
+    fut.forEach(dT=>{const p=acRetPunto(c,_acRetCurRif,dT,_acRetMode);if(p){tx.push(p.rend);ty.push(p.prob);}});
+    if(tx.length>1){
+      out.push({x:tx,y:ty,mode:'lines',type:'scatter',name:'scia',
+        line:{color:'rgba(184,151,90,.13)',width:1,shape:'spline',smoothing:0.6},
+        hoverinfo:'skip',showlegend:false});
+    }
+  });
+  // 2) scia EVIDENTE del certificato sotto il mouse
   if(_acRetHoverIsin){
-    const c=_acRetVisible.find(x=>x.isin===_acRetHoverIsin);
+    const c=(_acRetVisible||[]).find(x=>x.isin===_acRetHoverIsin);
     if(c){
-      // traiettoria: variando T su tutte le osservazioni future al riferimento
-      const tR=Date.parse(_acRetCurRif);
-      const fut=(_acRetOssDates||[]).filter(d=>Date.parse(d)>tR);
       const tx=[],ty=[];
       fut.forEach(dT=>{const p=acRetPunto(c,_acRetCurRif,dT,_acRetMode);if(p){tx.push(p.rend);ty.push(p.prob);}});
       if(tx.length>1){
-        // scia sfumata (cometa): linea sottile che collega le posizioni al variare di T
-        out.push({x:tx,y:ty,mode:'lines+markers',type:'scatter',name:'traiettoria',
-          line:{color:'rgba(184,151,90,.55)',width:2,shape:'spline',smoothing:0.7},
-          marker:{size:5,color:'rgba(184,151,90,.35)'},hoverinfo:'skip',showlegend:false});
+        out.push({x:tx,y:ty,mode:'lines+markers',type:'scatter',name:'scia-hover',
+          line:{color:'rgba(184,151,90,.7)',width:2.5,shape:'spline',smoothing:0.7},
+          marker:{size:5,color:'rgba(184,151,90,.45)'},hoverinfo:'skip',showlegend:false});
       }
     }
   }
-  out.push(pointsTrace);   // i punti sempre sopra (cliccabili e hover)
+  // 3) i punti sempre in cima (cliccabili e con hover)
+  out.push(pointsTrace);
   return out;
 }
-// ridisegna solo le trace (per la scia all'hover) senza ricostruire tutto il layout
+// ridisegna solo le trace (per la scia all'hover) MANTENENDO gli assi fissi, così i punti
+// non si spostano/convergono quando appare la traiettoria evidenziata.
 function redrawAcRetTraces(){
   const gd=document.getElementById('chartInsAcRet');if(!gd||!gd.data)return;
-  // la trace dei punti è l'ultima costruita nel render precedente: la recupero dal grafico
   const pointsTrace=gd.data.find(t=>t.name==='certificati');
   if(!pointsTrace)return;
   const traces=buildAcRetTraces(pointsTrace);
-  try{Plotly.react(gd,traces,gd.layout,PCFG);}catch(e){}
+  // congelo i range correnti degli assi (niente autorange durante l'hover)
+  const lay=Object.assign({},gd.layout);
+  if(gd.layout.xaxis&&gd.layout.xaxis.range){
+    lay.xaxis=Object.assign({},gd.layout.xaxis,{range:gd.layout.xaxis.range.slice(),autorange:false});}
+  if(gd.layout.yaxis&&gd.layout.yaxis.range){
+    lay.yaxis=Object.assign({},gd.layout.yaxis,{range:gd.layout.yaxis.range.slice(),autorange:false});}
+  try{Plotly.react(gd,traces,lay,PCFG);}catch(e){}
 }
 
 function openFrontier(){
