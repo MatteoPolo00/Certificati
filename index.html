@@ -304,9 +304,9 @@
   .stag-toggle.on{color:var(--txt);border-color:rgba(184,151,90,.4)}
   .stag-toggle.on .stag-knob{background:var(--brass-soft)}
   .stag-toggle.on .stag-knob::after{transform:translateX(14px);background:var(--brass)}
-  .xlsbtn{appearance:none;border:1px solid var(--hair);background:var(--panel-2);border-radius:7px;padding:0;width:28px;height:28px;display:grid;place-items:center;cursor:pointer;transition:border-color .15s,transform .15s}
-  .xlsbtn:hover{border-color:var(--faint);transform:translateY(-1px)}
-  .xlsbtn:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+  .xlsbtn{appearance:none;border:1.5px solid rgba(33,115,70,.5);background:var(--panel-2);border-radius:7px;padding:0;width:30px;height:34px;display:grid;place-items:center;cursor:pointer;transition:border-color .15s,transform .15s,box-shadow .15s}
+  .xlsbtn:hover{border-color:#217346;transform:translateY(-1px);box-shadow:0 2px 8px rgba(33,115,70,.25)}
+  .xlsbtn:focus-visible{outline:2px solid #217346;outline-offset:2px}
   .xlsbtn svg{display:block}
   .plot{width:100%;height:380px;overflow:hidden;touch-action:pan-y} .plot.sm{height:300px} .plot.tall{height:520px} .plot.mk{height:300px} .plot.ov{height:340px} .plot.ov-tall{height:400px}
   /* su touch, i grafici lasciano scorrere la pagina invece di catturare il pan */
@@ -522,6 +522,51 @@
     cursor:pointer;border:2px solid var(--panel)}
   .ins-slider-label{flex:none;min-width:96px;text-align:right;font-family:'IBM Plex Mono',monospace;
     font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+  /* range slider a doppio cursore (riferimento ↔ T) per l'analisi storica */
+  .ins-rangewrap{padding:6px 8px 4px}
+  .ins-range-labels{display:flex;justify-content:space-between;margin-bottom:14px;font-size:12px;color:var(--muted)}
+  .ins-range-labels b{color:var(--brass);font-family:'IBM Plex Mono',monospace;font-weight:600}
+  .ins-range-lab-b{text-align:right}
+  .ins-range{position:relative;height:26px}
+  .ins-range-track{position:absolute;top:11px;left:0;right:0;height:4px;border-radius:2px;background:var(--hair)}
+  .ins-range-fill{position:absolute;top:11px;height:4px;border-radius:2px;background:var(--brass);opacity:.55}
+  /* i due input occupano lo stesso spazio; solo le maniglie sono cliccabili */
+  .ins-range input[type=range]{position:absolute;top:0;left:0;width:100%;height:26px;margin:0;
+    -webkit-appearance:none;appearance:none;background:transparent;pointer-events:none}
+  .ins-range input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
+    width:18px;height:18px;border-radius:50%;background:var(--brass);cursor:pointer;pointer-events:auto;
+    border:2px solid var(--panel);box-shadow:0 1px 5px rgba(0,0,0,.5);margin-top:4px}
+  .ins-range input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:var(--brass);
+    cursor:pointer;pointer-events:auto;border:2px solid var(--panel);box-shadow:0 1px 5px rgba(0,0,0,.5)}
+  /* la maniglia A (riferimento) leggermente distinta da B (T) */
+  #acRetRangeA::-webkit-slider-thumb{background:var(--brass-bright,#C9A968)}
+  #acRetRangeB::-webkit-slider-thumb{background:var(--brass)}
+  /* switch standard/annualizzato nell'analisi autocall+rendimento */
+  .ret-switch{display:inline-flex;gap:0;border:1px solid var(--hair-soft);border-radius:8px;overflow:hidden;margin-right:12px}
+  /* badge "N oltre scala · espandi" cliccabile */
+  .acret-oob{appearance:none;cursor:pointer;background:rgba(217,131,115,.12);border:1px solid rgba(217,131,115,.4);
+    border-radius:8px;padding:5px 11px;color:var(--neg);font:inherit;font-size:11px;font-weight:600;
+    margin-right:12px;transition:all .15s ease}
+  .acret-oob:hover{background:rgba(217,131,115,.2);border-color:var(--neg)}
+  .acret-oob.active{background:var(--brass-soft);border-color:var(--brass);color:var(--brass)}
+  .ret-switch button{appearance:none;cursor:pointer;background:transparent;border:none;
+    padding:6px 12px;color:var(--muted);font:inherit;font-size:11.5px;font-weight:500;transition:all .15s ease}
+  .ret-switch button:first-child{border-right:1px solid var(--hair-soft)}
+  .ret-switch button:hover{color:var(--txt)}
+  .ret-switch button.active{background:var(--brass-soft);color:var(--brass)}
+  /* doppio slider per l'analisi autocall probabilità+rendimento */
+  .ins-dualslider{padding:14px 8px 6px;display:flex;flex-direction:column;gap:12px}
+  .ins-ds-row{display:flex;align-items:center;gap:14px}
+  .ins-ds-row[hidden]{display:none}
+  .ins-ds-lab{flex:none;min-width:150px;font-size:12px;color:var(--muted)}
+  .ins-ds-val{flex:none;min-width:96px;text-align:right;font-family:'IBM Plex Mono',monospace;
+    font-size:12px;color:var(--brass);font-variant-numeric:tabular-nums}
+  .ins-ds-row input[type=range]{flex:1;-webkit-appearance:none;appearance:none;height:4px;border-radius:2px;
+    background:var(--hair);outline:none;cursor:pointer}
+  .ins-ds-row input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:16px;height:16px;
+    border-radius:50%;background:var(--brass);cursor:pointer;border:2px solid var(--panel);box-shadow:0 1px 4px rgba(0,0,0,.4)}
+  .ins-ds-row input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:var(--brass);
+    cursor:pointer;border:2px solid var(--panel)}
   .rend-seg button{font-size:11px}
   .mem-empty{text-align:center;padding:56px 20px;font-family:"Inter",sans-serif;font-size:15px;font-weight:600;color:var(--muted)}
   .mem-empty-sub{font-size:12.5px;font-weight:400;color:var(--faint);margin-top:8px}
@@ -788,7 +833,7 @@
       <span>Efficient<br>Frontier</span>
     </button>
     <button data-nav="insights" aria-pressed="false">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="9" r="1.6" fill="currentColor" stroke="none"/><circle cx="14" cy="7" r="1.3" fill="currentColor" stroke="none" opacity="0.7"/><circle cx="16.5" cy="13" r="1.6" fill="currentColor" stroke="none"/><circle cx="10" cy="15" r="1.3" fill="currentColor" stroke="none" opacity="0.7"/><circle cx="6" cy="14.5" r="1.1" fill="currentColor" stroke="none" opacity="0.5"/><path d="M19 4.5 L19.6 6.2 L21.3 6.8 L19.6 7.4 L19 9.1 L18.4 7.4 L16.7 6.8 L18.4 6.2 Z" fill="currentColor" stroke="none" opacity="0.9"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.2 1 2.5h6c0-1.3.3-1.8 1-2.5A6 6 0 0 0 12 3Z"/></svg>
       <span>Insights</span>
     </button>
   </nav>
@@ -836,7 +881,7 @@
     <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
       <button id="xlsMonitor" style="display:flex;align-items:center;gap:7px;appearance:none;background:transparent;border:1px solid var(--hair);border-radius:8px;color:var(--muted);cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:11px;padding:6px 11px;transition:color .15s,border-color .15s">
         <span>Download .xlsx</span>
-        <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3" fill="#1D6F42"/><path d="M8.8 7.6l6.4 8.8M15.2 7.6l-6.4 8.8" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg>
+        <svg width="15" height="18" viewBox="0 0 24 28" aria-hidden="true"><path d="M14 1H3.5A1.5 1.5 0 0 0 2 2.5v23A1.5 1.5 0 0 0 3.5 27h17a1.5 1.5 0 0 0 1.5-1.5V9l-8-8Z" fill="#fff" stroke="#217346" stroke-width="1.2"/><path d="M14 1l8 8h-6.5A1.5 1.5 0 0 1 14 7.5V1Z" fill="#a8d5ba"/><rect x="5" y="12" width="12" height="11" rx="1" fill="#217346"/><path d="M8.3 14.6l2 2.9M12.7 14.6l-2 2.9M8.3 20.4l2-2.9M12.7 20.4l-2-2.9" stroke="#fff" stroke-width="1.3" stroke-linecap="round"/></svg>
       </button>
     </div>
     <div class="tablewrap"><table class="mtable" id="mtable"></table></div>
@@ -1020,13 +1065,14 @@
             <div class="t" id="calCardTitle">Calendario cedole e autocall</div>
             <div class="seg cal-seg" id="calSeg" role="group" aria-label="Vista" hidden>
               <button data-cv="cal" aria-pressed="true">Calendario</button>
-              <button data-cv="mem" aria-pressed="false">Cedole non erogate</button>
+              <button data-cv="mem" aria-pressed="false">Fondo Memory</button>
             </div>
           </div>
         </div>
+        <!-- tabellina descrizione sottostanti: SEMPRE visibile (sopra calendario e fondo memory) -->
+        <div id="barriereBox" class="barr-box" hidden></div>
         <!-- vista calendario -->
         <div id="calView">
-          <div id="barriereBox" class="barr-box" hidden></div>
           <div id="calWrap" class="caltable-wrap"></div>
         </div>
         <!-- vista cedole non erogate (fondo memory) -->
@@ -1060,11 +1106,11 @@
         </div>
       </div>
       <div class="card chart-card">
-        <div class="chart-head"><div class="t">Stima costo implicito <span class="badge">primario</span></div><div class="hd-right"><span class="h">min(markup, markup ann.) · linea zero = fair value</span><button id="xlsMarkup" class="xlsbtn" title="Scarica dati in Excel" aria-label="Scarica dati in Excel"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3" fill="#1D6F42"/><path d="M8.8 7.6l6.4 8.8M15.2 7.6l-6.4 8.8" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg></button></div></div>
+        <div class="chart-head"><div class="t">Stima costo implicito <span class="badge">primario</span></div><div class="hd-right"><span class="h">min(markup, markup ann.) · linea zero = fair value</span><button id="xlsMarkup" class="xlsbtn" title="Scarica dati in Excel" aria-label="Scarica dati in Excel"><svg width="17" height="20" viewBox="0 0 24 28" aria-hidden="true"><path d="M14 1H3.5A1.5 1.5 0 0 0 2 2.5v23A1.5 1.5 0 0 0 3.5 27h17a1.5 1.5 0 0 0 1.5-1.5V9l-8-8Z" fill="#fff" stroke="#217346" stroke-width="1.2"/><path d="M14 1l8 8h-6.5A1.5 1.5 0 0 1 14 7.5V1Z" fill="#a8d5ba"/><rect x="5" y="12" width="12" height="11" rx="1" fill="#217346"/><path d="M8.3 14.6l2 2.9M12.7 14.6l-2 2.9M8.3 20.4l2-2.9M12.7 20.4l-2-2.9" stroke="#fff" stroke-width="1.3" stroke-linecap="round"/></svg></button></div></div>
         <div id="chartMarkup" class="plot mk"></div>
       </div>
       <div class="card chart-card">
-        <div class="chart-head"><div class="t">Prezzo di mercato vs Jensen</div><div class="hd-right"><span class="h">€ per certificato</span><button id="xlsPrice" class="xlsbtn" title="Scarica dati in Excel" aria-label="Scarica dati in Excel"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3" fill="#1D6F42"/><path d="M8.8 7.6l6.4 8.8M15.2 7.6l-6.4 8.8" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg></button></div></div>
+        <div class="chart-head"><div class="t">Prezzo di mercato vs Jensen</div><div class="hd-right"><span class="h">€ per certificato</span><button id="xlsPrice" class="xlsbtn" title="Scarica dati in Excel" aria-label="Scarica dati in Excel"><svg width="17" height="20" viewBox="0 0 24 28" aria-hidden="true"><path d="M14 1H3.5A1.5 1.5 0 0 0 2 2.5v23A1.5 1.5 0 0 0 3.5 27h17a1.5 1.5 0 0 0 1.5-1.5V9l-8-8Z" fill="#fff" stroke="#217346" stroke-width="1.2"/><path d="M14 1l8 8h-6.5A1.5 1.5 0 0 1 14 7.5V1Z" fill="#a8d5ba"/><rect x="5" y="12" width="12" height="11" rx="1" fill="#217346"/><path d="M8.3 14.6l2 2.9M12.7 14.6l-2 2.9M8.3 20.4l2-2.9M12.7 20.4l-2-2.9" stroke="#fff" stroke-width="1.3" stroke-linecap="round"/></svg></button></div></div>
         <div id="chartPrice" class="plot sm"></div>
       </div>
     </div>
@@ -1086,8 +1132,11 @@
                 <button data-rv="norm" aria-pressed="true">Normalizzato</button>
                 <button data-rv="roll" aria-pressed="false">Rolling</button>
               </div>
+              <button class="stag-toggle on" id="cedLinesToggle" type="button" aria-pressed="true" title="Mostra le date di pagamento cedola">
+                <span class="stag-knob"></span><span>Date cedola</span>
+              </button>
             </div>
-            <div class="hd-right"><span class="h" id="rendMeanSub">base 1 · serie storiche</span></div>
+            <div class="hd-right"><span class="h" id="rendMeanSub">base 100 · serie storiche</span></div>
           </div>
           <div id="chartNorm" class="plot plot-fadein"></div>
           <div id="chartRollMean" class="plot plot-fadein" style="display:none"></div>
@@ -1267,6 +1316,16 @@
           </div>
           <div class="ins-tile-arrow">→</div>
         </button>
+        <button class="ins-tile" data-ins="acret">
+          <div class="ins-tile-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20 L4 4"/><path d="M4 20 L20 20"/><circle cx="9" cy="14" r="1.5" fill="currentColor" stroke="none"/><circle cx="13" cy="9" r="1.5" fill="currentColor" stroke="none"/><circle cx="17" cy="11" r="1.5" fill="currentColor" stroke="none"/></svg>
+          </div>
+          <div class="ins-tile-body">
+            <div class="ins-tile-name">Autocall: probabilità e rendimento</div>
+            <div class="ins-tile-desc">Probabilità di autocall entro una data e rendimento annualizzato realizzabile, per ogni certificato.</div>
+          </div>
+          <div class="ins-tile-arrow">→</div>
+        </button>
         <!-- altre tessere future: placeholder "in arrivo" -->
         <div class="ins-tile ins-tile-soon">
           <div class="ins-tile-body">
@@ -1292,6 +1351,58 @@
         <div class="ins-slider-wrap">
           <input type="range" id="insMemSlider" min="0" max="100" value="100" step="1">
           <div class="ins-slider-label" id="insMemSliderLabel">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Vista analisi: Autocall probabilità e rendimento -->
+    <div id="insAcRetView" hidden>
+      <div class="ins-anhead">
+        <button class="back" id="insAcRetBack">← Insights</button>
+        <div class="prodtitle"><div class="mtitle">Autocall: probabilità e rendimento</div><div class="msub">Probabilità di autocall entro T vs rendimento realizzabile</div></div>
+      </div>
+      <div class="card chart-card">
+        <div class="chart-head">
+          <div class="t">Mappa rischio-rendimento autocall</div>
+          <div class="hd-right">
+            <button class="acret-oob" id="acRetOob" hidden>0 oltre scala · espandi</button>
+            <div class="ret-switch" id="acRetSwitch">
+              <button data-mode="tot" class="active">Rendimento</button>
+              <button data-mode="ann">Annualizzato</button>
+            </div>
+            <span class="h" id="insAcRetCount"></span>
+          </div>
+        </div>
+        <div id="chartInsAcRet" class="plot tall"></div>
+        <div class="ins-dualslider">
+          <!-- slider logico del riferimento (stato, pilotato dal range doppio; non visibile) -->
+          <input type="range" id="insAcRetSlider1" min="0" max="100" value="100" step="1" hidden style="display:none">
+          <!-- MODALITÀ BASE: solo slider T (riferimento = oggi) -->
+          <div class="ins-ds-row" id="acRetSingleRow">
+            <span class="ins-ds-lab">Limite autocall (T)</span>
+            <input type="range" id="insAcRetSlider2" min="0" max="100" value="100" step="1">
+            <span class="ins-ds-val" id="insAcRetVal2">—</span>
+          </div>
+          <!-- MODALITÀ STORICA: range slider a doppio cursore (riferimento ↔ T) -->
+          <div class="ins-rangewrap" id="acRetRangeWrap" hidden>
+            <div class="ins-range-labels">
+              <span class="ins-range-lab-a">Riferimento <b id="acRetRangeValA">—</b></span>
+              <span class="ins-range-lab-b"><b id="acRetRangeValB">—</b> Limite T</span>
+            </div>
+            <div class="ins-range" id="acRetRange">
+              <div class="ins-range-track"></div>
+              <div class="ins-range-fill" id="acRetRangeFill"></div>
+              <input type="range" id="acRetRangeA" min="0" max="100" value="0" step="1">
+              <input type="range" id="acRetRangeB" min="0" max="100" value="100" step="1">
+            </div>
+          </div>
+          <!-- bottone storico: alterna base ↔ range doppio -->
+          <div class="ac-storico-wrap" id="acRetStoricoWrap">
+            <button class="ac-storico-btn" id="acRetStoricoBtn">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+              <span>Visualizza da una data storica</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -1786,7 +1897,7 @@ function renderMeta(r){const pmkt=lastNum(r.prezzo_mercato),pmod=lastNum(r.prezz
   const fmtD=s=>{if(!s)return '—';const d=new Date(s);return isNaN(d)?esc(String(s)):d.toLocaleDateString('it-IT',{day:'2-digit',month:'short',year:'numeric'});};
   const rows=[['ISIN',r.isin],['Emittente',r.emittente||'—'],['Struttura',r.struttura||'—'],
     ['Data emissione',fmtD(r.data_emissione)],['Valutazione iniziale',fmtD(r.data_settlement)],['Scadenza',fmtD(r.scadenza)],
-    ['Cedola',fmtCedola(r.cedola)],['Frequenza',freqOf(r)],['Sottostanti','__chips__'],['Prezzo mercato',pmkt==null?'n/d':pmkt.toFixed(2)],['Prezzo modello',pmod==null?'n/d':pmod.toFixed(2)]];
+    ['Cedola',fmtCedola(r.cedola)],['Frequenza',freqOf(r)],['Sottostanti','__chips__'],['Prezzo mercato',pmkt==null?'n/d':pmkt.toFixed(2)],['Prezzo Jensen',pmod==null?'n/d':pmod.toFixed(2)]];
   const host=document.getElementById('metaRows');host.innerHTML='';
   rows.forEach(([lab,val])=>{const row=document.createElement('div');row.className='row';
     const l=document.createElement('div');l.className='lab';l.textContent=lab;
@@ -2068,7 +2179,7 @@ function exportMonitor(){
 }
 function numOrNull(v){return (v==null||Number.isNaN(v))?null:+v;}
 function buildSheet(which){const w=sliceByWindow(current,win);
-  if(which==='price'){const head=['Data','Prezzo mercato','Prezzo modello'];
+  if(which==='price'){const head=['Data','Prezzo mercato','Prezzo Jensen'];
     const rows=w.dates.map((d,i)=>[d,numOrNull(w.prezzo_mercato[i]),numOrNull(w.prezzo_modello[i])]);
     return {head,rows,name:'Prezzo'};}
   const head=['Data','Markup %','Markup ann. %','Cost premium %'];
@@ -2155,12 +2266,25 @@ function renderRendimento(r){
   const xRange=vd.length?[vd[0],vd[vd.length-1]]:null;
 
   if(document.getElementById('chartRollMean')){
-    const traces=labels.map((lb,i)=>mkTrace(lb,i,dates,means[i],{}));
-    const Lm=baseLayout();Lm.yaxis.tickformat='+.0%';Lm.yaxis.ticksuffix='';
-    Lm.yaxis.autorange=true;Lm.xaxis.autorange=true;
-    Lm.shapes=[{type:'line',xref:'paper',x0:0,x1:1,y0:0,y1:0,line:{color:'rgba(144,162,176,.15)',width:1,dash:'dot'}}];
-    Lm.showlegend=true;Lm.legend=mkLegend();Lm.margin.b=70;
-    Plotly.react('chartRollMean',traces,Lm,PCFG);fadeIn('chartRollMean');forceRedraw('chartRollMean',true);}
+    const host=document.getElementById('chartRollMean');
+    // se non ci sono dati rolling validi (serie storica < 1 anno) → messaggio dedicato
+    const haDatiRoll=means.some(serie=>asArr(serie).some(v=>v!=null&&isFinite(v)));
+    if(!haDatiRoll){
+      try{Plotly.purge(host);}catch(e){}
+      host.innerHTML='<div class="mem-empty" style="padding:48px 24px;text-align:center;line-height:1.6">La vista del rendimento rolling non è disponibile per serie storiche con una profondità inferiore a un anno.</div>';
+    }else{
+      host.innerHTML='';
+      const traces=labels.map((lb,i)=>mkTrace(lb,i,dates,means[i],{}));
+      const Lm=baseLayout();Lm.yaxis.tickformat='+.0%';Lm.yaxis.ticksuffix='';
+      Lm.yaxis.autorange=true;Lm.xaxis.autorange=true;
+      Lm.shapes=[{type:'line',xref:'paper',x0:0,x1:1,y0:0,y1:0,line:{color:'rgba(144,162,176,.15)',width:1,dash:'dot'}}];
+      // BARRA VERTICALE che segue il cursore (spike sull'asse X)
+      Lm.xaxis.showspikes=true;Lm.xaxis.spikemode='across';Lm.xaxis.spikethickness=1;
+      Lm.xaxis.spikecolor='rgba(184,151,90,.55)';Lm.xaxis.spikedash='solid';Lm.xaxis.spikesnap='cursor';
+      Lm.hovermode='x';
+      Lm.showlegend=true;Lm.legend=mkLegend();Lm.margin.b=70;
+      Plotly.react('chartRollMean',traces,Lm,PCFG);fadeIn('chartRollMean');forceRedraw('chartRollMean',true);}
+  }
 
   if(document.getElementById('chartRollVol')){
     const traces=labels.map((lb,i)=>mkTrace(lb,i,dates,vols[i],
@@ -2175,6 +2299,7 @@ function fadeIn(id){const el=document.getElementById(id);if(!el)return;
 
 // ---- Vista "Normalizzato": serie storiche normalizzate + barriera/soglie ----
 let rendMeanView='norm';   // 'norm' (default) | 'roll'
+let _cedLinesOn=true;      // righe verticali date cedola nella vista normalizzata
 let _rendSegBound=false;
 function renderNorm(r){
   const host=document.getElementById('chartNorm');if(!host)return;
@@ -2210,32 +2335,47 @@ function renderNorm(r){
     if(s.tipo==='equi'&&nSott<=1)return;
     const st=styleOf[s.tipo]||styleOf.asset;
     const lab=logicalLabel(s);
-    // tutte le serie compaiono in legenda (anche i sottostanti, per accenderli/spegnerli)
-    traces.push({x:dates,y:asArr(s.valori),mode:'lines',type:'scatter',
+    // BASE 100: moltiplico i valori (che sono in base 1) per 100
+    const y100=asArr(s.valori).map(v=>(v==null||!isFinite(v))?null:v*100);
+    traces.push({x:dates,y:y100,mode:'lines',type:'scatter',
       name:lab,
       line:{color:st.color,width:st.width,shape:'spline',smoothing:0.2},
-      hovertemplate:`<b>${esc(lab)}</b>&nbsp;&nbsp;%{y:.3f}<extra></extra>`,
+      hovertemplate:`<b>${esc(lab)}</b>&nbsp;&nbsp;%{y:.1f}<extra></extra>`,
       showlegend:true});
   });
-  // barriera K: linea orizzontale rossa tratteggiata
+  // barriera K: linea orizzontale rossa tratteggiata (in base 100)
   const shapes=[];
   if(nm.barriera_K!=null&&isFinite(nm.barriera_K)){
-    shapes.push({type:'line',xref:'paper',x0:0,x1:1,yref:'y',y0:nm.barriera_K,y1:nm.barriera_K,
+    const bk=nm.barriera_K*100;
+    shapes.push({type:'line',xref:'paper',x0:0,x1:1,yref:'y',y0:bk,y1:bk,
       line:{color:'rgba(217,131,115,.8)',width:1.2,dash:'dash'}});
   }
-  // soglia autocall: serie temporale (può essere discendente), linea sottile discreta
+  // RIGHE VERTICALI GRIGIE alle date di pagamento cedola (solo se il toggle è attivo, e solo
+  // entro il range della serie storica: non mostro pagamenti oltre l'ultima data disponibile).
+  if(_cedLinesOn&&Array.isArray(nm.cedola_dates)&&nm.cedola_dates.length&&dates.length){
+    const ultimaData=Date.parse(dates[dates.length-1]);
+    const primaData=Date.parse(dates[0]);
+    nm.cedola_dates.forEach(d=>{
+      const td=Date.parse(d);
+      if(td>=primaData&&td<=ultimaData){
+        shapes.push({type:'line',xref:'x',x0:d,x1:d,yref:'paper',y0:0,y1:1,
+          line:{color:'rgba(140,155,168,.22)',width:1},layer:'below'});
+      }
+    });
+  }
+  // soglia autocall: serie temporale (può essere discendente), linea sottile discreta (base 100)
   if(Array.isArray(nm.autocall)&&nm.autocall.length){
-    const ac=nm.autocall.map(v=>(v==null?null:v));
+    const ac=nm.autocall.map(v=>(v==null?null:v*100));
     traces.push({x:dates,y:ac,mode:'lines',type:'scatter',name:'Soglia autocall',
       line:{color:'rgba(232,237,241,.55)',width:1,dash:'dot',shape:'hv'},
-      hovertemplate:'Autocall&nbsp;&nbsp;%{y:.2f}<extra></extra>',showlegend:true,connectgaps:false});
+      hovertemplate:'Autocall&nbsp;&nbsp;%{y:.1f}<extra></extra>',showlegend:true,connectgaps:false});
   }
-  // soglia cedola: sulle date dei pagamenti, linea sottile discreta a gradini
+  // soglia cedola: sulle date dei pagamenti, linea sottile discreta a gradini (base 100)
   if(Array.isArray(nm.cedola)&&nm.cedola.length&&Array.isArray(nm.cedola_dates)){
-    const cd=nm.cedola.map(v=>(v==null?null:v));
+    const cd=nm.cedola.map(v=>(v==null?null:v*100));
     traces.push({x:nm.cedola_dates,y:cd,mode:'lines',type:'scatter',name:'Soglia cedola',
       line:{color:'rgba(184,151,90,.6)',width:1,dash:'dot',shape:'hv'},
-      hovertemplate:'Cedola&nbsp;&nbsp;%{y:.2f}<extra></extra>',showlegend:true,connectgaps:false});
+      hovertemplate:'Cedola&nbsp;&nbsp;%{y:.1f}<extra></extra>',showlegend:true,connectgaps:false});
   }
   const L=baseLayout();
   // L'asse X è guidato dalla serie storica (dates), non dalle soglie cedola che
@@ -2266,7 +2406,10 @@ function applyRendMeanView(){
   if(cN)cN.style.display=isNorm?'':'none';
   if(cR)cR.style.display=isNorm?'none':'';
   if(title)title.textContent=isNorm?'Serie storiche normalizzate':'Rendimento annualizzato rolling';
-  if(sub)sub.textContent=isNorm?'base 1 · serie storiche':'media mobile · % ann.';
+  if(sub)sub.textContent=isNorm?'base 100 · serie storiche':'media mobile · % ann.';
+  // il toggle "Date cedola" ha senso solo nella vista Normalizzato
+  const cedT=document.getElementById('cedLinesToggle');
+  if(cedT)cedT.style.display=isNorm?'':'none';
   if(!current)return;
   const rd=rendCache[current.isin];if(!rd)return;
   if(isNorm){renderNorm(rd);}
@@ -2276,6 +2419,14 @@ function bindRendSeg(){
   const seg=document.getElementById('rendSeg');if(!seg||_rendSegBound)return;_rendSegBound=true;
   seg.querySelectorAll('button').forEach(b=>{
     b.addEventListener('click',()=>{rendMeanView=b.dataset.rv;applyRendMeanView();});
+  });
+  // toggle righe verticali date cedola
+  const cedT=document.getElementById('cedLinesToggle');
+  if(cedT)cedT.addEventListener('click',()=>{
+    _cedLinesOn=!_cedLinesOn;
+    cedT.classList.toggle('on',_cedLinesOn);
+    cedT.setAttribute('aria-pressed',_cedLinesOn?'true':'false');
+    if(current&&rendCache[current.isin])renderNorm(rendCache[current.isin]);
   });
 }
 
@@ -4283,9 +4434,16 @@ function prepareAutocall(r){
         const nowHidden=wrap.hidden;
         wrap.hidden=!nowHidden;
         btn.classList.toggle('active',nowHidden);
-        // ridisegno lo snapshot corrente: la barra rossa appare/sparisce in base allo slider aperto
         const sl=document.getElementById('acSlider');
-        renderAutocallSnap(sl?+sl.value:(_acRec?_acRec.snapshots.length-1:0));
+        if(nowHidden){
+          // APRO lo storico: ridisegno lo snapshot corrente dello slider (con barra)
+          renderAutocallSnap(sl?+sl.value:(_acRec?_acRec.snapshots.length-1:0));
+        }else{
+          // CHIUDO lo storico: torno ESATTAMENTE allo stato iniziale (ultima data, niente barra)
+          const last=_acRec?_acRec.snapshots.length-1:0;
+          if(sl)sl.value=last;
+          renderAutocallSnap(last);
+        }
       });}
   }
   renderAutocallSnap(n-1);   // all'apertura: ultima data storica (slider chiuso → niente barra)
@@ -4311,6 +4469,15 @@ function renderAutocallSnap(k){
   sd.forEach((d,i)=>{mapM[d]=sm[i];mapC[d]=sc[i];});
   const marg=allDates.map(d=>(d in mapM?mapM[d]:null));
   const cum =allDates.map(d=>(d in mapC?mapC[d]:null));
+  // se la cumulata è sempre 0 (o assente) → il prodotto non prevede autocall
+  const haAutocall=cum.some(v=>v!=null&&isFinite(v)&&v>0);
+  if(!haAutocall){
+    host.innerHTML='<div class="mem-empty">Tale prodotto non prevede l\'opzione Autocall.</div>';
+    if(tb)tb.textContent='';
+    const sw0=document.getElementById('acStoricoWrap');if(sw0)sw0.hidden=true;
+    if(nt)nt.textContent='';
+    return;
+  }
   // totale = ultima cumulata valida
   let tot=null;for(let i=cum.length-1;i>=0;i--){if(cum[i]!=null&&isFinite(cum[i])){tot=cum[i];break;}}
   if(tb)tb.textContent=(tot!=null&&isFinite(tot))?('totale '+tot.toFixed(1)+'%'):'';
@@ -4327,7 +4494,11 @@ function renderAutocallSnap(k){
     hovertemplate:'%{x}<br>Cumulata&nbsp;&nbsp;<b>%{y:.1f}%</b><extra></extra>'};
   const L=baseLayout();
   L.xaxis.title={text:'Data di osservazione',font:{size:12,color:C.muted}};
-  L.xaxis.type='category';
+  // asse X TEMPORALE (date reali), non categorico: così la barra rossa può cadere sulla
+  // data esatta dello slider (che è una data storica, non una data di osservazione) e
+  // tutto resta allineato per data vera.
+  L.xaxis.type='date';
+  L.xaxis.autorange=true;   // zoom ottimale automatico (come all'apertura della scheda)
   // asse Y sinistro = marginale. Scala fissa sul massimo GLOBALE (tutti gli snapshot),
   // così non "balla" muovendo lo slider.
   L.yaxis={title:{text:'Probabilità Autocallable Marginale',font:{size:12,color:'rgba(184,151,90,.95)'}},
@@ -4338,35 +4509,23 @@ function renderAutocallSnap(k){
     overlaying:'y',side:'right',showgrid:false,zeroline:false,
     tickfont:{size:10,color:'rgba(90,150,200,.85)'}};
   L.hovermode='x unified';L.showlegend=true;
-  L.legend={orientation:'h',x:0,y:1.12,font:{size:11,color:C.muted},bgcolor:'rgba(0,0,0,0)'};
-  L.margin={l:60,r:60,t:40,b:70};
-  // BARRA VERTICALE ROSSA: appare SOLO quando lo slider storico è aperto. Segna la data
-  // storica corrente, posizionata in modo PROPORZIONALE nel tempo: così si muove con
-  // continuità al variare dello slider, indipendentemente dalle categorie dell'asse X.
-  L.shapes=[];L.annotations=[];
+  // legenda in BASSO
+  L.legend={orientation:'h',x:0.5,xanchor:'center',y:-0.18,yanchor:'top',
+    font:{size:11,color:C.muted},bgcolor:'rgba(0,0,0,0)'};
+  L.margin={l:60,r:60,t:24,b:92};
+  // barra verticale rossa sulla data dello slider (SENZA etichetta volante)
+  L.annotations=[];
+  const traces=[barTrace,lineTrace];
   const sliderWrap=document.getElementById('acSliderWrap');
   const sliderAperto=sliderWrap && !sliderWrap.hidden;
-  if(sliderAperto && dataStor!=='—' && allDates.length){
-    // mappo le date (storica + osservazioni) a numeri (ms) per calcolare la posizione relativa
-    const t=s=>{const p=(''+s).split('-');return Date.UTC(+p[0],(+p[1])-1,+p[2]);};
-    const tStor=t(dataStor);
-    const tFirst=t(allDates[0]), tLast=t(allDates[allDates.length-1]);
-    // estendo il range a sinistra includendo la data storica più vecchia, così la barra
-    // ha spazio per muoversi anche quando la data storica precede la prima osservazione
-    const tMin=Math.min(tFirst, t((_acRec.date_storiche&&_acRec.date_storiche[0])||allDates[0]));
-    const span=(tLast - tMin)||1;
-    let frac=(tStor - tMin)/span;             // 0 = inizio asse, 1 = fine
-    frac=Math.min(1,Math.max(0,frac));
-    // converto la frazione in coordinata X categorica: indice interpolato sulle categorie
-    const xpos=frac*(allDates.length-1);      // posizione "continua" tra le categorie
-    L.shapes.push({type:'line',xref:'x',yref:'paper',x0:xpos,x1:xpos,y0:0,y1:1,
-      line:{color:'rgba(217,83,79,.9)',width:2,dash:'solid'},layer:'above'});
-    L.annotations.push({xref:'x',yref:'paper',x:xpos,y:1.02,yanchor:'bottom',
-      text:fmtDate(dataStor),showarrow:false,
-      font:{size:10,color:'rgba(217,83,79,.95)'},bgcolor:'rgba(18,24,32,.7)'});
+  if(sliderAperto && dataStor!=='—'){
+    const yTop=Math.min(100,Math.max(10,_acCumMax*1.15));
+    traces.push({x:[dataStor,dataStor],y:[0,yTop],type:'scatter',mode:'lines',yaxis:'y2',
+      name:'data',showlegend:false,line:{color:'rgba(217,83,79,.95)',width:2},
+      hovertemplate:fmtDate(dataStor)+'<extra></extra>'});
   }
   whenSized('chartAutocall',()=>{const gd=document.getElementById('chartAutocall');
-    try{if(gd&&gd.data){Plotly.react(gd,[barTrace,lineTrace],L,PCFG);}else{Plotly.newPlot(gd,[barTrace,lineTrace],L,PCFG);}}catch(e){}});
+    try{if(gd&&gd.data){Plotly.react(gd,traces,L,PCFG);}else{Plotly.newPlot(gd,traces,L,PCFG);}}catch(e){}});
   if(nt)nt.textContent='';
 }
 
@@ -4378,22 +4537,70 @@ function openInsights(){
   showInsightsHub();
   if(!_insReady){
     _insReady=true;
-    // tessera Fondo memory → apri l'analisi
+    // tessere → apri l'analisi corrispondente
     document.querySelectorAll('.ins-tile[data-ins]').forEach(t=>{
-      t.addEventListener('click',()=>{const k=t.dataset.ins;if(k==='memory')openInsMemory();});
+      t.addEventListener('click',()=>{const k=t.dataset.ins;
+        if(k==='memory')openInsMemory();
+        else if(k==='acret')openInsAcRet();});
     });
     const back=document.getElementById('insBackBtn');
     if(back)back.addEventListener('click',showInsightsHub);
-    // slider timeline
+    const back2=document.getElementById('insAcRetBack');
+    if(back2)back2.addEventListener('click',showInsightsHub);
+    // slider timeline memory
     const sl=document.getElementById('insMemSlider');
     if(sl)sl.addEventListener('input',()=>renderInsMemoryAt(+sl.value));
+    // doppio slider autocall+rendimento
+    const s1=document.getElementById('insAcRetSlider1');
+    const s2=document.getElementById('insAcRetSlider2');
+    if(s1)s1.addEventListener('input',()=>renderInsAcRet());
+    if(s2)s2.addEventListener('input',()=>renderInsAcRet());
+    // bottone "visualizza da una data storica": alterna slider singolo T ↔ range doppio
+    const acRetBtn=document.getElementById('acRetStoricoBtn');
+    if(acRetBtn)acRetBtn.addEventListener('click',()=>{
+      const single=document.getElementById('acRetSingleRow');
+      const range=document.getElementById('acRetRangeWrap');
+      const apriRange=range.hidden;   // se era nascosto, lo apro
+      range.hidden=!apriRange;
+      single.hidden=apriRange;
+      acRetBtn.classList.toggle('active',apriRange);
+      if(apriRange){
+        // entro in modalità storica: inizializzo il range (A=riferimento attuale, B=T attuale)
+        syncRangeFromSliders();
+      }else{
+        // torno alla base: riferimento = oggi
+        const s1b=document.getElementById('insAcRetSlider1');
+        if(s1b)s1b.value=s1b.max;
+      }
+      renderInsAcRet();
+    });
+    // range slider doppio: i due cursori A (riferimento) e B (T)
+    const rA=document.getElementById('acRetRangeA');
+    const rB=document.getElementById('acRetRangeB');
+    if(rA)rA.addEventListener('input',()=>onRangeInput('A'));
+    if(rB)rB.addEventListener('input',()=>onRangeInput('B'));
+    // switch standard/annualizzato
+    const sw=document.getElementById('acRetSwitch');
+    if(sw)sw.querySelectorAll('button').forEach(b=>{
+      b.addEventListener('click',()=>{
+        _acRetMode=b.dataset.mode;
+        _acRetExpanded=false;   // cambiando modo, torno alla vista limitata
+        sw.querySelectorAll('button').forEach(x=>x.classList.toggle('active',x===b));
+        renderInsAcRet();
+      });
+    });
+    // badge "oltre scala": alterna vista limitata / espansa
+    const oob=document.getElementById('acRetOob');
+    if(oob)oob.addEventListener('click',()=>{_acRetExpanded=!_acRetExpanded;renderInsAcRet();});
   }
 }
 function showInsightsHub(){
   const hub=document.getElementById('insightsHub');
   const mv=document.getElementById('insMemoryView');
+  const av=document.getElementById('insAcRetView');
   if(hub)hub.hidden=false;
   if(mv)mv.hidden=true;
+  if(av)av.hidden=true;
 }
 
 // ---- Analisi "Fondo memory": scatter entità vs probabilità erogazione, con slider date ----
@@ -4503,6 +4710,427 @@ function renderInsMemoryAt(sliderVal){
   document.getElementById('insMemDate').textContent=fmtDate(dataSel);
   document.getElementById('insMemCount').textContent=xs.length+' certificati';
   document.getElementById('insMemSliderLabel').textContent=fmtDate(dataSel);
+}
+
+// ===== Analisi "Autocall: probabilità e rendimento" =====
+// Ogni punto = un certificato con autocall. X = prob. cumulata di autocall entro T (vista
+// dalla data di riferimento). Y = rendimento annualizzato se l'autocall scatta a T:
+//   incasso = 100 + (cedola_fissa × n_osservazioni da rif a T) + fondo_memory(T)
+//   costo   = prezzo di mercato del certificato alla data di riferimento
+//   rend_ann = (incasso/costo)^(365/giorni_rif_T) − 1
+let _acRetData=null, _acRetStorDates=null, _acRetOssDates=null, _acRetMode='tot', _acRetExpanded=false;
+let _acRetVisible=[], _acRetCurRif=null, _acRetHoverIsin=null;   // per la scia al passaggio del mouse
+function openInsAcRet(){
+  document.getElementById('insightsHub').hidden=true;
+  document.getElementById('insAcRetView').hidden=false;
+  // i dati autocall servono: se non caricati, li prendo e poi costruisco
+  if(!_autocallData){
+    fetch('autocall.json').then(r=>r.ok?r.json():{}).then(d=>{_autocallData=d||{};buildInsAcRet();initAcRetSliders();renderInsAcRet();
+      setTimeout(()=>{try{Plotly.Plots.resize('chartInsAcRet');}catch(e){}},80);})
+      .catch(()=>{buildInsAcRet();initAcRetSliders();renderInsAcRet();});
+  }else{
+    buildInsAcRet();initAcRetSliders();renderInsAcRet();
+    setTimeout(()=>{try{Plotly.Plots.resize('chartInsAcRet');}catch(e){}},80);
+  }
+}
+
+// costruisce la lista di certificati con autocall + le due timeline condivise:
+//  - date STORICHE (per lo slider riferimento, passato→oggi)
+//  - date di OSSERVAZIONE (per lo slider T, futuro fino a scadenza)
+function buildInsAcRet(){
+  if(_acRetData)return;
+  const out=[];
+  const storSet=new Set();   // date storiche (riferimento)
+  const ossSet=new Set();    // date di osservazione (T)
+  DATA.forEach(c=>{
+    if(!c.isin)return;
+    let ac=_autocallData?_autocallData[c.isin]:null;
+    if(!ac&&_autocallData){const safe=c.isin.replace(/[^A-Za-z0-9]/g,'_');ac=_autocallData[safe];}
+    if(!ac||!Array.isArray(ac.snapshots)||!ac.snapshots.length)return;
+    const haAc=ac.snapshots.some(sn=>asArr(sn.cumulata).some(v=>v!=null&&isFinite(v)&&v>0));
+    if(!haAc)return;
+    const ced=(c.cedola!=null&&isFinite(c.cedola))?+c.cedola:0;
+    const pmkt=asArr(c.prezzo_mercato), pdates=asArr(c.dates);
+    const mem=c.memory&&c.memory.has?{fondo:asArr(c.memory.fondo),dates:asArr(c.memory.dates)}:null;
+    // date storiche del certificato (per il riferimento)
+    asArr(ac.date_storiche).forEach(d=>storSet.add(d));
+    // date di osservazione (uso l'ultimo snapshot = più completo)
+    const lastSnap=ac.snapshots[ac.snapshots.length-1];
+    asArr(lastSnap.date_oss).forEach(d=>ossSet.add(d));
+    out.push({isin:c.isin,emit:c.emittente||'—',str:c.struttura||'—',sott:asArr(c.sottostanti),
+      ced,pmkt,pdates,mem,ac,scad:c.scadenza||null});
+  });
+  _acRetData=out;
+  _acRetStorDates=[...storSet].sort();   // riferimento (storiche)
+  _acRetOssDates=[...ossSet].sort();     // T (osservazioni)
+}
+
+// imposta i due slider: riferimento sulle date storiche, T sulle date di osservazione
+function initAcRetSliders(){
+  const s1=document.getElementById('insAcRetSlider1');
+  const s2=document.getElementById('insAcRetSlider2');
+  const nS=_acRetStorDates?_acRetStorDates.length:0;
+  const nO=_acRetOssDates?_acRetOssDates.length:0;
+  // riferimento = OGGI (ultima data storica disponibile) di default
+  if(s1){s1.min=0;s1.max=Math.max(0,nS-1);s1.value=Math.max(0,nS-1);}
+  // T = ultima osservazione (scadenza) di default
+  if(s2){s2.min=0;s2.max=Math.max(0,nO-1);s2.value=Math.max(0,nO-1);}
+}
+
+// helper: prezzo del certificato alla data più vicina a dataRif
+function prezzoAllaData(pmkt,pdates,dataRif){
+  const info=prezzoAllaDataInfo(pmkt,pdates,dataRif);
+  return info?info.val:null;
+}
+// come sopra, ma restituisce anche la distanza in giorni dalla data richiesta
+// (serve per capire se il prodotto ESISTEVA davvero a quella data)
+function prezzoAllaDataInfo(pmkt,pdates,dataRif){
+  if(!pmkt.length||!pdates.length)return null;
+  let best=null,bestDiff=Infinity;
+  const tr=Date.parse(dataRif);
+  for(let i=0;i<pdates.length;i++){
+    const v=pmkt[i];if(v==null||!isFinite(v))continue;
+    const diff=Math.abs(Date.parse(pdates[i])-tr);
+    if(diff<bestDiff){bestDiff=diff;best=v;}
+  }
+  if(best==null)return null;
+  return {val:best,diffDays:bestDiff/(1000*60*60*24)};
+}
+// helper: fondo memory alla data più vicina a T (0 se non presente)
+function memoryAllaData(mem,dataT){
+  if(!mem||!mem.fondo.length)return 0;
+  let best=0,bestDiff=Infinity;
+  const tt=Date.parse(dataT);
+  for(let i=0;i<mem.dates.length;i++){
+    const v=mem.fondo[i];if(v==null||!isFinite(v))continue;
+    const diff=Math.abs(Date.parse(mem.dates[i])-tt);
+    if(diff<bestDiff){bestDiff=diff;best=v;}
+  }
+  return best;
+}
+// helper: cumulata di autocall a dataT, vista dallo snapshot più vicino a dataRif
+function cumulataAEntro(ac,dataRif,dataT){
+  if(!ac||!Array.isArray(ac.snapshots))return null;
+  // scelgo lo snapshot con data_storica più vicina a dataRif
+  const dstor=ac.date_storiche||[];
+  let si=0,bestDiff=Infinity;const tr=Date.parse(dataRif);
+  for(let i=0;i<dstor.length;i++){const diff=Math.abs(Date.parse(dstor[i])-tr);if(diff<bestDiff){bestDiff=diff;si=i;}}
+  const snap=ac.snapshots[si];if(!snap)return null;
+  const dd=asArr(snap.date_oss),cum=asArr(snap.cumulata);
+  // cumulata alla data di osservazione <= T più vicina (l'ultima che non supera T)
+  const tT=Date.parse(dataT);let val=null;
+  for(let i=0;i<dd.length;i++){if(Date.parse(dd[i])<=tT){if(cum[i]!=null&&isFinite(cum[i]))val=cum[i];}}
+  // se nessuna data <= T, prendo la prima cumulata
+  if(val==null&&cum.length){for(let i=0;i<cum.length;i++){if(cum[i]!=null&&isFinite(cum[i])){val=cum[i];break;}}}
+  return val;
+}
+
+// ===== Range slider doppio (riferimento ↔ T) per l'analisi storica =====
+// I due cursori vivono su una TIMELINE UNICA = date storiche + date di osservazione unite
+// e ordinate. Il cursore A (riferimento) si muove nella parte "storica" (≤ oggi), il cursore
+// B (T) nella parte "futura" (≥ oggi). Vincolo: A ≤ oggi ≤ B, e A ≤ B.
+let _acRetTimeline=null, _acRetOggiIdx=0;
+function buildAcRetTimeline(){
+  const set=new Set();
+  (_acRetStorDates||[]).forEach(d=>set.add(d));
+  (_acRetOssDates||[]).forEach(d=>set.add(d));
+  _acRetTimeline=[...set].sort();
+  // indice di "oggi" = ultima data storica sulla timeline unica
+  const oggi=(_acRetStorDates&&_acRetStorDates.length)?_acRetStorDates[_acRetStorDates.length-1]:null;
+  _acRetOggiIdx=oggi?_acRetTimeline.indexOf(oggi):(_acRetTimeline.length-1);
+  if(_acRetOggiIdx<0)_acRetOggiIdx=_acRetTimeline.length-1;
+}
+// imposta il range dai valori correnti dei due slider "logici" (riferimento e T)
+function syncRangeFromSliders(){
+  if(!_acRetTimeline)buildAcRetTimeline();
+  const rA=document.getElementById('acRetRangeA');
+  const rB=document.getElementById('acRetRangeB');
+  const n=_acRetTimeline.length;
+  if(rA){rA.min=0;rA.max=n-1;}
+  if(rB){rB.min=0;rB.max=n-1;}
+  // A = riferimento corrente (oggi di default), B = T corrente (ultima osservazione)
+  const s1=document.getElementById('insAcRetSlider1');
+  const s2=document.getElementById('insAcRetSlider2');
+  // traduco gli indici (su liste separate) in indici sulla timeline unica
+  const dRif=(_acRetStorDates&&s1)?_acRetStorDates[Math.min(_acRetStorDates.length-1,+s1.value)]:null;
+  const dT=(_acRetOssDates&&s2)?_acRetOssDates[Math.min(_acRetOssDates.length-1,+s2.value)]:null;
+  if(rA&&dRif!=null)rA.value=Math.max(0,_acRetTimeline.indexOf(dRif));
+  if(rB&&dT!=null)rB.value=Math.max(_acRetOggiIdx,_acRetTimeline.indexOf(dT));
+  updateRangeFill();
+}
+// gestisce lo spostamento di un cursore, con i vincoli
+function onRangeInput(which){
+  const rA=document.getElementById('acRetRangeA');
+  const rB=document.getElementById('acRetRangeB');
+  let a=+rA.value, b=+rB.value;
+  // vincoli: A non oltre oggi; B non prima di oggi; A ≤ B
+  if(which==='A'){
+    if(a>_acRetOggiIdx)a=_acRetOggiIdx;   // il riferimento non può superare oggi
+    if(a>b)a=b;
+    rA.value=a;
+  }else{
+    if(b<_acRetOggiIdx)b=_acRetOggiIdx;   // T non può essere prima di oggi
+    if(b<a)b=a;
+    rB.value=b;
+  }
+  // traduco gli indici timeline nei valori dei due slider logici
+  const dA=_acRetTimeline[+rA.value], dB=_acRetTimeline[+rB.value];
+  // riferimento (slider1) = data storica più vicina a dA
+  const s1=document.getElementById('insAcRetSlider1');
+  if(s1&&_acRetStorDates){
+    let bi=_acRetStorDates.length-1,bd=Infinity;const t=Date.parse(dA);
+    _acRetStorDates.forEach((d,i)=>{const df=Math.abs(Date.parse(d)-t);if(df<bd){bd=df;bi=i;}});
+    s1.value=bi;
+  }
+  // T (slider2) = osservazione più vicina a dB
+  const s2=document.getElementById('insAcRetSlider2');
+  if(s2&&_acRetOssDates){
+    let bi=_acRetOssDates.length-1,bd=Infinity;const t=Date.parse(dB);
+    _acRetOssDates.forEach((d,i)=>{const df=Math.abs(Date.parse(d)-t);if(df<bd){bd=df;bi=i;}});
+    s2.value=bi;
+  }
+  updateRangeFill();
+  renderInsAcRet();
+}
+// aggiorna la fascia evidenziata tra i due cursori
+function updateRangeFill(){
+  const rA=document.getElementById('acRetRangeA');
+  const rB=document.getElementById('acRetRangeB');
+  const fill=document.getElementById('acRetRangeFill');
+  if(!rA||!rB||!fill)return;
+  const max=+rA.max||1;
+  const pA=(+rA.value/max)*100, pB=(+rB.value/max)*100;
+  fill.style.left=Math.min(pA,pB)+'%';
+  fill.style.width=Math.abs(pB-pA)+'%';
+  // aggiorno anche le etichette del range
+  const la=document.getElementById('acRetRangeValA');
+  const lb=document.getElementById('acRetRangeValB');
+  if(la&&_acRetTimeline)la.textContent=fmtDate(_acRetTimeline[+rA.value]);
+  if(lb&&_acRetTimeline)lb.textContent=fmtDate(_acRetTimeline[+rB.value]);
+}
+
+// calcola (probabilità, rendimento) di un certificato c a una data T, dato il riferimento.
+// Ritorna {prob, rend, incasso, P, nOss, memR} oppure null se non calcolabile/valido.
+function acRetPunto(c, dataRif, dataT, mode){
+  const pInfo=prezzoAllaDataInfo(c.pmkt,c.pdates,dataRif);
+  if(!pInfo||pInfo.diffDays>8)return null;
+  const P=pInfo.val;if(P==null||!isFinite(P)||P<=0)return null;
+  if(c.scad){const tS=Date.parse(c.scad);if(isFinite(tS)&&tS<=Date.parse(dataT))return null;}
+  const tR=Date.parse(dataRif),tT=Date.parse(dataT);
+  let dateCert=[];
+  if(c.ac&&Array.isArray(c.ac.snapshots)&&c.ac.snapshots.length){
+    const dstor=asArr(c.ac.date_storiche);
+    let si=c.ac.snapshots.length-1,bd=Infinity;
+    for(let k=0;k<dstor.length;k++){const df=Math.abs(Date.parse(dstor[k])-tR);if(df<bd){bd=df;si=k;}}
+    dateCert=asArr(c.ac.snapshots[si].date_oss);
+  }
+  let nOss=0;dateCert.forEach(d=>{const td=Date.parse(d);if(td>tR&&td<=tT)nOss++;});
+  const memR=memoryAllaData(c.mem,dataRif);
+  const incasso=100+c.ced*nOss+memR;
+  const giorni=Math.max(1,(tT-tR)/(1000*60*60*24));
+  const rend=(mode==='ann')?(Math.pow(incasso/P,365/giorni)-1)*100:(incasso/P-1)*100;
+  const prob=cumulataAEntro(c.ac,dataRif,dataT);
+  if(prob==null||!isFinite(prob)||prob<=0)return null;
+  return {prob,rend,incasso,P,nOss,memR};
+}
+
+function renderInsAcRet(){
+  const host=document.getElementById('chartInsAcRet');if(!host)return;
+  if(!_acRetData||!_acRetData.length||!_acRetOssDates||!_acRetOssDates.length){
+    host.innerHTML='<div class="mem-empty">Nessun certificato con autocall disponibile.</div>';return;}
+  const s1=document.getElementById('insAcRetSlider1');
+  const s2=document.getElementById('insAcRetSlider2');
+  // riferimento (date STORICHE): se la modalità storica (range doppio) è CHIUSA → oggi;
+  // se è aperta, il riferimento viene dallo slider logico 1 (pilotato dal cursore A).
+  const rangeWrap=document.getElementById('acRetRangeWrap');
+  const storicoAperto=rangeWrap && !rangeWrap.hidden;
+  const nS=_acRetStorDates.length;
+  let i1=storicoAperto&&s1?+s1.value:(nS-1);
+  i1=Math.min(nS-1,Math.max(0,i1));
+  const dataRif=_acRetStorDates[i1];
+  // T (date OSSERVAZIONE): deve essere >= dataRif. Limito lo slider alle osservazioni future al riferimento.
+  // trovo l'indice minimo di osservazione che è >= dataRif
+  const tRif=Date.parse(dataRif);
+  let minT=0;
+  while(minT<_acRetOssDates.length-1 && Date.parse(_acRetOssDates[minT])<tRif)minT++;
+  // aggiorno i limiti dello slider T in base al riferimento (T mobile da minT a fine)
+  if(s2){
+    s2.min=minT;s2.max=_acRetOssDates.length-1;
+    if(+s2.value<minT)s2.value=minT;
+  }
+  let i2=s2?+s2.value:_acRetOssDates.length-1;
+  i2=Math.min(_acRetOssDates.length-1,Math.max(minT,i2));
+  const dataT=_acRetOssDates[i2];
+  const _v1=document.getElementById('insAcRetVal1');if(_v1)_v1.textContent=fmtDate(dataRif);
+  const _v2=document.getElementById('insAcRetVal2');if(_v2)_v2.textContent=fmtDate(dataT);
+  const giorni=Math.max(1,(Date.parse(dataT)-Date.parse(dataRif))/(1000*60*60*24));
+  const xs=[],ys=[],txt=[],isins=[],visibili=[];
+  let _dbgTot=0,_dbgNoPrezzo=0,_dbgLontano=0,_dbgScaduto=0,_dbgNoProb=0,_dbgOk=0;
+  _acRetData.forEach(c=>{
+    _dbgTot++;
+    // FILTRO 1 — il prodotto deve ESISTERE alla data di riferimento: deve avere un prezzo
+    // storico registrato entro ~1 settimana dalla data R. Se non ce l'ha, alla data R non
+    // era ancora quotato (o non c'è dato) → lo escludo.
+    const pInfo=prezzoAllaDataInfo(c.pmkt,c.pdates,dataRif);
+    if(!pInfo){_dbgNoPrezzo++;return;}
+    if(pInfo.diffDays>8){_dbgLontano++;return;}    // tolleranza ~1 settimana
+    const P=pInfo.val;
+    if(P==null||!isFinite(P)||P<=0){_dbgNoPrezzo++;return;}
+    // FILTRO 2 — il prodotto non deve essere SCADUTO a T: scadenza > T.
+    if(c.scad){const tScad=Date.parse(c.scad);if(isFinite(tScad)&&tScad<=Date.parse(dataT)){_dbgScaduto++;return;}}
+    // numero di osservazioni (date cedola) da riferimento (escluso) a T (incluso).
+    // USO LE DATE DELLO SNAPSHOT CORRISPONDENTE AL RIFERIMENTO: da una data storica passata
+    // le osservazioni future sono diverse (di più) rispetto a oggi. Usare sempre l'ultimo
+    // snapshot farebbe contare 0 cedole per riferimenti nel passato.
+    let nOss=0;
+    const tR=Date.parse(dataRif),tT=Date.parse(dataT);
+    let dateCert=[];
+    if(c.ac&&Array.isArray(c.ac.snapshots)&&c.ac.snapshots.length){
+      // scelgo lo snapshot con data storica più vicina al riferimento
+      const dstor=asArr(c.ac.date_storiche);
+      let si=c.ac.snapshots.length-1,bd=Infinity;
+      for(let k=0;k<dstor.length;k++){const df=Math.abs(Date.parse(dstor[k])-tR);if(df<bd){bd=df;si=k;}}
+      dateCert=asArr(c.ac.snapshots[si].date_oss);
+    }
+    dateCert.forEach(d=>{const td=Date.parse(d);if(td>tR&&td<=tT)nOss++;});
+    // incasso se autocall a T: 100 + cedole previste tra R e T + fondo memory accumulato a R.
+    // NB: il fondo memory si prende alla DATA DI RIFERIMENTO (quello già accumulato "oggi"),
+    // poi si sommano le cedole che maturano da R fino a T.
+    const cedoleTot=c.ced*nOss;
+    const memR=memoryAllaData(c.mem,dataRif);
+    const incasso=100+cedoleTot+memR;
+    // rendimento: standard (totale di periodo) o annualizzato (base 365), in base al modo
+    const rendTot=(incasso/P-1)*100;
+    const rendAnn=(Math.pow(incasso/P,365/giorni)-1)*100;
+    const rend=(_acRetMode==='ann')?rendAnn:rendTot;
+    // probabilità cumulata di autocall entro T (vista dal riferimento)
+    const prob=cumulataAEntro(c.ac,dataRif,dataT);
+    if(prob==null||!isFinite(prob)){_dbgNoProb++;return;}
+    // escludo i certificati con probabilità di autocall pari a 0 (non hanno senso in questa mappa)
+    if(prob<=0){_dbgNoProb++;return;}
+    _dbgOk++;
+    xs.push(rend);
+    ys.push(prob);
+    isins.push(c.isin);
+    visibili.push(c);   // certificato visibile (per la traiettoria/scia)
+    const sottTxt=c.sott.length?c.sott.map(x=>nameOf(x)||x).join(', '):'—';
+    const rendLab=(_acRetMode==='ann')?'Rendimento ann.':'Rendimento';
+    txt.push(`<b>${esc(c.isin)}</b><br><span style="color:#8C9BA8">${esc(c.emit)} · ${esc(c.str)}</span><br>Sottostanti:&nbsp;${esc(sottTxt)}<br>Prob. autocall entro T&nbsp;&nbsp;<b>${prob.toFixed(1)}%</b><br>${rendLab}&nbsp;&nbsp;<b>${rend.toFixed(1)}%</b><br>Prezzo rif.&nbsp;&nbsp;${P.toFixed(2)} · Incasso&nbsp;${incasso.toFixed(2)}<br><span style="color:#56646F">cedola ${c.ced.toFixed(2)} × ${nOss} oss = ${cedoleTot.toFixed(2)} · memory ${memR.toFixed(2)}</span>`);
+  });
+  // salvo i certificati visibili (per le traiettorie/scia al passaggio del mouse)
+  _acRetVisible=visibili;
+  _acRetCurRif=dataRif;
+  const trace={x:xs,y:ys,customdata:isins,text:txt,mode:'markers',type:'scatter',name:'certificati',
+    marker:{size:12,color:'rgba(184,151,90,.72)',
+      line:{color:'rgba(232,214,180,.85)',width:1.2},
+      symbol:'circle'},
+    hovertemplate:'%{text}<extra></extra>',
+    hoverlabel:{bgcolor:'rgba(18,24,32,.97)',bordercolor:'rgba(184,151,90,.5)',
+      font:{family:'Inter, system-ui, sans-serif',size:12,color:'#E8EDF1'},align:'left'}};
+  const L=baseLayout();
+  // limite asse rendimento (X): 60% se non annualizzato, 150% se annualizzato
+  const xMax=(_acRetMode==='ann')?150:60;
+  // conto quanti certificati escono dal limite (rendimento > xMax)
+  const fuoriScala=xs.filter(v=>v>xMax).length;
+  // badge "N oltre scala": appare solo se ci sono fuori-scala E non sono già espansi
+  const oob=document.getElementById('acRetOob');
+  if(oob){
+    if(fuoriScala>0){
+      oob.hidden=false;
+      oob.textContent=_acRetExpanded?('vista limitata ('+xMax+'%)'):(fuoriScala+' oltre scala · espandi');
+      oob.classList.toggle('active',_acRetExpanded);
+    }else{oob.hidden=true;_acRetExpanded=false;}
+  }
+  L.xaxis.title={text:(_acRetMode==='ann'?'Rendimento annualizzato':'Rendimento di periodo'),font:{size:12,color:C.muted}};
+  if(_acRetExpanded&&fuoriScala>0){
+    // vista espansa: mostro tutti (autorange), incluso i fuori scala
+    L.xaxis.autorange=true;
+  }else{
+    L.xaxis.range=[Math.min(0,Math.min(...xs,0)),xMax];L.xaxis.autorange=false;
+  }
+  L.xaxis.ticksuffix='%';L.xaxis.zeroline=true;L.xaxis.zerolinecolor=C.hair;
+  L.yaxis.title={text:'Probabilità di autocall entro T',font:{size:12,color:C.muted}};
+  L.yaxis.range=[0,100];L.yaxis.autorange=false;L.yaxis.ticksuffix='%';L.yaxis.zeroline=false;
+  L.hovermode='closest';L.showlegend=false;
+  L.margin={l:64,r:24,t:16,b:54};
+  // costruisco le trace: eventuale SCIA (traiettoria del certificato puntato) sotto ai punti
+  const traces=buildAcRetTraces(trace);
+  whenSized('chartInsAcRet',()=>{const gd=document.getElementById('chartInsAcRet');
+    try{if(gd&&gd.data){Plotly.react(gd,traces,L,PCFG);}else{Plotly.newPlot(gd,traces,L,PCFG);}
+      if(gd&&!gd._acRetClick){gd._acRetClick=true;
+        gd.on('plotly_click',ev=>{const pt=ev.points&&ev.points[0];
+          if(pt&&pt.customdata&&DATA.some(x=>x.isin===pt.customdata)){location.hash='#/'+encodeURIComponent(pt.customdata)+'/autocall';}});
+        // HOVER: al passaggio su un punto, mostro la scia (traiettoria) di quel certificato
+        gd.on('plotly_hover',ev=>{const pt=ev.points&&ev.points[0];
+          if(pt&&pt.customdata&&pt.customdata!==_acRetHoverIsin){
+            _acRetHoverIsin=pt.customdata;redrawAcRetTraces();}});
+        gd.on('plotly_unhover',()=>{if(_acRetHoverIsin){_acRetHoverIsin=null;redrawAcRetTraces();}});
+      }
+    }catch(e){}});
+  document.getElementById('insAcRetCount').textContent=xs.length+' certificati';
+}
+
+// costruisce le trace: [scie sottili di TUTTI, scia evidente del puntato, punti].
+// Ogni scia = traiettoria del certificato al variare di T (dal riferimento a scadenza).
+// Le scie di base sono sottilissime e discrete; quella del certificato sotto il mouse è evidente.
+function buildAcRetTraces(pointsTrace){
+  const out=[];
+  const tR=Date.parse(_acRetCurRif);
+  // date T candidate = osservazioni PROPRIE del certificato, future rispetto al riferimento
+  const traiettoria=(c)=>{
+    // uso le date di osservazione del certificato (snapshot vicino al riferimento)
+    let dd=[];
+    if(c.ac&&Array.isArray(c.ac.snapshots)&&c.ac.snapshots.length){
+      const dstor=asArr(c.ac.date_storiche);
+      let si=c.ac.snapshots.length-1,bd=Infinity;
+      for(let k=0;k<dstor.length;k++){const df=Math.abs(Date.parse(dstor[k])-tR);if(df<bd){bd=df;si=k;}}
+      dd=asArr(c.ac.snapshots[si].date_oss);
+    }
+    const fut=dd.filter(d=>Date.parse(d)>tR);
+    const tx=[],ty=[];
+    fut.forEach(dT=>{const p=acRetPunto(c,_acRetCurRif,dT,_acRetMode);if(p){tx.push(p.rend);ty.push(p.prob);}});
+    return {tx,ty};
+  };
+  // 1) scie sottilissime di TUTTI i certificati visibili (traiettorie di base)
+  (_acRetVisible||[]).forEach(c=>{
+    if(c.isin===_acRetHoverIsin)return;   // il puntato lo disegno dopo (evidente)
+    const {tx,ty}=traiettoria(c);
+    if(tx.length>1){
+      out.push({x:tx,y:ty,mode:'lines',type:'scatter',name:'scia',
+        line:{color:'rgba(184,151,90,.13)',width:1,shape:'spline',smoothing:0.6},
+        hoverinfo:'skip',showlegend:false});
+    }
+  });
+  // 2) scia EVIDENTE del certificato sotto il mouse
+  if(_acRetHoverIsin){
+    const c=(_acRetVisible||[]).find(x=>x.isin===_acRetHoverIsin);
+    if(c){
+      const {tx,ty}=traiettoria(c);
+      if(tx.length>1){
+        out.push({x:tx,y:ty,mode:'lines+markers',type:'scatter',name:'scia-hover',
+          line:{color:'rgba(184,151,90,.7)',width:2.5,shape:'spline',smoothing:0.7},
+          marker:{size:5,color:'rgba(184,151,90,.45)'},hoverinfo:'skip',showlegend:false});
+      }
+    }
+  }
+  // 3) i punti sempre in cima (cliccabili e con hover)
+  out.push(pointsTrace);
+  return out;
+}
+// ridisegna solo le trace (per la scia all'hover) MANTENENDO gli assi fissi, così i punti
+// non si spostano/convergono quando appare la traiettoria evidenziata.
+function redrawAcRetTraces(){
+  const gd=document.getElementById('chartInsAcRet');if(!gd||!gd.data)return;
+  const pointsTrace=gd.data.find(t=>t.name==='certificati');
+  if(!pointsTrace)return;
+  const traces=buildAcRetTraces(pointsTrace);
+  // congelo i range correnti degli assi (niente autorange durante l'hover)
+  const lay=Object.assign({},gd.layout);
+  if(gd.layout.xaxis&&gd.layout.xaxis.range){
+    lay.xaxis=Object.assign({},gd.layout.xaxis,{range:gd.layout.xaxis.range.slice(),autorange:false});}
+  if(gd.layout.yaxis&&gd.layout.yaxis.range){
+    lay.yaxis=Object.assign({},gd.layout.yaxis,{range:gd.layout.yaxis.range.slice(),autorange:false});}
+  try{Plotly.react(gd,traces,lay,PCFG);}catch(e){}
 }
 
 function openFrontier(){
